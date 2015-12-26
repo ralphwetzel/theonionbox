@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+
+<%
+    import psutil
+    cpu_count = psutil.cpu_count()
+
+#    template_directory = get('template_directory')
+
+    import socket
+    host_name = socket.gethostname()
+
+    from tob_template_tools import *
+
+    import datetime
+
+#    from stem.version import Version
+#    in_version = get('version', "0.0.0.0-NoVersion")
+#    x_version = Version(in_version)
+#    short_version = ("{}.{}.{}.{}").format(x_version.major, x_version.minor, x_version.micro, x_version.patch)-->
+
+    tor_info = get('tor_info')
+
+    # This is Copy/Paste from ARM!
+
+    # see dir-spec.txt for description of FLAGS
+    FLAG_LABELS = {"Authority": "default",  "BadExit": "danger",     "BadDirectory": "danger",    "Exit": "warning",
+                   "Fast": "primary",      "Guard": "primary",     "HSDir": "info",       "Named": "primary",
+                   "Stable": "primary",      "Running": "success",  "Unnamed": "warning",     "Valid": "success",
+                   "V2Dir": "default",       "V3Dir": "default"}
+
+    FLAG_COLORS = {"Authority": "black", "BadExit": "red", "BadDirectory": "red", "Exit": "orange",
+                   "Fast": "blue",      "Guard": "blue",     "HSDir": "deepskyblue",       "Named": "blue",
+                   "Stable": "blue",      "Running": "green",  "Unnamed": "red",     "Valid": "green",
+                   "V2Dir": "black",       "V3Dir": "black", "Tor Communication Error": "red"}
+
+    VERSION_STATUS_COLORS = {"new": "blue", "new in series": "blue", "obsolete": "red", "recommended": "green",
+                             "old": "red",  "unrecommended": "red",  "unknown": "cyan"}
+
+
+    box_bold_grid = 'col-xs-3 col-md-2 box_bold'
+    box_section_grid = 'col-xs-8 col-md-9 box_section'
+    box_datum_grid = 'col-xs-3 col-md-2 box_datum'
+    box_value_grid = 'col-xs-8 col-md-9 box_value'
+    box_title_grid = 'col-xs-8 col-md-9 box_title'
+    box_subtitle_grid = 'col-xs-8 col-md-9 box_subtitle'
+
+    def standard_row(datum, value):
+        out =  "<div class='row'>"
+        out += "<div class='{}'>{}</div>".format(box_datum_grid, datum)
+        out += "<div class='{}'><p>{}</p></div>".format(box_value_grid, value)
+        out += "<div class='col-xs-1'></div>"
+        out += "</div>"
+
+        return out
+        end
+
+    def header_row(bold, section, target):
+        out =  "<div class='row hash_target' id='{}'>".format(target)
+        out += "<div class='{}'>{}</div>".format(box_bold_grid, bold)
+        out += "<div class='{}'><p>{}</p></div>".format(box_section_grid, section)
+        out += "<div class='col-xs-1'></div>"
+        out += "</div>"
+
+        return out
+        end
+
+%>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="icon" href="data:image/gif;base64,{{icon}}">
+    <title>The Onion Box</title>
+
+    % include('css/box.css')
+
+</head>
+
+
+
+<body data-spy="scroll" data-target="#TOBNavBar" data-offset="0">
+
+    <!-- Fixed navbar -->
+    <nav class="navbar navbar-default navbar-fixed-top" id="TOBNavBar">
+        <div class="container-fluid">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#box_navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="#top">
+                    <img src="data:image/gif;base64,{{icon}}" width="16" height="16" alt="The ONION Box">
+
+                </a>
+            </div>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div class="collapse navbar-collapse" id="box_navbar">
+                <ul class="nav navbar-nav">
+                    <li style="font-size: 15px;" class="active"><a href="#host">General Information <span class="sr-only">(current)</span></a></li>
+                    <li style="font-size: 15px;"><a href="#tor">System Settings</a></li>
+                    <li style="font-size: 15px;"><a href="#bandwidth">Bandwidth</a></li>
+                    <li style="font-size: 15px;"><a href="#accounting">Accounting</a></li>
+                    <li style="font-size: 15px;"><a href="#messages">Messages</a></li>
+                </ul>
+
+                <form class="navbar-form navbar-right" role="logout" method='get' action="/{{session_id}}/logout.html">
+                    <button type="submit" id="button_logout" class="btn btn-default" style="color:'rgb(255,0,0)'">Logout</button>
+                </form>
+            </div><!-- /.navbar-collapse -->
+        </div><!-- /.container-fluid -->
+    </nav>
+
+    <div class="container-fluid" style="min-width: 770px;">
+
+        <div class="row box_header " style="min-height: 50px;"></div>
+
+        <div class="row box_header ">
+
+            <div class="{{box_bold_grid}}"></div>
+            <div class="{{box_title_grid}}">The Onion Box</div>
+
+        </div>
+        <div class="row box_header ">
+
+            <div class="{{box_bold_grid}}"></div>
+            <div class="{{box_subtitle_grid}}">
+                <p>{{!"Tor {} @ {}<br>{}".format(tor_info['tor/version/short'], host_name, tor_info['tor/fingerprint'])}}</p>
+            </div>
+        </div>
+
+        <div class="row box_header " style="min-height: 70px;"></div>
+
+
+        <br>
+
+
+        {{!header_row('HOST', 'General Information', 'host')}}
+        {{!standard_row('Name', tor_info['host/name'])}}
+        {{!standard_row('OS', "{} {} (Version: {})".format(tor_info['host/system'], tor_info['host/release'], tor_info['host/version']))}}
+        {{!standard_row('System', "{} {}".format(tor_info['host/processor'], tor_info['host/machine']))}}
+
+        <div class="row">
+            <div class="{{box_datum_grid}}">CPU Usage</div>
+            <div class="{{box_value_grid}}">
+                <div class="row">
+                    % for count in range(cpu_count):
+                    <div class="col-xs-6">
+                        <canvas class="processor_chart" id="processor_load_{{count}}" width="100" height="50"
+                                style="vertical-align: middle;"
+                                data-toggle="tooltip" data-placement="bottom"
+                                title="CPU#{{count}}: CPU Usage (%)">
+                        </canvas>
+                    </div>
+                    % end
+                </div>
+            </div>
+            <div class="col-xs-1"></div>
+        </div>
+
+        {{!standard_row('Memory', "{} MB".format(tor_info['host/memory/MB']))}}
+
+        <div class = "row">
+            <div class="{{box_datum_grid}}">Memory Usage</div>
+            <div class="{{box_value_grid}}">
+                <div class="row">
+                    <div class="col-xs-6">
+                        <canvas class="processor_chart" id="mem_load" width="100" height="50"
+                            style="vertical-align: middle;"
+                            data-toggle="tooltip" data-placement="bottom"
+                            title="Memory Usage (%)">
+                        </canvas>
+                    </div>
+                    <div class="col-xs-6"></div>
+                </div>
+            </div>
+            <div class="col-xs-1"></div>
+        </div>
+
+
+        <hr>
+
+
+        {{!header_row('Tor', 'System Settings', 'tor')}}
+
+        <div class = "row">
+            <div class="{{box_datum_grid}}">
+                <p>Nickname</p>
+            </div>
+            <div class="{{box_value_grid}}">
+                % nn = tor_info['tor/nickname']
+                % if nn=="Unnamed":
+                    <p style='color: grey;'>( {{nn}} )</p>
+                % else:
+                    <p>{{nn}}</p>
+                % end
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="{{box_datum_grid}}">
+                <p>Fingerprint</p>
+            </div>
+            <div class="{{box_value_grid}}">
+                <a href="https://atlas.torproject.org/#details/{{tor_info['tor/fingerprint']}}" target="_blank">
+                   {{tor_info['tor/fingerprint']}}
+                </a>
+            </div>
+        </div>
+
+        <div class = "row">
+            <div class="{{box_datum_grid}}">
+                <p>Version</p>
+            </div>
+            <div class="{{box_value_grid}}">
+                <p>
+                    {{tor_info['tor/version']}}
+                    % tvc = tor_info['tor/version/current']
+                    % if tvc in VERSION_STATUS_COLORS:
+                        <code style="color: {{VERSION_STATUS_COLORS[tvc]}};">{{tvc}}</code>
+                    % end
+                </p>
+            </div>
+        </div>
+
+        % if tor_info['tor/orListenAddress']:
+            {{!standard_row('Address', "{}:{}".format(tor_info['tor/orListenAddress'], tor_info['tor/orPort']))}}
+        % else:
+            {{!standard_row('Address', "{}:{}".format(tor_info['tor/address'], tor_info['tor/orPort']))}}
+        % end
+
+        % if tor_info['tor/dirPort'] != 0:
+            {{!standard_row('DirPort', tor_info['tor/dirPort'])}}
+        % end
+
+        % if tor_info['tor/controlPort'] == "0":
+            {{!standard_row('Control Socket', tor_info['tor/controlSocket'])}}
+        % else:
+            <div class="row">
+                <div class="{{box_datum_grid}}">
+                    <p>Control Port</p>
+                </div>
+                <div class="{{box_value_grid}}">
+                    <p>
+                        <%
+                            _cat_color = {"open": "black", "Password": "green", "Cookie": "blue"}
+                            _cat = "open"
+                            if tor_info['tor/isAuthPassword']:
+                                _cat = "Password"
+                            elif tor_info['tor/isAuthCookie']:
+                                _cat = "Cookie"
+                            end
+                        %>
+                        {{tor_info['tor/controlPort']}}
+                        <code style="color: {{_cat_color[_cat]}};">
+                            {{_cat}}
+                        </code>
+                    </p>
+                </div>
+            </div>
+        % end
+
+        <div class = "row">
+            <div class="{{box_datum_grid}}">
+                <p>Flags</p>
+            </div>
+            <div class="{{box_value_grid}}">
+                <p>
+                    <%  fs = ''
+                        for flag in tor_info['tor/flags']:
+                            if fs is not '':
+                                fs += ' '
+                            end
+                            fs += '<code style="color: '+ FLAG_COLORS[flag] + ';">' + flag + '</code>'
+                            end
+                    %>
+                    {{!fs}}
+                </p>
+            </div>
+        </div>
+
+        <div class = "row">
+            <div class="{{box_datum_grid}}">
+                <p>Exit Policy</p>
+            </div>
+            <div class="{{box_value_grid}}">
+                <p>
+                    <%
+                        _ep = ""
+                        for ep in tor_info['tor/exitPolicies']:
+                            if _ep is not '':
+                                _ep += ' | '
+                                end
+                            _ep += ep
+                            end
+                    %>
+                    <code>{{_ep}}</code>
+                </p>
+            </div>
+        </div>
+
+
+        <hr>
+
+
+        {{!header_row('Tor', 'Bandwidth', 'bandwidth')}}
+
+        <div class="row">
+            <div class="{{box_datum_grid}}"><p>Charts</p></div>
+            <div class="{{box_value_grid}}">
+                <div class="btn-toolbar pull-left">
+                    <div class="btn-group" data-toggle="buttons">
+                        <label class="btn btn-default active" data-definition="HD" onclick="set_download_display('HD')">
+                            <input type="radio" autocomplete="off" checked>Minutes
+                        </label>
+                        <label class="btn btn-default" data-definition="LD" onclick="set_download_display('LD')">
+                            <input type="radio" autocomplete="off">Hours
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xs-1"></div>
+        </div>
+
+        <div class="row">
+            <div class="{{box_datum_grid}}">Download</div>
+            <div class="{{box_value_grid}}">
+                <canvas class="bw_chart box_canvas" id="smoothie-chart-read" width="300" height="150"></canvas>
+            </div>
+            <div class="col-xs-1"></div>
+        </div>
+
+        <div class="row">
+            <div class="{{box_datum_grid}}"></div>
+            <div class="{{box_value_grid}}">
+                <p id="bw_down">
+                    Total: 0 Bytes | Current: 0 Bytes/s
+                </p>
+            </div>
+            <div class="col-xs-1"></div>
+        </div>
+
+        <div class="row">
+            <div class="{{box_datum_grid}}">Upload</div>
+            <div class="{{box_value_grid}}">
+                <canvas class="bw_chart box_canvas" id="smoothie-chart-written" width="300" height="150"></canvas>
+            </div>
+            <div class="col-xs-1"></div>
+        </div>
+        <div class="row">
+            <div class="{{box_datum_grid}}"></div>
+            <div class="{{box_value_grid}}">
+                <p id="bw_up">
+                    Total: 0 Bytes | Current: 0 Bytes/s
+                </p>
+            </div>
+            <div class="col-xs-1"></div>
+        </div>
+
+
+        <hr>
+
+
+        {{!header_row('Tor', 'Accounting', 'accounting')}}
+
+        % accounting_on = get('accounting_on')
+        % if accounting_on == False:
+            <div class="row">
+                <div class="{{box_datum_grid}}">
+                    <p>Status</p>
+                </div>
+                <div class="{{box_value_grid}}">
+                    <p>
+                        <code class="text-left" style="color: grey;">
+                            disabled
+                        </code>
+                    </p>
+                </div>
+            </div>
+        % else:
+        %   accounting_stats = get('accounting_stats')
+
+            <div class="row">
+                <div class="{{box_datum_grid}}">
+                    <p>Status</p>
+                </div>
+                <div class="{{box_value_grid}}">
+                    <p>
+                        <code style="color: green;">
+                            {{accounting_stats.status}}
+                        </code>
+                    </p>
+                </div>
+            </div>
+
+            {{!standard_row('Download', "{} (Max: {})".format(pretty_number(accounting_stats.read_bytes, '', 'si'), pretty_number(accounting_stats.read_limit, '', 'si')))}}
+            {{!standard_row('Upload', "{} (Max: {})".format(pretty_number(accounting_stats.written_bytes, '', 'si'), pretty_number(accounting_stats.write_limit, '', 'si')))}}
+            {{!standard_row('Time to Reset', datetime.timedelta(seconds=accounting_stats.time_until_reset))}}
+
+        % end
+
+
+        <hr>
+
+
+        {{!header_row('Tor', 'Messages', 'messages')}}
+
+        <div class="row">
+            <div class="{{box_datum_grid}}">
+                <p>Level</p>
+            </div>
+            <div class="{{box_value_grid}}">
+
+                <div class="btn-group" data-toggle="buttons">
+                    <label class="btn btn-default message_selector" data-severity="DEBUG">
+                        <input type="checkbox" autocomplete="off" >DEBUG
+                    </label>
+                    <label class="btn btn-default message_selector" data-severity="INFO">
+                        <input type="checkbox" autocomplete="off">INFO
+                    </label>
+                    <label class="btn btn-info active" data-severity="NOTICE">
+                        <input type="checkbox" autocomplete="off" checked>NOTICE
+                    </label>
+                    <label class="btn btn-warning active" data-severity="WARN">
+                        <input type="checkbox" autocomplete="off" checked>WARN
+                    </label>
+                    <label class="btn btn-danger active" data-severity="ERROR">
+                        <input type="checkbox" autocomplete="off" checked>ERROR
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="{{box_datum_grid}}">
+                <p>Messages</p>
+            </div>
+            <div class="{{box_value_grid}}">
+                <div style="border-radius: 4px; border-style: solid; border-color: #ddd; border-width: 1px; margin-top: 10px; overflow: hidden;">
+                    <div class="scroll_area">
+                        <table id="log_table" class="box_Log" style="overflow: hidden;" height="250">
+                            <tbody id="log_data">
+                            %#    {{!preserved_events}}
+                            </tbody>
+                        </table>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <hr>
+
+
+    </div>
+
+</body>
+
+% include('scripts/box.js')
+
+</html>
+
+

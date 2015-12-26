@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+
+<%
+    import socket
+    host_ip = 'void'
+    try:
+        host_ip = socket.gethostbyname(socket.gethostname())
+    except:
+        pass
+    end
+    tor_info = get('tor_info')
+
+    box_bold_grid = 'col-xs-3 col-md-2 box_bold'
+    box_section_grid = 'col-xs-8 col-md-9 box_section'
+    box_datum_grid = 'col-xs-3 col-md-2 box_datum'
+    box_value_grid = 'col-xs-8 col-md-9 box_value'
+    box_title_grid = 'col-xs-8 col-md-9 box_title'
+    box_subtitle_grid = 'col-xs-8 col-md-9 box_subtitle'
+
+    def standard_row(datum, value):
+        out =  "<div class='row'>"
+        out += "<div class='{}'>{}</div>".format(box_datum_grid, datum)
+        out += "<div class='{}'><p>{}</p></div>".format(box_value_grid, value)
+        out += "<div class='col-xs-1'></div>"
+        out += "</div>"
+
+        return out
+        end
+
+    def header_row(bold, section, target):
+        out =  "<div class='row hash_target' id='{}'>".format(target)
+        out += "<div class='{}'>{}</div>".format(box_bold_grid, bold)
+        out += "<div class='{}'><p>{}</p></div>".format(box_section_grid, section)
+        out += "<div class='col-xs-1'></div>"
+        out += "</div>"
+
+        return out
+        end
+
+    my_name = 'The Onion Box'
+
+%>
+
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="icon" href="data:image/gif;base64,{{icon}}">
+
+    <title>{{my_name}}</title>
+
+    % include('css/box.css')
+</head>
+
+<style>
+
+    body {
+        padding-top: 0px;
+    }
+
+    .navbar {
+        margin-bottom: 0px;
+    }
+
+    #login_pwd.loading
+    {
+        background: url(/{{session_id}}/loader.gif) no-repeat right center;
+    }
+
+    .overlay
+    {
+        position: relative;
+    }
+
+    .overlay:after
+    {
+      content: " ";
+      z-index: 100;
+      display: block;
+      position: absolute;
+      height: 100%;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: rgba(255, 255, 255, 0.6);
+    }
+
+</style>
+
+<body>
+
+    <!-- Fixed navbar -->
+    <nav class="navbar navbar-default navbar-static-top">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <div class="navbar-brand">
+                    <img src="data:image/gif;base64,{{icon}}" width="16" height="16" alt="The ONION Box">
+                </div>
+            </div>
+        </div><!-- /.container-fluid -->
+    </nav>
+
+    <div class="container-fluid" style="min-width: 770px;">
+
+        <div class="row box_header " style="min-height: 50px;"></div>
+
+        <div class="row box_header ">
+
+            <div class="{{box_bold_grid}}"></div>
+            <div class="{{box_title_grid}}">{{my_name}}</div>
+
+        </div>
+        <div class="row box_header ">
+
+            <div class="{{box_bold_grid}}"></div>
+            <div class="{{box_subtitle_grid}}">
+                <p>{{!"Tor @ {}<br>Client @ {}".format(host_ip, remote_addr)}}</p>
+            </div>
+        </div>
+
+        <div class="row box_header " style="min-height: 70px;"></div>
+
+        <br>
+    </div>
+
+    <div id="overlay" class="container-fluid" style="min-width: 770px;">
+
+        {{!header_row('Tor', 'Login Request', 'host')}}
+
+        <form role="login" onsubmit="return do_login();">
+
+            <div class = "row">
+                <div class="{{box_datum_grid}}">
+                    <p>Password</p>
+                </div>
+                <div class="col-xs-3 col-md-3 box_value">
+                        <div class="form-group">
+                            <input type="password" class="form-control" id='login_pwd' name='login_pwd' tabindex="1">
+                        </div>
+                </div>
+
+            </div>
+
+             <div class = "row">
+                <div class="{{box_datum_grid}}">
+                    <p></p>
+                </div>
+                <div class="{{box_value_grid}}">
+                    <div class="form-group">
+                        <button type="submit" id="button_login" class="btn btn-default">Login</button>
+                    </div>
+                </div>
+             </div>
+        </form>
+            </div>
+    </div>
+
+
+</body>
+
+<script type="text/javascript" src=/{{session_id}}/login.js></script>
+<script type="text/javascript">
+
+    function do_login(event)
+    {
+        var overlay = document.getElementById('overlay');
+        overlay.className += ' overlay';
+
+        document.body.style.cursor = 'wait';
+
+        var login_button = document.getElementById('button_login');
+        login_button.disabled = true;
+
+        var login_input = document.getElementById('login_pwd');
+        login_input.disabled = true;
+        var pwd = login_input.value;
+
+        try {
+            var getRequest = new authRequest('{{session_id}}', pwd);
+            getRequest.request();
+            return false;
+        }
+        catch(err) {
+            document.location = "/";
+        }
+    }
+
+</script>
+
+</html>

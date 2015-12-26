@@ -1,0 +1,130 @@
+%# Note that this file is not a valid *.css file!
+%# It is intended to be a bottlepy - style template
+%# used for the scripting part of TheOnionBox!
+
+%# <!-- includes here! -->
+<link href="/{{session_id}}/{{bootstrap_css}}" rel="stylesheet">
+
+%# <!-- styles start here! -->
+<style>
+
+body {
+    %# to compensate for the fixed NavBar
+    padding-top: 50px;
+}
+
+%# to compensate the coverage of the NavBar when jumping within the page
+.hash_target:before {
+  display: block;
+  content: " ";
+  margin-top: -50px;
+  height: 50px;
+  visibility: hidden;
+}
+
+.box_header {
+    background-image: linear-gradient(to right, rgba(100, 178, 43, 100), rgba(75, 160, 39, 100));
+}
+
+.box_title {
+    font-size: 63px;
+    font-variant: small-caps;
+    color: white;
+    text-shadow: 1px 1px 2px #23300e;
+    font-weight: 700;
+}
+
+.box_subtitle {
+    font-size: 21px;
+    font-weight: 300;
+    color: white;
+    background-color: rgba(132, 54, 187, 100);
+}
+
+
+.box_bold {
+    font-weight: 900;
+    font-size: 36px;
+    text-align: right;
+    min-width: 200px;
+}
+
+.box_section {
+    font-weight: 300;
+    font-size: 36px;
+    text-align: left;
+}
+
+.box_datum {
+    font-size: 19px;
+    font-weight: 500;
+    text-align: right;
+    min-width: 200px;
+}
+
+.box_value {
+    font-size: 19px;
+    font-weight: 300;
+    text-align: left;
+}
+
+
+.box_Log
+{
+    font-family: Verdana, Geneva, sans-serif;
+    font-size: 13px;
+    border-collapse: collapse;
+
+}
+
+/*    #log_table tr:nth-child(odd)
+    {
+        background-color: #eeeeee;
+    }*/
+
+.box_Log tr
+{
+    border-bottom-style: solid;
+    border-color: #eeeeee;
+    border-width: 1px;
+}
+
+.box_Log td
+{
+    padding: 2px 5px;
+
+}
+
+.box_Log_runlevel
+{
+    // width: 10%;
+    width: 5.5em;
+}
+
+.box_Log_stamp
+{
+    // width: 20%;
+    width: 12em;
+}
+
+.scroll_area
+{
+    height: 250px;
+    overflow: auto;
+}
+
+.scroll_area td
+{
+    vertical-align: top;
+}
+
+.DEBUG { color: Gray; display: block; }
+.INFO {display: block;}
+.NOTICE {display: block;}
+.WARN { color: OrangeRed; display: block;}
+.ERR { color: Red; display: block;}
+.BOX { color: Blue; display: block;}
+.THIS { color: #778899; display: block;}
+
+
+</style>
