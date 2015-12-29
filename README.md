@@ -5,7 +5,7 @@ Web based Status Monitor for [Tor Relays](www.torproject.org)
 and monitor aspects of it's operation in "real time". That's how it looks like
 in action:
 
-![image](https://cloud.githubusercontent.com/assets/16342003/12042843/2ebf9756-ae7f-11e5-90bc-a488391fa240.png)
+![image](https://cloud.githubusercontent.com/assets/16342003/12043105/c8f17f18-ae81-11e5-8b21-c7ecf80b37f9.png)
 
 In addition to some static information regarding the host and Tor (like version
 numbers or IPs) the page displays the upload / download performance using real
