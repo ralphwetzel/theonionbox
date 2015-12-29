@@ -20,7 +20,7 @@ installed:
 * [stem](https://pypi.python.org/pypi/stem)
 * [Bottle](https://pypi.python.org/pypi/bottle)
 
-Additionally I recommend to install [CherryPi](https://pypi.python.org/pypi/CherryPy) as webserver to be used!
+Additionally I recommend to install [CherryPy](https://pypi.python.org/pypi/CherryPy) as webserver to be used!
 (The Box runs as well with a standard server yet this one has issues with IE!)
 
 ## Configuration
@@ -37,7 +37,13 @@ The Box relies on Tor's authentication process to grant access. Therefore you
 password to access the ControlPort.
 
 ## Box Operations
+Open a console and launch The Box with `python theonionbox.py`.
+
+As of now there is no support to run The Box as a daemon. Be assured that this is part of the TODO - list.
+
 To see your relay in action browse to the address you configured and log
 into the Box using the password you defined for the ConfigPort.
+
+Leave me a message if you encounter any issues... which might probably happen! :cold_sweat:
 
 Enjoy!
