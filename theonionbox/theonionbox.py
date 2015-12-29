@@ -1,5 +1,5 @@
-__author__ = 'Ralph Wetzel'
-__version__ = '0.0.1'
+#!/usr/bin/env python
+__version__ = '1.0rc'
 
 # required pip's for raspberrypi
 # stem
@@ -248,7 +248,7 @@ def update_tor_info():
 
     tor_info_lock.acquire()
 
-    if tor and tor.is_alive():
+    if tor and tor.is_alive() and tor.is_authenticated():
 
         # try:
             tor_info['tor/version'] = tor.get_info('version', '')
@@ -337,7 +337,13 @@ from bottle import request
 from bottle import HTTPError
 from bottle import WSGIRefServer
 
-# debug(box_debug)
+debug(box_debug)
+
+# if box_debug:
+#
+#     from stem.util.log import Runlevel, log_to_stdout
+#     log_to_stdout(Runlevel.TRACE)
+
 
 # jQuery version
 # jQuery_lib = "jquery-1.11.2.js"
@@ -614,6 +620,7 @@ def get_index(session_id):
                     , accounting_stats=accounting_stats
 #                    , template_directory='template'
                     , icon=theonionbox_icon
+                    , box_version=__version__
                     )
 
 @theonionbox.get('/<session_id>/logout.html')
@@ -650,6 +657,16 @@ def post_data(session_id):
     transfer_data = ''
 
     if action == 'pull_livedata':
+
+        # ensure that the connection to Tor is available
+        if tor and not tor.is_alive():
+            box_events.log('Connection to Tor probably lost! Trying to reconnect...')
+            try:
+                tor.connect()
+            except Exception as err:
+                box_events.log('Attempt to reconnect to Tor failed: {}'.format(err))
+            else:
+                box_events.log('Reconnection performed; Tor is alive: {}'.format(tor.is_alive()))
 
         limit_max = 500  # should be enough to fill the chart immediately
         its_now = int(box_time()) * 1000  # JS!
@@ -1028,33 +1045,6 @@ class BoxCherryPyServer(ServerAdapter, ShutDownAdapter):
     def shutdown(self):
         self.server.stop()
 
-
-# 'blais' - patched CherryPyServer
-from bottle import CherryPyServer
-
-
-class Box2CherryPyServer(CherryPyServer, ShutDownAdapter):
-
-    def __init__(self, host='127.0.0.1', port=8080, **options):
-        CherryPyServer.__init__(self, host, port, **options)
-
-        # Save the original function.
-        from cherrypy.wsgiserver import CherryPyWSGIServer
-
-        # Create a decorator that will save the server upon start.
-        def custom_CherryPyWSGIServer(**options):
-            self.sever = CherryPyWSGIServer(**options)
-            return self.server
-
-        # Patch up CherryPyWSGIServer itself with the decorated function.
-        import cherrypy.wsgiserver
-        cherrypy.wsgiserver.CherryPyWSGIServer = custom_CherryPyWSGIServer
-
-    def shutdown(self):
-        print("shutting down!")
-        self.server.stop()
-
-
 # from time import strftime
 from threading import Timer
 
@@ -1124,7 +1114,7 @@ def session_housekeeping():
 
     # 4: closing connection to tor
     # if this is requested
-    if tor_ttl > 0:     # <==0 => don't ever close the connection!
+    if tor.is_authenticated() and tor_ttl > 0:   # <==0 => don't ever close the connection!
 
         current_time = int(box_time())
         lv = box_sessions.latest_visit()
@@ -1170,7 +1160,8 @@ def session_housekeeping():
         ntp_countdown -= 1
 
     # 6: update tor_info
-    update_tor_info()
+    if tor.is_authenticated():
+        update_tor_info()
 
     # finally: prepare and launch the next run...
     timer_housekeeping = Timer(housekeeping_interval, session_housekeeping)
@@ -1213,31 +1204,48 @@ import socket
 class BoxControlPort(ControlPort):
 
     timeout = None
+    control_socket = None
 
-    def __init__(self, address = '127.0.0.1', port = 9051, connect = True, timeout = None):
+    def __init__(self, address='127.0.0.1', port=9051, connect=True, timeout=None):
 
         self.timeout = timeout
         ControlPort.__init__(self, address, port, connect)
 
     # this is basically stem.socket.ControlPort._make_socket adapted to set a custom timeout value
     def _make_socket(self):
+
+        if self.control_socket:
+            self.close_socket()
+
         try:
-            control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-            # timeout management
-            if self.timeout:
-                control_socket.settimeout(self.timeout)
-
-            control_socket.connect((self._control_addr, self._control_port))
-            return control_socket
+            self.control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         except socket.error as exc:
             raise SocketError(exc)
+
+        try:
+            # timeout management
+            if self.timeout:
+                self.control_socket.settimeout(self.timeout)
+                pass
+
+            self.control_socket.connect((self._control_addr, self._control_port))
+            return self.control_socket
+        except socket.error as exc:
+
+            # to compensate for a ResourceWarning 'unclosed socket'
+            self.close_socket()
+            raise SocketError(exc)
+
+    def close_socket(self):
+        if self.control_socket:
+            self.control_socket.close()
+            self.control_socket = None
 
 
 class BoxController(Controller):
 
     @staticmethod
-    def from_port_timeout(address = '127.0.0.1', port = 9051, timeout = None):
+    def from_port_timeout(address='127.0.0.1', port=9051, timeout=None):
 
         # this one is basically stem.Controller.from_port patched
         # to forward a timeout value to BoxControlPort
@@ -1251,12 +1259,8 @@ class BoxController(Controller):
         if timeout and timeout < 0:
             timeout = None
 
-        if not timeout:
-            control_port = ControlPort(address, port)
-        else:
-            control_port = BoxControlPort(address=address, port=port, timeout=timeout)
-
-        return Controller(control_port)
+        control_port = BoxControlPort(address=address, port=port, timeout=timeout)
+        return BoxController(control_port)
 
 
 if __name__ == '__main__':
@@ -1269,6 +1273,9 @@ if __name__ == '__main__':
 
         exit_procedure()
         # just to be sure .. ;)
+        quit()
+
+    if not tor.is_alive():
         quit()
 
     box_events.log('Connected...')
@@ -1299,13 +1306,13 @@ if __name__ == '__main__':
 
         if box_ssl is True:
             tob_server_options = {'certfile': box_ssl_certificate, 'keyfile': box_ssl_key}
-            tob_server = Box2CherryPyServer(host=box_host
+            tob_server = BoxCherryPyServer(host=box_host
                                             , port=box_port
                                             , **tob_server_options)
 
             box_events.log('Operating with CherryPy in SSL Mode!')
         else:
-            tob_server = Box2CherryPyServer(host=box_host, port=box_port)
+            tob_server = BoxCherryPyServer(host=box_host, port=box_port)
             box_events.log('Operating with CherryPy!')
     else:
         # Be aware that WSGIRefServer has issues with IE, in the sense that *it doesnt work!!*
@@ -1326,6 +1333,11 @@ if __name__ == '__main__':
     # good time to launch the housekeeping for the first time!
     session_housekeeping()
 
-    run(theonionbox, server=tob_server, host=box_host, port=box_port, quiet=True)
-
+    try:
+        if box_debug:
+            run(theonionbox, server=tob_server, host=box_host, port=box_port)
+        else:
+            run(theonionbox, server=tob_server, host=box_host, port=box_port, quiet=True)
+    except Exception as exc:
+        print(exc)
 

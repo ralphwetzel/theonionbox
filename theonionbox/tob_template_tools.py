@@ -1,5 +1,3 @@
-__author__ = ''
-
 import math
 
 # This is the python version of prettyNumber used in the html-template

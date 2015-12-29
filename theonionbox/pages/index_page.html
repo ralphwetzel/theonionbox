@@ -44,7 +44,7 @@
     box_title_grid = 'col-xs-8 col-md-9 box_title'
     box_subtitle_grid = 'col-xs-8 col-md-9 box_subtitle'
 
-    def standard_row(datum, value):
+    def standard_row(datum='', value=''):
         out =  "<div class='row'>"
         out += "<div class='{}'>{}</div>".format(box_datum_grid, datum)
         out += "<div class='{}'><p>{}</p></div>".format(box_value_grid, value)
@@ -54,9 +54,12 @@
         return out
         end
 
-    def header_row(bold, section, target):
-        out =  "<div class='row hash_target' id='{}'>".format(target)
-        out += "<div class='{}'>{}</div>".format(box_bold_grid, bold)
+    def header_row(bold='', section='', target=''):
+        out =  "<div class='row hash_target'"
+        if target is not '':
+            out += " id='{}'".format(target)
+            end
+        out += "><div class='{}'>{}</div>".format(box_bold_grid, bold)
         out += "<div class='{}'><p>{}</p></div>".format(box_section_grid, section)
         out += "<div class='col-xs-1'></div>"
         out += "</div>"
@@ -138,7 +141,9 @@
 
 
         <br>
+    </div>
 
+    <div id="content" class="container-fluid" style="min-width: 770px;">
 
         {{!header_row('HOST', 'General Information', 'host')}}
         {{!standard_row('Name', tor_info['host/name'])}}
@@ -457,8 +462,80 @@
 
         <hr>
 
+        <div class="row">
+            <p class="text-center" style="color: grey; font-size: 10px; font-weight: 300">
+                The Onion Box | Version v{{box_version}} | Copyright &copy; 2015 Ralph Wetzel | License:
+                <a role="button" data-toggle="collapse" href="#MIT"
+                   aria-expanded="false" aria-controls="MIT">
+                    MIT
+                </a>
+            </p>
+        </div>
+
+        <div class="collapse" id="MIT">
+
+            <hr>
+
+            {{!header_row('', 'The MIT License (MIT)')}}
+            {{!standard_row('','Copyright (c) 2015 ralphwetzel')}}
+            <div class="row">
+                <div class="{{box_datum_grid}}">
+                </div>
+                <div class="{{box_value_grid}}">
+                    <p>
+                        Permission is hereby granted, free of charge, to any person obtaining a copy
+                        of this software and associated documentation files (the "Software"), to deal
+                        in the Software without restriction, including without limitation the rights
+                        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+                        copies of the Software, and to permit persons to whom the Software is
+                        furnished to do so, subject to the following conditions:
+                    </p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="{{box_datum_grid}}">
+                </div>
+                <div class="{{box_value_grid}}">
+                    <p>
+                        The above copyright notice and this permission notice shall be included in all
+                        copies or substantial portions of the Software.
+                    </p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="{{box_datum_grid}}">
+                </div>
+                <div class="{{box_value_grid}}">
+                    <p>
+                        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+                        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+                        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+                        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+                        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+                        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+                        SOFTWARE.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <br>
 
     </div>
+
+    %# NEVER NEVER shall this part of the code be executed!
+
+    <noscript>
+        <style type="text/css">
+            #content {display:none;}
+        </style>
+
+        <div class="container-fluid" style="min-width: 770px;">
+            {{!header_row('TheAuthor', 'Error')}}
+            {{!standard_row('','Sorry; this site relies on JAVASCRIPT. Please ENABLE it to proceed.')}}
+        </div>
+    </noscript>
+
 
 </body>
 

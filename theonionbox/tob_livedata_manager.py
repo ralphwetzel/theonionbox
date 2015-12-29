@@ -1,5 +1,3 @@
-__author__ = ''
-
 from time import time
 from collections import deque
 from math import floor

@@ -17,7 +17,7 @@
     box_title_grid = 'col-xs-8 col-md-9 box_title'
     box_subtitle_grid = 'col-xs-8 col-md-9 box_subtitle'
 
-    def standard_row(datum, value):
+    def standard_row(datum='', value=''):
         out =  "<div class='row'>"
         out += "<div class='{}'>{}</div>".format(box_datum_grid, datum)
         out += "<div class='{}'><p>{}</p></div>".format(box_value_grid, value)
@@ -27,9 +27,12 @@
         return out
         end
 
-    def header_row(bold, section, target):
-        out =  "<div class='row hash_target' id='{}'>".format(target)
-        out += "<div class='{}'>{}</div>".format(box_bold_grid, bold)
+    def header_row(bold='', section='', target=''):
+        out =  "<div class='row hash_target'"
+        if target is not '':
+            out += " id='{}'".format(target)
+            end
+        out += "><div class='{}'>{}</div>".format(box_bold_grid, bold)
         out += "<div class='{}'><p>{}</p></div>".format(box_section_grid, section)
         out += "<div class='col-xs-1'></div>"
         out += "</div>"
@@ -130,7 +133,7 @@
 
     <div id="overlay" class="container-fluid" style="min-width: 770px;">
 
-        {{!header_row('Tor', 'Login Request', 'host')}}
+        {{!header_row('Tor', 'Login Request')}}
 
         <form role="login" onsubmit="return do_login();">
 
@@ -157,9 +160,18 @@
                 </div>
              </div>
         </form>
-            </div>
     </div>
 
+    <noscript>
+        <style type="text/css">
+            #overlay {display:none;}
+        </style>
+
+        <div class="container-fluid" style="min-width: 770px;">
+            {{!header_row('Tor', 'Login Request')}}
+            {{!standard_row('','Sorry; this site relies on JAVASCRIPT. Please ENABLE it to perform the login.')}}
+        </div>
+    </noscript>
 
 </body>
 

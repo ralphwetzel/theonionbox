@@ -1,5 +1,3 @@
-__author__ = ''
-
 import uuid
 from time import time
 

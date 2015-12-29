@@ -1,5 +1,3 @@
-__author__ = ''
-
 from socket import AF_INET, SOCK_DGRAM
 import struct
 from time import time

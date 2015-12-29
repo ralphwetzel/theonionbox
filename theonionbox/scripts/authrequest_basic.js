@@ -77,7 +77,7 @@ function authRequest(username, password) {
 			if (self.firstRequest.readyState === 4) {
                 // if (!(self.firstRequest.status >= 200 && self.firstRequest.status < 400)){
                 if (self.firstRequest.status !== 401) {
-        		    console.log('self.firstRequest.readyState');
+        		    // console.log('self.firstRequest.readyState');
                     document.location = '/';
                 }
 			}
@@ -86,7 +86,7 @@ function authRequest(username, password) {
 		// handle error
 		self.firstRequest.onerror = function() {
 			if (self.firstRequest.status !== 401) {
-    		    console.log('self.firstRequest.onerror');
+    		    // console.log('self.firstRequest.onerror');
 		        document.location = '/';
 			}
 		}
@@ -119,13 +119,13 @@ function authRequest(username, password) {
 					}
 				}
 			}
-		    console.log('self.authenticatedRequest.onload');
+		    // console.log('self.authenticatedRequest.onload');
 			document.location = redirect_location;
 		}
 
 		// handle errors
 		self.authenticatedRequest.onerror = function() { 
-		    console.log('self.authenticatedRequest.onerror');
+		    // console.log('self.authenticatedRequest.onerror');
 		    document.location = "/";
 		};
 

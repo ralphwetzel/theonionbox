@@ -1,5 +1,3 @@
-__author__ = ''
-
 # from stem.control import EventType
 from datetime import datetime
 from time import time
