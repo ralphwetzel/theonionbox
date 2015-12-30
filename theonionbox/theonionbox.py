@@ -109,7 +109,7 @@ box_config_file = 'theonionbox.cfg'
 # Configuration of the connection to the TOR Relay
 tor_host = 'localhost'
 tor_port = 9090
-tor_timeout = 10
+tor_timeout = -1 # will become 'None' later ...
 tor_ttl = 60
 tor_ERR = True
 tor_WARN = True
@@ -168,6 +168,9 @@ if 'TorRelay' in config:
     tor_NOTICE = tor_config.getboolean('tor_preserve_NOTICE', tor_NOTICE)
 
 # TODO: Validate here that we've read reasonable data from the config file
+if tor_timeout < 0:
+    tor_timeout = None
+
 
 #####
 # Time Management
@@ -1265,9 +1268,13 @@ class BoxController(Controller):
 
 if __name__ == '__main__':
 
-    box_events.log('Trying to connect to Tor Relay on {}:{} (Timeout @ {}s).'.format(tor_host, tor_port, tor_timeout))
+    box_events.log('Trying to connect to Tor Relay on {}:{}.'.format(tor_host, tor_port))
     try:
-        tor = BoxController.from_port_timeout(tor_host, tor_port, tor_timeout)
+        if tor_timeout:
+            box_events.log('Timeout set to {}s.'.format(tor_timeout))
+            tor = BoxController.from_port_timeout(tor_host, tor_port, tor_timeout)
+        else:
+            tor = Controller.from_port(tor_host, tor_port)
     except SocketError as err:
         box_events.log('Failed to connect; exiting...')
 
