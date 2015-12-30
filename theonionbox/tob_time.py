@@ -33,16 +33,21 @@ class TimeManager(object):
         try:
             # connect to server
             client = socket.socket(AF_INET, SOCK_DGRAM)
+        except:
+            return False
+
+        try:
+            client.settimeout(10)
             # client.sendto(msg, address)
             client.sendto(msg.encode('utf-8'), address)
             msg, address = client.recvfrom(buffer)
-            client.close()
-
-            ntp_time = struct.unpack("!12I", msg)[10]
-            ntp_time -= time1970
-
         except:
             return False
+        finally:
+            client.close()
+
+        ntp_time = struct.unpack("!12I", msg)[10]
+        ntp_time -= time1970
 
         # return the amount of seconds we've adjusted "the clock"
         old_dev = self.time_deviation

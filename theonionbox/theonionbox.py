@@ -33,26 +33,29 @@ def print_usage():
     console_log(" -c <path> | --config=<path>: Provide path & name of configuration file.")
     console_log("                              Note: This is only necessary when NOT using './theonionbox.cfg'")
     console_log("                                    or './config/theonionbox.cfg'.")
+    console_log(" -d | --debug: Switch on 'Debug Mode'. This parameter overrules the setting in the config file.")
     console_log(" -h | --help: Prints this information.")
     print("")
 
 argv = sys.argv[1:]
-custom_config_file = ''
+commandline_config_file = ''
+commandline_debug = False
 
 if argv:
-    # console_log('Command line: {}'.format(argv))
     try:
-        opts, args = getopt(argv, "hc:", ["help", "config="])
+        opts, args = getopt(argv, "c:dh", ["config=", "debug", "help"])
     except GetoptError as err:
         console_log(err)
         print_usage()
         quit()
     for opt, arg in opts:
-        if opt in ("-h", "--help"):
+        if opt in ("-c", "--config"):
+            commandline_config_file = arg
+        elif opt in ("-d", "--debug"):
+            commandline_debug = True
+        elif opt in ("-h", "--help"):
             print_usage()
             quit()
-        elif opt in ("-c", "--config"):
-            custom_config_file = arg
 
 
 #####
@@ -131,8 +134,8 @@ box_ssl_key = ''
 config_found = False
 config_files = [box_config_file, box_config_path + '/' + box_config_file]
 config = configparser.ConfigParser()
-if custom_config_file:
-    config_files = [custom_config_file] + config_files
+if commandline_config_file:
+    config_files = [commandline_config_file] + config_files
 
 for config_file in config_files:
     if config.read(config_file):
@@ -339,6 +342,9 @@ from bottle import redirect, template, static_file
 from bottle import request
 from bottle import HTTPError
 from bottle import WSGIRefServer
+
+if commandline_debug:
+    box_debug = True
 
 debug(box_debug)
 
@@ -1339,6 +1345,8 @@ if __name__ == '__main__':
     # if we're here ... almost everything is setup and running
     # good time to launch the housekeeping for the first time!
     session_housekeeping()
+
+    box_events.log('Ready to listen on http://{}:{}/'.format(tob_server.host, tob_server.port))
 
     try:
         if box_debug:
