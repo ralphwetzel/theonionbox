@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-__version__ = '1.0rc'
+__version__ = '2.0dev'
 
 # required pip's for raspberrypi
 # stem
@@ -40,6 +40,7 @@ def print_usage():
 argv = sys.argv[1:]
 commandline_config_file = ''
 commandline_debug = False
+opts = None
 
 if argv:
     try:
@@ -233,6 +234,9 @@ host_cpudata_lock = RLock()
 # ... cumulated Bandwidth information
 tor_bwdata = {'upload': 0, 'download': 0, 'limit': 0, 'burst': 0, 'measure': 0}
 
+# ... LongTerm Storage
+from tob_longtermdata import DatabaseManager
+dbmanager = DatabaseManager()
 
 #####
 # TOR interface
@@ -587,6 +591,8 @@ def get_index(session_id):
         box_events.log('{}@{}: Session established.'.format(session.id_short(), session.remote_addr()))
 
     update_tor_info()
+    dbmanager.prepare(tor_info['tor/fingerprint'], 'theonionbox.data')
+
 #    request_bw_data()
 
     # switch the default events ON for this session
@@ -800,6 +806,9 @@ def handle_livedata(event):
     tor_livedata.record_bandwidth(time_stamp=event.arrived_at
                                   , bytes_read=event.read
                                   , bytes_written=event.written)
+
+    # Test: Filling the LongTerm Storage
+    dbmanager.save(event.arrived_at, event.written, event.read)
 
     return True
 
