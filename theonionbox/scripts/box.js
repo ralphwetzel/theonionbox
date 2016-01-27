@@ -25,12 +25,14 @@ function chart_format_bw(data, precision)
         var precision = 2;
     }
 
-    if (read_speed_HD == 1) {
+    if (bandwidth_shows == 'hd' | bandwidth_shows == 'm1' | bandwidth_shows == 'm3') {
         return (prettyNumber(data, '', 'si') + '/s');
     }
-    else if (read_speed_HD == 0) {
+    else if (bandwidth_shows == 'ld') {
         return (prettyNumber(data / 60, '', 'si') + '/s');
     }
+
+    return ''
 };
 
 function chart_format_timestamp(date)
@@ -45,6 +47,12 @@ function chart_format_timestamp_LD(date)
     return pad2(date.getHours());
 };
 
+function chart_format_day(date)
+{
+    function pad2(number) { return (number < 10 ? '0' : '') + number }
+    return pad2(date.getDate()) + ".";
+};
+
 
 function chart_format_null(data, precision)
 {
@@ -57,6 +65,7 @@ var bandwidth_style = {
     millisPerPixel: 500,
     maxValueScale: 1.1,
     minValueScale: 1.1,
+    // maxDataSetLength: 5000,     // TBC: is this ok for all use cases??
     interpolation: 'step',
     yMaxFormatter: chart_format_bw,
     yMinFormatter: chart_format_null,
@@ -90,6 +99,25 @@ var bandwidth_read = new box_chart(bandwidth_style);
 var written_data_hd = new TimeSeries();
 var written_data_ld = new TimeSeries();
 var bandwidth_written = new box_chart(bandwidth_style);
+
+var history_series_options = {
+    dontDropOldData: true
+}
+
+var written_data_history = [];
+var read_data_history = [];
+
+var history_chart_keys = ['d3', 'w1', 'm1', 'm3', 'y1', 'y5'];
+var history_chart_labels = ['3 Days', '1 Week', '1 Month', '3 Months', '1 Year', '5 Years'];
+
+for (len = history_chart_keys.length, i=0; i<len; ++i) {
+    if (i in history_chart_keys) {
+        written_data_history[history_chart_keys[i]] = new box_timeseries(history_series_options);
+        read_data_history[history_chart_keys[i]] = new box_timeseries(history_series_options);
+        }
+    }
+
+
 
 %# // 2: Processor & Memory Load
 
@@ -168,15 +196,36 @@ function launch_charts()
 var pull_timer;
 var stop_timer;
 
-var read_speed_HD = 1;
-var pull_speed_HD = 1;
+var bandwidth_shows = 'hd';
 
 var bandwidth_player;
 var messages_player;
 
-function pull_error()
+function pull_error(jqXHR, textStatus, errorThrown)
 {
-    window.location.href = "/{{session_id}}/logout.html";
+    if (jqXHR.status == 404 | jqXHR.status == 500) {
+        window.location.href = "/{{session_id}}/logout.html";
+    }
+    else if (textStatus == 'error' && jqXHR.status == 0 && jqXHR.readyState == 0) {
+        $('#network_error_warning').collapse('show');
+
+        its_now = new Date().getTime();
+
+        read_data_hd.append(its_now, 0);
+        read_data_ld.append(its_now, 0);
+        written_data_hd.append(its_now, 0);
+        written_data_ld.append(its_now, 0);
+
+    %  for count in range(cpu_count):
+        proc_data_{{count}}.append(its_now, 0);
+    % end
+
+        mem_data.append(its_now, 0);
+
+    }
+    else {
+        console.log('error: ' + jqXHR.status);
+    }
 }
 
 function process_livedata(json_text)
@@ -258,6 +307,11 @@ function process_livedata(json_text)
         }
     }
 
+    if (json_data && json_data.oo)
+    {
+        update_onionoo(json_data.oo, true)
+    }
+
     this_is_the_first_pull_request = false;
 
 }
@@ -303,6 +357,118 @@ function play_messages(data)
     log(data.m, data.s, data.l);
 }
 
+function refresh_onionoo()
+{
+    var ajax_settings = {};
+    ajax_settings.method = 'POST';
+    var action = 'action=refresh_onionoo';
+    ajax_settings.success = update_onionoo;
+//    ajax_settings.error = pull_error;
+
+    ajax_settings.data = action;
+
+    jQuery.ajax('/{{session_id}}/data.html', ajax_settings);
+}
+
+function update_onionoo(json_data, is_json)
+{
+    if (is_json != true)
+    {
+        json_data = JSON.parse(json_data);
+    }
+
+    // $('#network_timestamp').text(format_date());
+    $('#network_timestamp').text(format_date(json_data.timestamp));
+
+    console.log(json_data.timestamp + " " + format_date(json_data.timestamp));
+
+    var txt = json_data.running ? 'True' : 'False';
+    txt += ' | since ' + format_date(json_data.last_restarted);
+    $('#network_running').text(txt);
+
+    $('#network_consensus_weight').text(json_data.consensus_weight);
+
+    txt = 'Advertised: ' + prettyNumber(json_data.advertised_bandwidth, '', 'si') + '/s';
+    txt += ' (Rate: ' + prettyNumber(json_data.bandwidth_rate, '', 'si') + '/s';
+    txt += ' | Burst: ' + prettyNumber(json_data.bandwidth_burst, '', 'si') + '/s';
+    txt += ' | Observed: ' + prettyNumber(json_data.observed_bandwidth, '', 'si') + '/s';
+    txt += ')';
+    $('#network_advertised_bandwidth').text(txt);
+
+    $('#network_first_seen').text(json_data.first_seen);
+    $('#network_last_seen').text(json_data.last_seen);
+
+    if (json_data && json_data.bw) {
+
+        var json_bw = json_data.bw;
+
+        var buttons_inserted = 0;
+        var last_inserted_button = null;
+
+        for (len = history_chart_keys.length, i=0; i<len; ++i) {
+
+            if (i in history_chart_keys) {
+
+                var key = history_chart_keys[i];
+
+                if (json_bw && json_bw[key]) {
+
+                    var insert_button = false;
+
+                    if (json_bw[key].wh) {
+                        written_data_history[key].data = json_bw[key].wh;
+                        written_data_history[key].resetBounds();
+                        insert_button = true;
+                    }
+
+                    if (json_bw[key].rh) {
+                        read_data_history[key].data = json_bw[key].rh;
+                        read_data_history[key].resetBounds();
+                        insert_button = true;
+                    }
+
+                    if (insert_button) {
+                        if (!$('#' + key).length) {
+
+                            button_code = '<label id=\"' + key + '\"';
+                            button_code += ' class=\"btn btn-default box_chart_button\"';
+                            button_code += ' onclick=\"set_download_display(\'' + key + '\')\">';
+                            button_code += '<input type=\"checkbox\" autocomplete=\"off\">';
+                            button_code += history_chart_labels[i];
+                            button_code += '</label>';
+
+                            if (last_inserted_button && last_inserted_button.length) {
+                                last_inserted_button = $(button_code).insertAfter(last_inserted_button);
+                            }
+                            else {
+                                last_inserted_button = $(button_code).prependTo($("#onionoo_charts"));
+                            }
+                        }
+                        else {
+                            last_inserted_button = $('#' + key);
+                        }
+                    }
+                    else {
+                        if ($('#' + key).length) {
+                            $('#' + key).remove();
+                        }
+                    }
+                }
+            }
+        }
+
+        if (last_inserted_button && last_inserted_button.length) {
+            $('#onionoo_more').removeAttr('disabled');
+        }
+        else {
+            $('#moreBandwidth').collapse('hide');
+            $('#onionoo_more').attr('disabled', 'disabled');
+        }
+    }
+
+    $("#oo_collapse").collapse('show');
+
+}
 
 function log(message, timestamp, runlevel)
 {
@@ -328,6 +494,11 @@ function log(message, timestamp, runlevel)
 
 
 %# // page logic
+
+function handle_window_error(message, url, linenumber)
+{
+    console.log("Error: " + message);
+}
 
 function box_canvas(canvas_element) {
     this._canvas = canvas_element;
@@ -375,6 +546,18 @@ $(document).ready( function(){
     $('[data-toggle="tooltip"]').tooltip();
     $('[data-toggle="popover"]').popover();
 
+
+    // to alter the More / Less - Button for Onionoo-Charts
+    $('#moreBandwidth').on('hidden.bs.collapse', function () {
+        $('#onionoo_more').html("More <span class='caret'></span>");
+        $('#onionoo_more').attr('data-state', 'more');
+    })
+
+    $('#moreBandwidth').on('shown.bs.collapse', function () {
+        $('#onionoo_more').html("Less <span class='caret caret-reversed'></span>");
+        $('#onionoo_more').attr('data-state', 'less');
+    })
+
 });
 
 // var LogList;
@@ -421,42 +604,119 @@ $(".message_selector").on('click', function () {
 
 function set_download_display(selector)
 {
-    if (selector == 'HD' && read_speed_HD == 1) { return; }
-    if (selector == 'LD' && read_speed_HD == 0) { return; }
+    if (selector == bandwidth_shows) { return; }
 
-    if (selector == 'HD')
+    // first we ensure that the GUI looks nice:
+    $( ".box_chart_button" ).each(function( index ) {
+        if ($(this).attr('id') != selector) {
+            $(this).removeClass("active");
+            $(this).prop("checked", false);
+        }
+    });
+
+    // now switch the chart displays
+    if (selector == 'hd')
     {
         bandwidth_read.options.millisPerPixel = 500
         bandwidth_read.options.grid.millisPerLine = 60000
         bandwidth_written.options.millisPerPixel = 500
         bandwidth_written.options.grid.millisPerLine = 60000
 
-        read_speed_HD = 1;
-        bandwidth_read.removeTimeSeries(read_data_ld);
+        bandwidth_read.removeAllTimeSeries();
+        bandwidth_written.removeAllTimeSeries();
+
         bandwidth_read.addTimeSeries(read_data_hd, {lineWidth:1,strokeStyle:'#64B22B',fillStyle:'rgba(100, 178, 43, 0.30)'});
-        bandwidth_written.removeTimeSeries(written_data_ld);
         bandwidth_written.addTimeSeries(written_data_hd, {lineWidth:1,strokeStyle:'rgb(132, 54, 187)',fillStyle:'rgba(132, 54, 187, 0.30)'});
 
         bandwidth_read.options.timestampFormatter = chart_format_timestamp;
         bandwidth_written.options.timestampFormatter = chart_format_timestamp;
     }
 
-    else if (selector == 'LD')
+    else if (selector == 'ld')
     {
-        bandwidth_read.options.millisPerPixel = 60000
+        bandwidth_read.options.millisPerPixel = 30000
         bandwidth_read.options.grid.millisPerLine = 3600000
-        bandwidth_written.options.millisPerPixel = 60000
+        bandwidth_written.options.millisPerPixel = 30000
         bandwidth_written.options.grid.millisPerLine = 3600000
 
-        read_speed_HD = 0;
-        bandwidth_read.removeTimeSeries(read_data_hd);
+        bandwidth_read.removeAllTimeSeries();
+        bandwidth_written.removeAllTimeSeries();
+
         bandwidth_read.addTimeSeries(read_data_ld, {lineWidth:1,strokeStyle:'#64B22B',fillStyle:'rgba(100, 178, 43, 0.30)'});
-        bandwidth_written.removeTimeSeries(written_data_hd);
         bandwidth_written.addTimeSeries(written_data_ld, {lineWidth:1,strokeStyle:'rgb(132, 54, 187)',fillStyle:'rgba(132, 54, 187, 0.30)'});
 
         bandwidth_read.options.timestampFormatter = chart_format_timestamp_LD;
         bandwidth_written.options.timestampFormatter = chart_format_timestamp_LD;
     }
+
+    else if (selector == 'm1')
+    {
+        bandwidth_read.options.millisPerPixel = 3600000     // 1px/h
+        bandwidth_read.options.grid.millisPerLine = 86400000
+        bandwidth_written.options.millisPerPixel = 3600000
+        bandwidth_written.options.grid.millisPerLine = 86400000
+
+        bandwidth_read.removeAllTimeSeries();
+        bandwidth_written.removeAllTimeSeries();
+
+        var wh = written_data_history['m1'];
+        var rh = read_data_history['m1'];
+
+        bandwidth_read.addTimeSeries(rh, {lineWidth:1,strokeStyle:'rgb(0, 0, 153)',fillStyle:'rgba(0, 0, 153, 0.30)'});
+        bandwidth_written.addTimeSeries(wh, {lineWidth:1,strokeStyle:'rgb(0, 0, 153)',fillStyle:'rgba(0, 0, 153, 0.30)'});
+
+        bandwidth_read.options.timestampFormatter = null;
+        bandwidth_written.options.timestampFormatter = null;
+
+        bandwidth_read.options.timestampFormatter = chart_format_day;
+        bandwidth_written.options.timestampFormatter = chart_format_day;
+
+    }
+
+    else if (selector == 'm3')
+    {
+        bandwidth_read.options.millisPerPixel = 3600000
+        bandwidth_read.options.grid.millisPerLine = 86400000
+        bandwidth_written.options.millisPerPixel = 3600000
+        bandwidth_written.options.grid.millisPerLine = 86400000
+
+        bandwidth_read.removeAllTimeSeries();
+        bandwidth_written.removeAllTimeSeries();
+
+        var wh = written_data_history['m3'];
+        var rh = read_data_history['m3'];
+
+        bandwidth_read.addTimeSeries(rh, {lineWidth:1,strokeStyle:'rgb(0, 0, 153)',fillStyle:'rgba(0, 0, 153, 0.30)'});
+        bandwidth_written.addTimeSeries(wh, {lineWidth:1,strokeStyle:'rgb(0, 0, 153)',fillStyle:'rgba(0, 0, 153, 0.30)'});
+
+        bandwidth_read.options.timestampFormatter = null;
+        bandwidth_written.options.timestampFormatter = null;
+
+        bandwidth_read.options.timestampFormatter = chart_format_day;
+        bandwidth_written.options.timestampFormatter = chart_format_day;
+
+    }
+
+    else if (selector == 'all')
+    {
+        bandwidth_read.options.millisPerPixel = 14400000    // 4 hours
+        bandwidth_read.options.grid.millisPerLine = 2678400000 // one month
+        bandwidth_written.options.millisPerPixel = 14400000
+        bandwidth_written.options.grid.millisPerLine = 2678400000
+
+        bandwidth_read.removeAllTimeSeries();
+        bandwidth_written.removeAllTimeSeries();
+
+        bandwidth_read.addTimeSeries(read_data_history, {lineWidth:1,strokeStyle:'rgb(0, 0, 153)',fillStyle:'rgba(0, 0, 153, 0.30)'});
+        bandwidth_written.addTimeSeries(written_data_history, {lineWidth:1,strokeStyle:'rgb(0, 0, 153)',fillStyle:'rgba(0, 0, 153, 0.30)'});
+
+        bandwidth_read.options.timestampFormatter = null;
+        bandwidth_written.options.timestampFormatter = null;
+    }
+
+
+
+    bandwidth_shows = selector;
 }
 
 
@@ -551,9 +811,7 @@ String.prototype.$ = function() {
 
 function format_date(date_value)
 {
-    if (!date_value) {
-        date_value = new Date();
-        }
+    date_value = new Date(date_value);
 
     var out = "%04d".$(date_value.getFullYear());
     out += "-" + "%02d".$(date_value.getMonth() + 1);

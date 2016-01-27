@@ -360,3 +360,30 @@ box_chart.prototype.render = function(canvas, time) {
   };
 
 
+/**
+* Removes all <code>TimeSeries</code> from the chart.
+*/
+box_chart.prototype.removeAllTimeSeries = function() {
+
+    while (this.seriesSet.length > 0)
+    {
+        this.removeTimeSeries(this.seriesSet[0].timeSeries)
+    }
+
+};
+
+function box_timeseries(options)
+{
+    // to ensure that the new chartOptions (used for rendering) are handled correctly
+    if (options.dontDropOldData === void 0) { options.dontDropOldData = false;}
+
+    TimeSeries.call(this, options);
+}
+
+box_timeseries.prototype = new TimeSeries();
+
+box_timeseries.prototype.dropOldData = function(oldestValidTime, maxDataSetLength) {
+
+    if (this.options.dontDropOldData) { return; }
+    TimeSeries.prototype.dropOldData.call(this, oldestValidTime, maxDataSetLength);
+};

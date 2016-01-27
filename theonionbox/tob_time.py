@@ -63,3 +63,5 @@ class TimeManager(object):
     def get_deviation(self):
         return self.time_deviation
 
+    def from_utc(self, utc_time):
+        pass

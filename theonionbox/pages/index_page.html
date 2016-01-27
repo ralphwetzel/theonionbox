@@ -12,6 +12,7 @@
     from tob_template_tools import *
 
     import datetime
+    import time
 
 #    from stem.version import Version
 #    in_version = get('version', "0.0.0.0-NoVersion")
@@ -19,6 +20,8 @@
 #    short_version = ("{}.{}.{}.{}").format(x_version.major, x_version.minor, x_version.micro, x_version.patch)-->
 
     tor_info = get('tor_info')
+#    onionoo_info = get('onionoo_info')
+#    onionoo_bw_keys = get('onionoo_bw_keys')
 
     # This is Copy/Paste from ARM!
 
@@ -85,6 +88,15 @@
 
 <body data-spy="scroll" data-target="#TOBNavBar" data-offset="0">
 
+    <nav class="navbar navbar-default navbar-fixed-top" style="padding: 50px 0px 0px 0px; background-color: #c9302c;">
+        <div class="container-fluid collapse" id="network_error_warning" >
+
+            <p class="navbar-text" style="color: white;">A Network Error occured. Your connections to the server seems to be down. Try to reload the page...</p>
+
+        </div><!-- /.container-fluid -->
+    </nav>
+
+
     <!-- Fixed navbar -->
     <nav class="navbar navbar-default navbar-fixed-top" id="TOBNavBar">
         <div class="container-fluid">
@@ -118,6 +130,7 @@
             </div><!-- /.navbar-collapse -->
         </div><!-- /.container-fluid -->
     </nav>
+
 
     <div class="container-fluid" style="min-width: 770px;">
 
@@ -312,41 +325,116 @@
 
         <hr>
 
+        <div class="collapse" id="oo_collapse">
+        {{!header_row('Tor', 'Network Status', 'network')}}
+        <div class="row">
+            <div class="{{box_datum_grid}}">
+                <p>Status Time</p>
+            </div>
+            <div class="{{box_value_grid}}">
+                <label id="network_timestamp" style="font-weight: 100" for="refresh_onionoo">{{time.strftime('%Y-%m-%d %H:%M:%S')}}</label>
+                <label id="refresh_onionoo" class="btn btn-default" style="color:'rgb(255,0,0)'" onclick="refresh_onionoo();">Refresh</label>
+            </div>
+        </div>
+        <div class="row">
+            <div class="{{box_datum_grid}}">
+                Running
+            </div>
+            <div class="{{box_value_grid}}">
+                <p id="network_running">
+                    %# {{onionoo_info['running']}}
+                </p>
+            </div>
+            <div class="col-xs-1"></div>
+        </div>
+        <div class="row">
+            <div class="{{box_datum_grid}}">
+                Consensus Weight
+            </div>
+            <div class="{{box_value_grid}}">
+                <p id="network_consensus_weight">
+                    %# {{onionoo_info['consensus_weight']}}
+                </p>
+            </div>
+            <div class="col-xs-1"></div>
+        </div>
+        <div class="row">
+            <div class="{{box_datum_grid}}">
+                Bandwidth
+            </div>
+            <div class="{{box_value_grid}}">
+                <p id="network_advertised_bandwidth">
+                    %# {{onionoo_info['advertised_bandwidth']}}
+                </p>
+            </div>
+            <div class="col-xs-1"></div>
+        </div>
+
+        <div class="row">
+            <div class="{{box_datum_grid}}">
+                First Seen
+            </div>
+            <div class="{{box_value_grid}}">
+                <p id="network_first_seen">
+                    %# {{onionoo_info['first_seen']}}
+                </p>
+            </div>
+            <div class="col-xs-1"></div>
+        </div>
+        <div class="row">
+            <div class="{{box_datum_grid}}">
+                Last Seen
+            </div>
+            <div class="{{box_value_grid}}">
+                <p id="network_last_seen">
+                    %# {{onionoo_info['last_seen']}}
+                </p>
+            </div>
+            <div class="col-xs-1"></div>
+        </div>
+
+
+        <hr>
+
+        </div>
+
 
         {{!header_row('Tor', 'Bandwidth', 'bandwidth')}}
 
         <div class="row">
-            <div class="{{box_datum_grid}}"><p>Charts</p></div>
+            <div class="{{box_datum_grid}}"><p>Live Charts</p></div>
             <div class="{{box_value_grid}}">
-                <div class="btn-toolbar pull-left">
+                <div class="btn-toolbar pull-left" role="group">
                     <div class="btn-group" data-toggle="buttons">
-                        <label class="btn btn-default active" data-definition="HD" onclick="set_download_display('HD')">
-                            <input type="radio" autocomplete="off" checked>Minutes
+                        <label id="hd" class="btn btn-default active box_chart_button" role="button" onclick="set_download_display('hd')">
+                            <input type="checkbox" autocomplete="off" checked>Minutes
                         </label>
-                        <label class="btn btn-default" data-definition="LD" onclick="set_download_display('LD')">
-                            <input type="radio" autocomplete="off">Last Hour
+                        <label id="ld" class="btn btn-default box_chart_button" role="button" onclick="set_download_display('ld')">
+                            <input type="checkbox" autocomplete="off">Hours
                         </label>
-                        <label class="btn btn-default" data-definition="LD" onclick="set_download_display('LD')">
-                            <input type="radio" autocomplete="off">Hours
-                        </label>
-                        <label class="btn btn-default" data-definition="LD" onclick="set_download_display('LD')">
-                            <input type="radio" autocomplete="off">Last Day
-                        </label>
-                        <label class="btn btn-default" data-definition="LD" onclick="set_download_display('LD')">
-                            <input type="radio" autocomplete="off">Days
-                        </label>
-                        <label class="btn btn-default" data-definition="LD" onclick="set_download_display('LD')">
-                            <input type="radio" autocomplete="off">Last Month
-                        </label>
-                        <label class="btn btn-default" data-definition="LD" onclick="set_download_display('LD')">
-                            <input type="radio" autocomplete="off">Months
-                        </label>
-                        <label class="btn btn-default" data-definition="LD" onclick="set_download_display('LD')">
-                            <input type="radio" autocomplete="off">Last Year
-                        </label>
-                        <label class="btn btn-default" data-definition="LD" onclick="set_download_display('LD')">
-                            <input type="radio" autocomplete="off">Years
-                        </label>
+                    </div>
+
+                    <label id="onionoo_more" class="btn btn-default" role="button" disabled="disabled"
+                           data-toggle="collapse" data-target="#moreBandwidth" aria-expanded="false"
+                           aria-controls="moreBandwidth">
+                        More <span class="caret"></span>
+                    </label>
+<!--
+                    <label id="zoom" class="btn btn-default" role="button">
+                        Zoom 1x
+                    </label>
+-->
+                </div>
+            </div>
+            <div class="col-xs-1"></div>
+        </div>
+
+        <div class="row collapse" id="moreBandwidth">
+            <div class="{{box_datum_grid}}"><p>Onionoo Data</p></div>
+            <div class="{{box_value_grid}}">
+                <div class="btn-toolbar pull-left" role="group">
+                    <div class="btn-group" data-toggle="buttons" id="onionoo_charts">
+                        <!-- labels for oninoo charts will be inserted here -->
                     </div>
                 </div>
             </div>
@@ -480,8 +568,8 @@
             </div>
         </div>
 
-
         <hr>
+
 
         <div class="row">
             <p class="text-center" style="color: grey; font-size: 10px; font-weight: 300">

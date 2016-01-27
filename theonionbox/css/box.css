@@ -126,5 +126,11 @@ body {
 .BOX { color: Blue; display: block;}
 .THIS { color: #778899; display: block;}
 
+%# /* http://stackoverflow.com/questions/20760047/upside-down-caret */
+.caret.caret-reversed {
+    border-top-width: 0;
+    border-bottom: 4px solid #000000;
+}
+
 
 </style>

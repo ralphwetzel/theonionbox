@@ -42,6 +42,6 @@ def pretty_number(bytes_value=0, calc='si', units='si', separator=' '):
 
     # formatting
     if result >= 99.995 or i == 0:
-        return '{:d}{}{}'.format(result, separator, abbrevs[i])
+        return '{:d}{}{}'.format(int(result), separator, abbrevs[i])
     else:
         return '{:.2f}{}{}'.format(result, separator, abbrevs[i])

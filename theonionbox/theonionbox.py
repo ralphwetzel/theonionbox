@@ -48,7 +48,7 @@ if argv:
     except GetoptError as err:
         console_log(err)
         print_usage()
-        quit()
+        sys.exit(0)
     for opt, arg in opts:
         if opt in ("-c", "--config"):
             commandline_config_file = arg
@@ -56,7 +56,7 @@ if argv:
             commandline_debug = True
         elif opt in ("-h", "--help"):
             print_usage()
-            quit()
+            sys.exit(0)
 
 
 #####
@@ -87,7 +87,7 @@ if find_loader('cherrypy') is None:
 
 if module_missing:
     console_log("Hint: You need to have root privileges to operate 'pip'.")
-    quit()
+    sys.exit(0)
 
 
 #####
@@ -235,8 +235,15 @@ host_cpudata_lock = RLock()
 tor_bwdata = {'upload': 0, 'download': 0, 'limit': 0, 'burst': 0, 'measure': 0}
 
 # ... LongTerm Storage
-from tob_longtermdata import DatabaseManager
-dbmanager = DatabaseManager()
+# from tob_longtermdata import DatabaseManager
+# dbmanager = DatabaseManager()
+
+
+#####
+# ONIONOO Protocol Interface
+from tob_onionoo import OnionooManager
+onionoo = OnionooManager(box_time)
+timer_onionoo = None
 
 #####
 # TOR interface
@@ -344,7 +351,7 @@ def update_tor_info():
 from bottle import Bottle, run, debug, auth_basic, error
 from bottle import redirect, template, static_file
 from bottle import request
-from bottle import HTTPError
+from bottle import HTTPError, HTTPResponse
 from bottle import WSGIRefServer
 
 if commandline_debug:
@@ -591,7 +598,13 @@ def get_index(session_id):
         box_events.log('{}@{}: Session established.'.format(session.id_short(), session.remote_addr()))
 
     update_tor_info()
-    dbmanager.prepare(tor_info['tor/fingerprint'], 'theonionbox.data')
+    # dbmanager.prepare(tor_info['tor/fingerprint'], 'theonionbox.data')
+
+    global timer_onionoo
+    if timer_onionoo is not None:
+        timer_onionoo.cancel()
+    timer_onionoo = Timer(15, refresh_onionoo)
+    timer_onionoo.start()
 
 #    request_bw_data()
 
@@ -667,9 +680,9 @@ def post_data(session_id):
 
     action = request.forms.get('action')
     if action is None:
-        return
+        raise HTTPError(404)
 
-    transfer_data = ''
+    # transfer_data = ''
 
     if action == 'pull_livedata':
 
@@ -683,7 +696,7 @@ def post_data(session_id):
             else:
                 box_events.log('Reconnection performed; Tor is alive: {}'.format(tor.is_alive()))
 
-        limit_max = 500  # should be enough to fill the chart immediately
+        limit_max = 500  # should be enough to fil  l the chart immediately
         its_now = int(box_time()) * 1000  # JS!
 
         pull_full = (request.forms.get('full', '0') == '1')
@@ -741,11 +754,69 @@ def post_data(session_id):
         # create the data...
         raw_data_dict = {'tick': its_now, 'hd': hd_list, 'cpu': cpu_list, 'ld': ld_list, 'log': log_list}
 
-        # ... and json it.
+        # Onionoo Data
+        get_oo = False
+        if ('last_oo' in session):
+            last_oo = session['last_oo']
+            if last_oo < int(onionoo.timestamp()):
+                get_oo = True
+        else:
+            if onionoo.timestamp():
+                get_oo = True
+
+        if get_oo:
+            # create the data...
+
+            from time import strptime
+            from calendar import timegm
+
+            lr = timegm(strptime(onionoo.get_details('last_restarted'), '%Y-%m-%d %H:%M:%S'))
+
+            oo_data = {
+                'timestamp': onionoo.timestamp() * 1000,
+                'running': onionoo.get_details('running'),
+                'last_restarted': lr * 1000,
+                'consensus_weight': onionoo.get_details('consensus_weight'),
+                'last_seen': onionoo.get_details('last_seen'),
+                'first_seen': onionoo.get_details('first_seen'),
+                'advertised_bandwidth': onionoo.get_details('advertised_bandwidth'),
+                'bandwidth_rate': onionoo.get_details('bandwidth_rate'),
+                'bandwidth_burst': onionoo.get_details('bandwidth_burst'),
+                'observed_bandwidth': onionoo.get_details('observed_bandwidth'),
+
+                'bw': onionoo.get_bandwidth()
+            }
+
+            raw_data_dict['oo'] = oo_data
+            session['last_oo'] = int(onionoo.timestamp())
+
+        # Now json everything... and return it!
         transfer_data = json.JSONEncoder().encode(raw_data_dict)
+        return transfer_data
 
-    return transfer_data
+    if action == 'refresh_onionoo':
 
+        if onionoo.query(tor_info['tor/fingerprint']):
+
+            # create the data...
+            oo_data = {
+             'running': onionoo.get_details('running'),
+             'consensus_weight': onionoo.get_details('consensus_weight'),
+             'last_seen': onionoo.get_details('last_seen'),
+             'first_seen': onionoo.get_details('first_seen'),
+             'bw': onionoo.get_bandwidth()
+            }
+
+            session['last_oo'] = onionoo.timestamp()
+
+            # Now json everything... and return it!
+            transfer_data = json.JSONEncoder().encode(oo_data)
+            return transfer_data
+
+        else:
+            return HTTPError(500)
+
+    return HTTPError(404)
 
 # standard file processing!
 
@@ -808,7 +879,7 @@ def handle_livedata(event):
                                   , bytes_written=event.written)
 
     # Test: Filling the LongTerm Storage
-    dbmanager.save(event.arrived_at, event.written, event.read)
+    # dbmanager.save(event.arrived_at, event.written, event.read)
 
     return True
 
@@ -866,6 +937,29 @@ def request_bw_data():
 
     except:
         pass
+
+    return
+
+
+def refresh_onionoo():
+
+    from random import randint
+    import time
+    its_now = box_time()
+    this_hour = its_now - (its_now % 3600)
+    next_run = int(this_hour) + 3600 + randint(0, 3590)
+
+    if onionoo.query(tor_info['tor/fingerprint']):
+
+        print("Now: {}".format(time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime(its_now))))
+        print("Next: {}".format(time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime(next_run))))
+        print("Diff: {}s".format(next_run - its_now))
+
+    global timer_onionoo
+    if timer_onionoo is not None:
+        timer_onionoo.cancel()
+    timer_onionoo = Timer(next_run - its_now, refresh_onionoo)
+    timer_onionoo.start()
 
     return
 
@@ -1024,7 +1118,12 @@ class BoxWSGIRefServer(WSGIRefServer, ShutDownAdapter):
         srv.serve_forever()
 
     def shutdown(self):
-        self.server.shutdown()
+        print("Shutting Server down!!")
+        self.server._BaseServer__shutdown_request = True
+        self.server._BaseServer__is_shut_down.wait(2)
+
+        # self.server.shutdown()
+        print("Shutdown Server done!!")
 
 
 # We're using a slightly modified CherryPy - Server implementation
@@ -1188,29 +1287,37 @@ def session_housekeeping():
 
 #####
 # Keyboard Interrupt Handler
-
 import signal
 
+
 def sigint_handler(signal, frame):
-    exit_procedure()
+    exit_procedure(False)
+    sys.exit()
 
 
-def exit_procedure():
+def exit_procedure(quit=True):
 
     if timer_housekeeping:
         timer_housekeeping.cancel()
 
-    try:
-        if tob_server:
-            tob_server.shutdown()
-    except:
-        pass
+    if timer_onionoo is not None:
+        timer_onionoo.cancel()
+
+
+#    if dbmanager:
+#        dbmanager.close()
+
+    if tob_server:
+        tob_server.shutdown()
 
     # RDW 20151224: Still valid?
     # TODO: python sometimes emits a 'ResourceWarning' when we are here! This does not hurt ... but it's ugly!
     # TODO: Try to find a fix for this!
 
-    quit()
+    print("Shutting Down!")
+
+    if quit:
+        sys.exit(0)
 
 
 # patching the stem classes to control the timeout values!
@@ -1293,12 +1400,13 @@ if __name__ == '__main__':
     except SocketError as err:
         box_events.log('Failed to connect; exiting...')
 
+        # TODO: When this error occurs, there's still a socket error raised! Fix it!
         exit_procedure()
         # just to be sure .. ;)
-        quit()
+        sys.exit(0)
 
     if not tor.is_alive():
-        quit()
+        sys.exit(0)
 
     box_events.log('Connected...')
 
@@ -1345,11 +1453,14 @@ if __name__ == '__main__':
         else:
             # Standard
             tob_server = BoxWSGIRefServer(host=box_host, port=box_port)
+            # tob_server = WSGIRefServer(host=box_host, port=box_port)
             box_events.log('Operating with the default WebServer!')
         box_events.log("Warning: A single IE request can stall this server and thus the BOX!")
 
     # register Keyboard Interrupt handler
-    signal.signal(signal.SIGINT, sigint_handler)
+    # for sig in (signal.SIGINT, signal.SIGABRT, signal.SIGTERM):
+    # signal.signal(sig, sigint_handler)
+    # signal.signal(signal.SIGINT, sigint_handler)
 
     # if we're here ... almost everything is setup and running
     # good time to launch the housekeeping for the first time!
@@ -1363,5 +1474,12 @@ if __name__ == '__main__':
         else:
             run(theonionbox, server=tob_server, host=box_host, port=box_port, quiet=True)
     except Exception as exc:
-        print(exc)
+        # print(exc)
+        pass
+    finally:
+        exit_procedure(False)
+        print("Almost Done!")
+        # sys.exit(0)
 
+        # while True:
+        #     signal.pause()
