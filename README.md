@@ -20,6 +20,10 @@ installed:
 * [stem](https://pypi.python.org/pypi/stem)
 * [Bottle](https://pypi.python.org/pypi/bottle)
 
+New for v2:
+
+* [apscheduler](https://pypi.python.org/pypi/apscheduler)
+
 Additionally I recommend to install [CherryPy](https://pypi.python.org/pypi/CherryPy) as webserver to be used!
 (The Box runs as well with a standard server yet this one has issues with IE!)
 

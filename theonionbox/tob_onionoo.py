@@ -185,7 +185,7 @@ class OnionooManager(object):
                 import datetime
 
                 while data_index < data_count:
-                    print(datetime.datetime.fromtimestamp(data_timestamp).strftime('%Y-%m-%d %H:%M:%S'))
+                    # print(datetime.datetime.fromtimestamp(data_timestamp).strftime('%Y-%m-%d %H:%M:%S'))
                     result.append([data_timestamp * 1000, int(data[data_index]*data_factor)])
                     data_index += 1
                     data_timestamp += data_interval
@@ -223,7 +223,7 @@ class OnionooManager(object):
             if self.history_object_keys[check_index] in history_objects:
                 found = check_index
 
-        print("found: {}".format(found))
+        # print("found: {}".format(found))
         return found
 
 

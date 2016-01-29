@@ -53,6 +53,12 @@ function chart_format_day(date)
     return pad2(date.getDate()) + ".";
 };
 
+function chart_format_DayMonth(date)
+{
+    function pad2(number) { return (number < 10 ? '0' : '') + number }
+    return pad2(date.getDate()) + "." + pad2(date.getMonth() + 1) + "." ;
+};
+
 
 function chart_format_null(data, precision)
 {
@@ -68,7 +74,7 @@ var bandwidth_style = {
     // maxDataSetLength: 5000,     // TBC: is this ok for all use cases??
     interpolation: 'step',
     yMaxFormatter: chart_format_bw,
-    yMinFormatter: chart_format_null,
+    yMinFormatter: null,
     timestampFormatter: chart_format_timestamp,
     enableDpiScaling: false,
     timeLabelLeftAlign: true,
@@ -483,7 +489,8 @@ function log(message, timestamp, runlevel)
     var log_msg = "<tr class='%s'><td class='box_Log_runlevel'>[%s]</td><td nowrap class='box_Log_stamp'>".$(runlevel, runlevel);
 
     // log_msg = log_msg + strftime('%F %T', new Date())
-    log_msg = log_msg + format_date(timestamp);
+    // log_msg = log_msg + format_date(timestamp);
+    log_msg = log_msg + format_time(timestamp);
     log_msg = log_msg + '</td><td>';
     log_msg = log_msg + message;
     log_msg = log_msg + '</td></tr>';
@@ -614,13 +621,15 @@ function set_download_display(selector)
         }
     });
 
+    function pad2(number) { return (number < 10 ? '0' : '') + number }
+
     // now switch the chart displays
     if (selector == 'hd')
     {
         bandwidth_read.options.millisPerPixel = 500
         bandwidth_read.options.grid.millisPerLine = 60000
-        bandwidth_written.options.millisPerPixel = 500
-        bandwidth_written.options.grid.millisPerLine = 60000
+        bandwidth_written.options.millisPerPixel = bandwidth_read.options.millisPerPixel
+        bandwidth_written.options.grid.millisPerLine = bandwidth_read.options.grid.millisPerLine
 
         bandwidth_read.removeAllTimeSeries();
         bandwidth_written.removeAllTimeSeries();
@@ -628,16 +637,32 @@ function set_download_display(selector)
         bandwidth_read.addTimeSeries(read_data_hd, {lineWidth:1,strokeStyle:'#64B22B',fillStyle:'rgba(100, 178, 43, 0.30)'});
         bandwidth_written.addTimeSeries(written_data_hd, {lineWidth:1,strokeStyle:'rgb(132, 54, 187)',fillStyle:'rgba(132, 54, 187, 0.30)'});
 
-        bandwidth_read.options.timestampFormatter = chart_format_timestamp;
-        bandwidth_written.options.timestampFormatter = chart_format_timestamp;
+        var format_timestamp = function(date) {
+            return pad2(date.getHours()) + ':' + pad2(date.getMinutes());
+        }
+
+        var format_bw = function(data, precision) {
+            if (!precision) {
+                var precision = 2;
+            }
+            return (prettyNumber(data, '', 'si') + '/s');
+        }
+
+        bandwidth_read.options.timestampFormatter = format_timestamp ;
+        bandwidth_read.options.yMaxFormatter = format_bw;
+        bandwidth_read.options.yMinFormatter = null;
+
+        bandwidth_written.options.timestampFormatter = format_timestamp ;
+        bandwidth_written.options.yMaxFormatter = format_bw;
+        bandwidth_written.options.yMinFormatter = null;
     }
 
     else if (selector == 'ld')
     {
         bandwidth_read.options.millisPerPixel = 30000
         bandwidth_read.options.grid.millisPerLine = 3600000
-        bandwidth_written.options.millisPerPixel = 30000
-        bandwidth_written.options.grid.millisPerLine = 3600000
+        bandwidth_written.options.millisPerPixel = bandwidth_read.options.millisPerPixel
+        bandwidth_written.options.grid.millisPerLine = bandwidth_read.options.grid.millisPerLine
 
         bandwidth_read.removeAllTimeSeries();
         bandwidth_written.removeAllTimeSeries();
@@ -645,16 +670,38 @@ function set_download_display(selector)
         bandwidth_read.addTimeSeries(read_data_ld, {lineWidth:1,strokeStyle:'#64B22B',fillStyle:'rgba(100, 178, 43, 0.30)'});
         bandwidth_written.addTimeSeries(written_data_ld, {lineWidth:1,strokeStyle:'rgb(132, 54, 187)',fillStyle:'rgba(132, 54, 187, 0.30)'});
 
-        bandwidth_read.options.timestampFormatter = chart_format_timestamp_LD;
-        bandwidth_written.options.timestampFormatter = chart_format_timestamp_LD;
+        var format_timestamp = function(date) {
+            return pad2(date.getHours()) + ':' + pad2(date.getMinutes());
+        }
+
+        var format_bw = function(data, precision) {
+            if (!precision) {
+                var precision = 2;
+            }
+            return (prettyNumber(data / 60, '', 'si') + '/s');
+        }
+
+        bandwidth_read.options.timestampFormatter = format_timestamp ;
+        bandwidth_read.options.yMaxFormatter = format_bw;
+        bandwidth_read.options.yMinFormatter = null;
+
+        bandwidth_written.options.timestampFormatter = format_timestamp ;
+        bandwidth_written.options.yMaxFormatter = format_bw;
+        bandwidth_written.options.yMinFormatter = null;
+
+
     }
 
     else if (selector == 'm1')
     {
-        bandwidth_read.options.millisPerPixel = 3600000     // 1px/h
-        bandwidth_read.options.grid.millisPerLine = 86400000
-        bandwidth_written.options.millisPerPixel = 3600000
-        bandwidth_written.options.grid.millisPerLine = 86400000
+        bandwidth_read.options.millisPerPixel = 1000 * 14400 / 4;
+        // bandwidth_read.options.grid.millisPerLine = 1000* 60 * 60 * 24 * 7 // weeks
+        bandwidth_read.options.grid.millisPerLine = 0;
+        bandwidth_read.options.grid.timeDividers = 'weekly';
+
+        bandwidth_written.options.millisPerPixel = bandwidth_read.options.millisPerPixel;
+        bandwidth_written.options.grid.millisPerLine = bandwidth_read.options.grid.millisPerLine
+        bandwidth_written.options.grid.timeDividers = bandwidth_read.options.grid.timeDividers;
 
         bandwidth_read.removeAllTimeSeries();
         bandwidth_written.removeAllTimeSeries();
@@ -665,20 +712,37 @@ function set_download_display(selector)
         bandwidth_read.addTimeSeries(rh, {lineWidth:1,strokeStyle:'rgb(0, 0, 153)',fillStyle:'rgba(0, 0, 153, 0.30)'});
         bandwidth_written.addTimeSeries(wh, {lineWidth:1,strokeStyle:'rgb(0, 0, 153)',fillStyle:'rgba(0, 0, 153, 0.30)'});
 
-        bandwidth_read.options.timestampFormatter = null;
-        bandwidth_written.options.timestampFormatter = null;
+        var format_timestamp = function(date) {
+            return pad2(date.getDate()) + "." + pad2(date.getMonth() + 1) + "." ;
+        }
 
-        bandwidth_read.options.timestampFormatter = chart_format_day;
-        bandwidth_written.options.timestampFormatter = chart_format_day;
+        var format_bw = function(data, precision) {
+            if (!precision) {
+                var precision = 2;
+            }
+            return (prettyNumber(data, '', 'si') + '/s');
+        }
+
+        bandwidth_read.options.timestampFormatter = format_timestamp ;
+        bandwidth_read.options.yMaxFormatter = format_bw;
+        bandwidth_read.options.yMinFormatter = null;
+
+        bandwidth_written.options.timestampFormatter = format_timestamp ;
+        bandwidth_written.options.yMaxFormatter = format_bw;
+        bandwidth_written.options.yMinFormatter = null;
 
     }
 
     else if (selector == 'm3')
     {
-        bandwidth_read.options.millisPerPixel = 3600000
-        bandwidth_read.options.grid.millisPerLine = 86400000
-        bandwidth_written.options.millisPerPixel = 3600000
-        bandwidth_written.options.grid.millisPerLine = 86400000
+        bandwidth_read.options.millisPerPixel = 1000 * 43200 / 4
+        // bandwidth_read.options.grid.millisPerLine = 1000* 60 * 60 * 24 * 7 // weeks
+        bandwidth_read.options.grid.millisPerLine = 0;
+        bandwidth_read.options.grid.timeDividers = 'monthly';
+
+        bandwidth_written.options.millisPerPixel = bandwidth_read.options.millisPerPixel
+        bandwidth_written.options.grid.millisPerLine = bandwidth_read.options.grid.millisPerLine
+        bandwidth_written.options.grid.timeDividers = bandwidth_read.options.grid.timeDividers;
 
         bandwidth_read.removeAllTimeSeries();
         bandwidth_written.removeAllTimeSeries();
@@ -689,14 +753,28 @@ function set_download_display(selector)
         bandwidth_read.addTimeSeries(rh, {lineWidth:1,strokeStyle:'rgb(0, 0, 153)',fillStyle:'rgba(0, 0, 153, 0.30)'});
         bandwidth_written.addTimeSeries(wh, {lineWidth:1,strokeStyle:'rgb(0, 0, 153)',fillStyle:'rgba(0, 0, 153, 0.30)'});
 
-        bandwidth_read.options.timestampFormatter = null;
-        bandwidth_written.options.timestampFormatter = null;
+        var format_timestamp = function(date) {
+            return pad2(date.getDate()) + "." + pad2(date.getMonth() + 1) + "." ;
+        }
 
-        bandwidth_read.options.timestampFormatter = chart_format_day;
-        bandwidth_written.options.timestampFormatter = chart_format_day;
+        var format_bw = function(data, precision) {
+            if (!precision) {
+                var precision = 2;
+            }
+            return (prettyNumber(data, '', 'si') + '/s');
+        }
+
+        bandwidth_read.options.timestampFormatter = format_timestamp ;
+        bandwidth_read.options.yMaxFormatter = format_bw;
+        bandwidth_read.options.yMinFormatter = null;
+
+        bandwidth_written.options.timestampFormatter = format_timestamp ;
+        bandwidth_written.options.yMaxFormatter = format_bw;
+        bandwidth_written.options.yMinFormatter = null;
 
     }
 
+    // obsolete!!
     else if (selector == 'all')
     {
         bandwidth_read.options.millisPerPixel = 14400000    // 4 hours
@@ -713,8 +791,6 @@ function set_download_display(selector)
         bandwidth_read.options.timestampFormatter = null;
         bandwidth_written.options.timestampFormatter = null;
     }
-
-
 
     bandwidth_shows = selector;
 }
@@ -817,6 +893,17 @@ function format_date(date_value)
     out += "-" + "%02d".$(date_value.getMonth() + 1);
     out += "-" + "%02d".$(date_value.getDate());
     out += " " + "%02d".$(date_value.getHours());
+    out += ":" + "%02d".$(date_value.getMinutes());
+    out += ":" + "%02d".$(date_value.getSeconds());
+
+    return out;
+}
+
+function format_time(date_value)
+{
+    date_value = new Date(date_value);
+
+    var out = "%02d".$(date_value.getHours());
     out += ":" + "%02d".$(date_value.getMinutes());
     out += ":" + "%02d".$(date_value.getSeconds());
 

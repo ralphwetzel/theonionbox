@@ -104,7 +104,8 @@ body {
 .box_Log_stamp
 {
     // width: 20%;
-    width: 12em;
+    // width: 12em;
+    width: 5.5em;
 }
 
 .scroll_area

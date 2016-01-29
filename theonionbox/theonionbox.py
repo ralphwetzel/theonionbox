@@ -68,7 +68,8 @@ required_modules = {
     'psutil': "If this fails, make sure the python headers are installed, too: 'apt-get install python-dev'",
     'configparser': '',
     'stem': '',
-    'bottle': ''
+    'bottle': '',
+    'apscheduler': ''
 }
 
 module_missing = False
@@ -237,6 +238,14 @@ tor_bwdata = {'upload': 0, 'download': 0, 'limit': 0, 'burst': 0, 'measure': 0}
 # ... LongTerm Storage
 # from tob_longtermdata import DatabaseManager
 # dbmanager = DatabaseManager()
+
+
+#####
+# The Scheduler
+
+from apscheduler.schedulers.background import BackgroundScheduler
+
+box_cron = BackgroundScheduler()
 
 
 #####
@@ -1162,6 +1171,22 @@ class BoxCherryPyServer(ServerAdapter, ShutDownAdapter):
     def shutdown(self):
         self.server.stop()
 
+
+# This job runs at midnight to add a notification to the log
+# showing the current day
+def job_NewDayNotification():
+
+    from datetime import datetime
+
+    timestamp = box_time()
+    box_events.log("----- Today is {}. -----".format(datetime.fromtimestamp(timestamp).strftime('%A, %Y-%m-%d')))
+    return
+
+box_cron.add_job(job_NewDayNotification, 'cron', hour='0', minute='0', second='0')
+box_cron.start()
+
+
+
 # from time import strftime
 from threading import Timer
 
@@ -1307,8 +1332,11 @@ def exit_procedure(quit=True):
 #    if dbmanager:
 #        dbmanager.close()
 
-    if tob_server:
-        tob_server.shutdown()
+    try:
+        if tob_server:
+            tob_server.shutdown()
+    except:
+        pass
 
     # RDW 20151224: Still valid?
     # TODO: python sometimes emits a 'ResourceWarning' when we are here! This does not hurt ... but it's ugly!

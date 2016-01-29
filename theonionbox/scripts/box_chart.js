@@ -159,22 +159,102 @@ box_chart.prototype.render = function(canvas, time) {
     context.save();
     context.lineWidth = chartOptions.grid.lineWidth;
     context.strokeStyle = chartOptions.grid.strokeStyle;
+
+    var vertical_dividers = [];
+
     // Vertical (time) dividers.
     if (chartOptions.grid.millisPerLine > 0) {
-      context.beginPath();
-      for (var t = time - (time % chartOptions.grid.millisPerLine);
-           t >= oldestValidTime;
-           t -= chartOptions.grid.millisPerLine) {
-        var gx = timeToXPixel(t);
-        if (chartOptions.grid.sharpLines) {
-          gx -= 0.5;
+        context.beginPath();
+        for (var t = time - (time % chartOptions.grid.millisPerLine);
+            t >= oldestValidTime;
+            t -= chartOptions.grid.millisPerLine) {
+
+            vertical_dividers.push(t);
+
+            var gx = timeToXPixel(t);
+            if (chartOptions.grid.sharpLines) {
+                gx -= 0.5;
+            }
+            context.moveTo(gx, 0);
+            context.lineTo(gx, dimensions.height);
         }
-        context.moveTo(gx, 0);
-        context.lineTo(gx, dimensions.height);
-      }
-      context.stroke();
-      context.closePath();
+        context.stroke();
+        context.closePath();
     }
+    // inserted to draw 'weekly', 'monthly' lines
+    else if (chartOptions.grid.timeDividers) {
+
+        var start_time = 0;
+
+        if (chartOptions.grid.timeDividers == 'weekly') {
+            // http://stackoverflow.com/questions/4156434/javascript-get-the-first-day-of-the-week-from-current-date
+            function getMonday( date ) {
+                var day = date.getDay() || 7;
+                if( day !== 1 )
+                    date.setHours(-24 * (day - 1));
+                return date;
+            }
+
+            var this_monday = new Date(time);
+            this_monday = getMonday(this_monday);
+            this_monday.setHours(0);
+            this_monday.setMinutes(0);
+            this_monday.setSeconds(0);
+
+            start_time = this_monday.getTime();
+
+            var next_time_div = function (t) {
+                return t - 1000 * 60 * 60 * 24 * 7;
+            }
+        }
+        else if (chartOptions.grid.timeDividers == 'monthly') {
+
+            this_month = new Date(time);
+            this_month.setMinutes(0);
+            this_month.setHours(0);
+            this_month.setDate(1);
+
+            start_time = this_month.getTime();
+
+            var next_time_div = function (t) {
+                var nm = new Date(t);
+                var cm = nm.getMonth();
+                if (cm) {
+                    nm.setMonth(cm - 1);
+                }
+                else {
+                    nm.setFullYear(nm.getFullYear() - 1);
+                    nm.setMonth(11);
+                }
+
+                return nm.getTime();
+            }
+        }
+
+        if (start_time) {
+
+            context.beginPath();
+            for (var t = start_time;
+                t >= oldestValidTime;
+                t = next_time_div(t)) {
+                var gx = timeToXPixel(t);
+
+                vertical_dividers.push(t);
+
+                if (chartOptions.grid.sharpLines) {
+                    gx -= 0.5;
+                }
+
+                context.moveTo(gx, 0);
+                context.lineTo(gx, dimensions.height);
+            }
+            context.stroke();
+            context.closePath();
+
+        }
+
+    }
+
 
     // Horizontal (value) dividers.
     for (var v = 1; v < chartOptions.grid.verticalSections; v++) {
@@ -295,12 +375,29 @@ box_chart.prototype.render = function(canvas, time) {
 
     // Draw the axis values on the chart.
     if (!chartOptions.labels.disabled && !isNaN(this.valueRange.min) && !isNaN(this.valueRange.max)) {
-      var maxValueString = chartOptions.yMaxFormatter(this.valueRange.max, chartOptions.labels.precision),
-          minValueString = chartOptions.yMinFormatter(this.valueRange.min, chartOptions.labels.precision),
-          labelPos = chartOptions.scrollBackwards ? 0 : dimensions.width - context.measureText(maxValueString).width - 2;
-      context.fillStyle = chartOptions.labels.fillStyle;
-      context.fillText(maxValueString, labelPos, chartOptions.labels.fontSize);
-      context.fillText(minValueString, labelPos, dimensions.height - 2);
+
+        if (chartOptions.yMaxFormatter) {
+            var maxValueString = chartOptions.yMaxFormatter(this.valueRange.max, chartOptions.labels.precision);
+        }
+        if (chartOptions.yMinFormatter) {
+            var minValueString = chartOptions.yMinFormatter(this.valueRange.min, chartOptions.labels.precision);
+        }
+        if (maxValueString) {
+            var labelPos = chartOptions.scrollBackwards ? 0 : dimensions.width - context.measureText(maxValueString).width - 2;
+        }
+        else if (minValueString) {
+            var labelPos = chartOptions.scrollBackwards ? 0 : dimensions.width - context.measureText(maxValueString).width - 2;
+        }
+        else {
+            return;
+        }
+        context.fillStyle = chartOptions.labels.fillStyle;
+        if (maxValueString) {
+            context.fillText(maxValueString, labelPos, chartOptions.labels.fontSize);
+        }
+        if (minValueString) {
+            context.fillText(minValueString, labelPos, dimensions.height - 2);
+        }
     }
 
     // ... to here!
@@ -310,13 +407,17 @@ box_chart.prototype.render = function(canvas, time) {
     // (as the original implementation does)
 
     // Display timestamps along x-axis at the bottom of the chart.
-    if (chartOptions.timestampFormatter && chartOptions.grid.millisPerLine > 0) {
+    if (chartOptions.timestampFormatter && vertical_dividers.length > 0) {
       var textUntilX = chartOptions.scrollBackwards
         ? context.measureText(minValueString).width
         : dimensions.width - context.measureText(minValueString).width + 4;
-      for (var t = time - (time % chartOptions.grid.millisPerLine);
-           t >= oldestValidTime;
-           t -= chartOptions.grid.millisPerLine) {
+
+      var vd_length = vertical_dividers.length;
+
+      for (var i = 0; i < vd_length; i++) {
+
+        t = vertical_dividers[i];
+
         var gx = timeToXPixel(t);
         // Only draw the timestamp if it won't overlap with the previously drawn one.
         if ((!chartOptions.scrollBackwards && gx < textUntilX) || (chartOptions.scrollBackwards && gx > textUntilX))  {
