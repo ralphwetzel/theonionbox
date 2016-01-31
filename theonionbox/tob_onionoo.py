@@ -3,7 +3,7 @@ from hashlib import sha1
 from binascii import a2b_hex
 from time import time, strptime
 from calendar import timegm
-# from tob_time import TimeManager
+from threading import RLock
 
 class OnionooManager(object):
 
@@ -17,6 +17,8 @@ class OnionooManager(object):
     # https://onionoo.torproject.org/protocol.html#bandwidth
     history_object_keys = ['5_years', '1_year', '3_months', '1_month', '1_week', '3_days']
     result_object_keys = ['y5', 'y1', 'm3', 'm1', 'w1', 'd3']
+
+    onionoo_lock = RLock()
 
     def __init__(self, time_manager):
         self._time = time_manager
@@ -46,10 +48,16 @@ class OnionooManager(object):
             return False
 
         payload = {'lookup': self.fp_hash}
-        r = requests.get("https://onionoo.torproject.org/details", params=payload)
+        r = None
+        try:
+            r = requests.get("https://onionoo.torproject.org/details", params=payload)
+        except:
+            pass
 
-        if r.status_code != requests.codes.ok:
+        if r is None or (r.status_code != requests.codes.ok):
             return False
+
+        self.onionoo_lock.acquire()
 
         j = r.json()
         if 'relays' in j:
@@ -64,20 +72,37 @@ class OnionooManager(object):
                     if j['bridges'][0]['hashed_fingerprint'] == self.fp_hash:
                         self.status = j['bridges'][0]
 
+        self.onionoo_lock.release()
+
         return True
 
     def get_details(self, datum):
         if datum in self.status:
-            return self.status[datum]
+
+            self.onionoo_lock.acquire()
+            retval = self.status[datum]
+            self.onionoo_lock.release()
+
+            return retval
 
     def get_bandwidth(self):
-        return self.bw
+
+        self.onionoo_lock.acquire()
+        retval = self.bw
+        self.onionoo_lock.release()
+
+        return retval
 
     def get_bandwidth_keys(self):
         res = []
+
+        self.onionoo_lock.acquire()
+
         for key in self.history_object_keys:
             if key in self.bw:
                 res.append(key)
+
+        self.onionoo_lock.release()
 
         return res
 
@@ -94,9 +119,13 @@ class OnionooManager(object):
             return False
 
         payload = {'lookup': self.fp_hash}
-        r = requests.get("https://onionoo.torproject.org/bandwidth", params=payload)
+        r = None
+        try:
+            r = requests.get("https://onionoo.torproject.org/bandwidth", params=payload)
+        except:
+            pass
 
-        if r.status_code != requests.codes.ok:
+        if r is None or (r.status_code != requests.codes.ok):
             return False
 
         query_result = {}
@@ -123,6 +152,8 @@ class OnionooManager(object):
             return False
 
         self.bw = {}
+
+        self.onionoo_lock.acquire()
 
         if 'write_history' in query_result:
             wh = query_result['write_history']
@@ -199,6 +230,8 @@ class OnionooManager(object):
                 self.bw[self.result_object_keys[process_ho_index]]['rh'] = result
                 process_ho_index = self._get_next_available_history_object_key_index(rh, process_ho_index)
 
+        self.onionoo_lock.release()
+
         return True
 
     def _get_first_available_history_object_key_index(self, history_objects):
@@ -225,5 +258,3 @@ class OnionooManager(object):
 
         # print("found: {}".format(found))
         return found
-
-
