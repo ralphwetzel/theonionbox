@@ -5,6 +5,15 @@ function box_chart(options)
     if (options.timeLabelSeparation === void 0) { options.timeLabelSeparation = 0;}
 
     SmoothieChart.call(this, options);
+
+    if (options.yMinFormatter == null) {
+        this.options.yMinFormatter = null;
+    }
+
+    if (options.yMaxFormatter == null) {
+        this.options.yMaxFormatter = null;
+    }
+
 }
 
 box_chart.prototype = new SmoothieChart();
