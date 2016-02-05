@@ -23,12 +23,18 @@ class EventsManager(object):
     events_of_client = {}
 
     # a dict to store the client id's for the events of the different runlevels
-    clients_for_runlvl = {'DEBUG': [],
-                          'INFO': [],
-                          'NOTICE': [],
-                          'WARN': [],
-                          'ERR': [],
-                          'BOX': []}        # clients will automatically be subscribed to 'BOX'
+    clients_for_runlvl = {
+        'DEBUG': [],
+        'INFO': [],
+        'NOTICE': [],
+        'WARN': [],
+        'ERR': [],
+        'BOX|DEBUG': [],
+        'BOX|INFO': [],
+        'BOX|NOTICE': [],       # this is the default OnionBox runlevel; will become 'BOX' in the client application
+        'BOX|WARN': [],         # clients will automatically be subscribed to 'BOX|NOTICE', 'BOX|WARN', 'BOX|ERROR'
+        'BOX|ERR': []
+        }
 
     # This is the client-ID we use to store the messages of the
     # events "to be preserved"
@@ -47,42 +53,52 @@ class EventsManager(object):
 
         if preserve_err is True:
             self.add_client(self.self_id, EventType.ERR)
+            # self.add_client(self.self_id, EventType.ERR)
 
         if preserve_warn is True:
             self.add_client(self.self_id, EventType.WARN)
+            # self.add_client(self.self_id, EventType.WARN)
 
         if preserve_notice is True:
             self.add_client(self.self_id, EventType.NOTICE)
+            # self.add_client(self.self_id, EventType.NOTICE)
+
+
+        # client_id == 'TheOnionBox' is used for console output
+        self.add_client('TheOnionBox', 'BOX|WARN')
+        self.add_client('TheOnionBox', 'BOX|ERR')
+
+    def debug(self, message, compensate_deviation=True):
+        self._record_box_event("BOX|DEBUG", message, compensate_deviation)
+
+    def info(self, message, compensate_deviation=True):
+        self._record_box_event("BOX|INFO", message, compensate_deviation)
 
     def log(self, message=None, compensate_deviation=True):
+        self._record_box_event("BOX|NOTICE", message, compensate_deviation)
 
-        if message is None:
-            return
+    def warn(self, message=None, compensate_deviation=True):
+        self._record_box_event("BOX|WARN", message, compensate_deviation)
+
+    def err(self, message=None, compensate_deviation=True):
+        self._record_box_event("BOX|ERR", message, compensate_deviation)
+
+    def _record_box_event(self, runlevel, message, compensate_deviation=True):
 
         timestamp = time()
         if compensate_deviation is True:
             timestamp = self._time(timestamp)
 
-        js_time_stamp = int(timestamp*1000)                # ms for JS!
+        ee = {'s': int(timestamp*1000),                # ms for JS!
+              'l': runlevel,
+              'm': message.rstrip()}
 
-        # add this event on top of the list of already existing events!
-        e_runlvl = "BOX"
+        self._append_event(runlevel, ee)
 
-        ee = {'s': js_time_stamp,
-              'l': e_runlvl,
-              'm': message}
-
-        self._append_event(e_runlvl, ee)
-
-        if __debug__:
-            print("[{}] {} {}".format(e_runlvl, datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S'), message))
+#        if __debug__:
+#            print("[{}] {} {}".format(runlevel, datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S'), message))
 
     def record_event(self, event, compensate_deviation=True):
-
-        #assert(type(event) is EventType)
-
-        if event is None:
-            return
 
         timestamp = event.arrived_at
         if compensate_deviation is True:
@@ -110,8 +126,20 @@ class EventsManager(object):
                 # ... gets this event-entry attached
                 if client_id in self.events_of_client:
 
-                    event_msgs = self.events_of_client[client_id]['events']
-                    event_msgs.appendleft(event_entry)
+                    if client_id == 'TheOnionBox':
+
+                        # console output
+                        runlevel = event_entry['l']
+                        if runlevel == 'BOX|NOTICE':
+                            runlevel = 'BOX'    # to compact the output as the client script does
+                        print("[{}] {} {}"
+                              .format(runlevel,
+                                      datetime.fromtimestamp(event_entry['s'] / 1000).strftime('%H:%M:%S'),
+                                      event_entry['m']))
+
+                    else:
+                        event_msgs = self.events_of_client[client_id]['events']
+                        event_msgs.appendleft(event_entry)
 
     def add_client(self, client_id, runlevel, init_preserved_events=True):
 
@@ -143,7 +171,9 @@ class EventsManager(object):
                                                             self.events_of_client[self.self_id]['events'], 1000)
                                                             , maxlen=1000)}
 
-                self.add_client(client_id, 'BOX')
+                self.add_client(client_id, 'BOX|NOTICE')
+                self.add_client(client_id, 'BOX|WARN')
+                self.add_client(client_id, 'BOX|ERROR')
 
             return retval
 
@@ -167,7 +197,7 @@ class EventsManager(object):
                     self.events_of_client[client_id]['count'] = count - 1
                 else:
                     del self.events_of_client[client_id]
-                    self.remove_client(client_id, 'BOX')
+                    self.remove_client(client_id, 'BOX|NOTICE')
 
             return retval
 
@@ -177,6 +207,12 @@ class EventsManager(object):
         self.remove_client(client_id, 'NOTICE')
         self.remove_client(client_id, 'WARN')
         self.remove_client(client_id, 'ERR')
+        self.remove_client(client_id, 'BOX|DEBUG')
+        self.remove_client(client_id, 'BOX|INFO')
+        self.remove_client(client_id, 'BOX|WARN')
+        self.remove_client(client_id, 'BOX|ERROR')
+        # 'BOX|NOTICE' will then be removed automatically!
+
 
     def get_active_clients(self, runlevel):
 
