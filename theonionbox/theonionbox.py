@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-__version__ = '2.0dev'
+__version__ = '2.0rc1'
 
 # required pip's for raspberrypi
 # stem
@@ -42,6 +42,9 @@ commandline_config_file = ''
 commandline_debug = False
 opts = None
 
+
+# TODO: argparse
+
 if argv:
     try:
         opts, args = getopt(argv, "c:dh", ["config=", "debug", "help"])
@@ -58,6 +61,8 @@ if argv:
             print_usage()
             sys.exit(0)
 
+if commandline_debug:
+    console_log('Debug Mode activated from command line.')
 
 #####
 # Module availability check
@@ -101,6 +106,7 @@ from collections import deque
 import functools
 import itertools
 from threading import RLock
+from datetime import datetime, timedelta
 
 
 #####
@@ -176,7 +182,6 @@ if 'TorRelay' in config:
 if tor_timeout < 0:
     tor_timeout = None
 
-
 #####
 # Time Management
 from time import time
@@ -190,10 +195,10 @@ def update_time_deviation():
     ret_val = box_time.update_time_deviation()
 
     if ret_val is False:
-        box_events.log('Failed to communicate to NTP-Server \'{}\'!'.format(box_ntp_server))
+        box_events.warn('Failed to communicate to NTP-Server \'{}\'!'.format(box_ntp_server))
     else:
-        box_events.log('Server Time aligned against Time from \'{}\'; adjusted delta: {:+.2f} seconds'
-                       .format(box_ntp_server, ret_val))
+        box_events.info('Server Time aligned against Time from \'{}\'; adjusted delta: {:+.2f} seconds'
+                        .format(box_ntp_server, ret_val))
 
     return ret_val
 
@@ -206,14 +211,42 @@ from tob_events_manager import EventsManager
 box_events = EventsManager(box_time, preserve_err=tor_ERR, preserve_warn=tor_WARN, preserve_notice=tor_NOTICE)
 # the event_listeners will be added (later) after establishing the connection to TOR
 
+
+#####
+# Enable DEBUG settings
+
+if not commandline_debug:
+    if box_debug:
+        console_log('Debug Mode activated from configuration file.')
+else:
+    box_debug = True
+
+if box_debug:
+        # command line output!
+        box_events.add_client('TheOnionBox', 'BOX|DEBUG')
+        box_events.add_client('TheOnionBox', 'BOX|INFO')
+
+
+
+#####
+# READY to GO!
+
 # give notice that we're alive NOW!
 print("")
 box_events.log("Launching The Onion Box!")
 
 
 #####
+# The Scheduler
+
+# used to run all async activities within TOB
+from apscheduler.schedulers.background import BackgroundScheduler
+box_cron = BackgroundScheduler()
+box_cron.start()
+
+#####
 # SESSION Management
-from tob_session import SessionFactory, Session
+from tob_session import SessionFactory, Session, make_short_id
 
 # standard session management
 box_sessions = SessionFactory(box_time)
@@ -223,8 +256,9 @@ box_logins = SessionFactory(box_time, 30)
 
 #####
 # Live Data Management
-from tob_livedata_manager import LiveDataManager
+from tob_livedata_manager import LiveDataManager, Cumulator
 
+#####
 # Management of ...
 # ... the Live Bandwidth Data
 tor_livedata = LiveDataManager(box_time)
@@ -235,24 +269,70 @@ host_cpudata_lock = RLock()
 # ... cumulated Bandwidth information
 tor_bwdata = {'upload': 0, 'download': 0, 'limit': 0, 'burst': 0, 'measure': 0}
 
+
+#####
 # ... LongTerm Storage
-# from tob_longtermdata import DatabaseManager
-# dbmanager = DatabaseManager()
+import json
+
+ltd = {}
+try:
+    with open("theonionbox.ltd") as json_file:
+        ltd = json.load(json_file)
+except:
+    pass
 
 
-#####
-# The Scheduler
+# this should be a bit more sophisticated
+# if we add further protocol numbers
+if 'protocol' not in ltd:
+    ltd = {}
+elif not ltd['protocol'] == 1:
+    ltd = {}
 
-from apscheduler.schedulers.background import BackgroundScheduler
+ltd_keys = ['3d', '1w', '1m', '3m', '1y', '5y']
 
-box_cron = BackgroundScheduler()
+stat = {}
+for key in ltd_keys:
+    stat[key] = ltd[key] if key in ltd else None
 
+cum3d = Cumulator(900 / 2, initial_status=stat['3d'], max_count=500, time_manager=box_time, event_manager=box_events)
+cum1w = Cumulator(3600 / 2, initial_status=stat['1w'], max_count=500, time_manager=box_time, event_manager=box_events)
+cum1m = Cumulator(14400 / 2, initial_status=stat['1m'], max_count=500, time_manager=box_time, event_manager=box_events)
+cum3m = Cumulator(43200 / 2, initial_status=stat['3m'], max_count=500, time_manager=box_time, event_manager=box_events)
+cum1y = Cumulator(172800 / 2, initial_status=stat['1y'], max_count=500, time_manager=box_time, event_manager=box_events)
+cum5y = Cumulator(864000 / 2, initial_status=stat['5y'], max_count=500, time_manager=box_time, event_manager=box_events)
 
-#####
-# ONIONOO Protocol Interface
-from tob_onionoo import OnionooManager
-onionoo = OnionooManager(box_time)
-timer_onionoo = None
+cumtors = {'3d': cum3d,
+           '1w': cum1w,
+           '1m': cum1m,
+           '3m': cum3m,
+           '1y': cum1y,
+           '5y': cum5y}
+
+def save_longterm_data():
+
+    cumtor_status = {'protocol': 1,
+                     '3d': cum3d.get_status(),
+                     '1w': cum1w.get_status(),
+                     '1m': cum1m.get_status(),
+                     '3m': cum3m.get_status(),
+                     '1y': cum1y.get_status(),
+                     '5y': cum5y.get_status()}
+
+    filename = 'theonionbox.ltd'
+
+    try:
+        with open(filename, 'w') as json_file:
+            json.dump(cumtor_status, json_file)
+
+        box_events.debug("Longterm Data saved to file '{}'.".format(filename))
+
+    except Exception as exc:
+        box_events.info("Error while saving Longterm Data to file '{}': ".format(filename, exc))
+
+    return
+
+box_cron.add_job(save_longterm_data, 'interval', minutes=5)
 
 #####
 # TOR interface
@@ -303,15 +383,17 @@ def update_tor_info():
                 # This behaviour seems to be uncoverable!
                 try:
                     _result = tor.get_info("ns/id/{}".format(tor_info['tor/fingerprint']))
-                except:
+                except Exception as exc:
                     pass
-                if _result is None:
-                    tor_info['tor/flags'] = ["Tor Communication Error"]
+                    # tor_info['tor/flags'] = ["Tor Communication Error"]
                 else:
                     _result = _result.split('\n')
                     for line in _result:
                         if line.startswith("s "):
                             tor_info['tor/flags'] = line[2:].split()
+
+                if ('tor/flags' not in tor_info) or len(tor_info['tor/flags']) < 1:
+                    tor_info['tor/flags'] = ['none']
 
             tor_info['tor/orListenAddress'] = ""
             _orla = tor.get_conf('ORListenAddress', None)
@@ -354,19 +436,53 @@ def update_tor_info():
 
     return
 
+#####
+# ONIONOO Protocol Interface
+from tob_onionoo import OnionooManager
+onionoo = OnionooManager(box_time, box_events)
+
+
+def refresh_onionoo(relaunch_job=False):
+
+    from random import randint
+    import time
+
+    box_events.debug('Trying to refresh ONIONOO data.')
+    its_now = box_time()
+    this_hour = its_now - (its_now % 3600)
+    next_run = int(this_hour) + 3600 + randint(0, 3590)
+
+    if 'tor/fingerprint' in tor_info:
+        box_events.debug('Fingerprint for query: {}'.format(tor_info['tor/fingerprint']))
+        if onionoo.query(tor_info['tor/fingerprint']):
+            box_events.debug('ONIONOO data successfully refreshed')
+
+    else:
+        box_events.debug('No Fingerprint to query.')
+
+    run_date = datetime.fromtimestamp(next_run)
+    box_events.debug('Next scheduled retry to refresh ONIONOO @ {}'.format(run_date.strftime('%Y-%m-%d %H:%M:%S')))
+
+    if relaunch_job:
+        box_cron.add_job(refresh_onionoo, 'date', id='onionoo', run_date=run_date, args=[True])
+
+    return
+
+# to initiate the standard onionoo_refresh cycle (about once an hour)
+refresh_onionoo(relaunch_job=True)
+
 
 #####
 # BOTTLE
-from bottle import Bottle, run, debug, auth_basic, error
+from bottle import Bottle, run, debug, auth_basic, error, _stderr, _stdout
 from bottle import redirect, template, static_file
 from bottle import request
 from bottle import HTTPError, HTTPResponse
 from bottle import WSGIRefServer
+import bottle
 
-if commandline_debug:
-    box_debug = True
 
-debug(box_debug)
+# debug(box_debug)
 
 # if box_debug:
 #
@@ -388,7 +504,9 @@ bootstrap_css = "bootstrap.min.css"
 theonionbox = Bottle()
 theonionbox_name = 'The Onion Box'
 
-
+# to redirect the bottle() output to our event managers
+bottle._stderr = box_events.debug
+bottle._stdout = box_events.debug
 
 #####
 #  The Authentication System
@@ -593,7 +711,7 @@ def get_index(session_id):
     if status == 'prepared':
 
         delay = box_time() - session.last_visit
-        if delay > 0.5:  # seconds
+        if delay > 1.0:  # seconds
             box_events.log('{}@{}: Login to Session delay expired. Session canceled.'
                            .format(session.id_short(), session.remote_addr()))
             box_sessions.delete(session.id())
@@ -607,14 +725,12 @@ def get_index(session_id):
         box_events.log('{}@{}: Session established.'.format(session.id_short(), session.remote_addr()))
 
     update_tor_info()
+
+    # asyncronously refreshing the onionoo data
+    # TODO: This could be tracked (as it happens so regularily!)
+    box_cron.add_job(refresh_onionoo, 'date', run_date=datetime.now() + timedelta(seconds=10))
+
     # dbmanager.prepare(tor_info['tor/fingerprint'], 'theonionbox.data')
-
-    global timer_onionoo
-    if timer_onionoo is not None:
-        timer_onionoo.cancel()
-    timer_onionoo = Timer(15, refresh_onionoo)
-    timer_onionoo.start()
-
 #    request_bw_data()
 
     # switch the default events ON for this session
@@ -658,6 +774,7 @@ def get_index(session_id):
 #                    , template_directory='template'
                     , icon=theonionbox_icon
                     , box_version=__version__
+                    , box_debug = box_debug
                     )
 
 @theonionbox.get('/<session_id>/logout.html')
@@ -669,7 +786,7 @@ def get_logout(session_id):
         box_events.log('{}@{}: Active LogOut!'.format(session.id_short(), session.remote_addr()))
         box_sessions.delete(session_id)
     else:
-        box_events.log('LogOut requested from unknown client: {}@{}'.format(session_id, request.remote_addr))
+        box_events.log('LogOut requested from unknown client: {}@{}'.format(make_short_id(session_id), request.remote_addr))
 
     redirect('/')
 
@@ -705,7 +822,7 @@ def post_data(session_id):
             else:
                 box_events.log('Reconnection performed; Tor is alive: {}'.format(tor.is_alive()))
 
-        limit_max = 500  # should be enough to fil  l the chart immediately
+        limit_max = 500  # should be enough to fill the chart immediately
         its_now = int(box_time()) * 1000  # JS!
 
         pull_full = (request.forms.get('full', '0') == '1')
@@ -748,7 +865,7 @@ def post_data(session_id):
 
         session['last_LD'] = its_now
 
-        # The Messages
+        # The Messages from Tor
         runlevel= request.forms.get('runlevel', None)
 
         if runlevel is not None:
@@ -757,6 +874,16 @@ def post_data(session_id):
 
             for key in rl_dict:
                 event_switch(session_id, key, rl_dict[key])
+
+        # The Messages from TheOnionBox
+        runlevel = request.forms.get('box', None)
+
+        if runlevel is not None:
+
+            rl_dict = json.JSONDecoder().decode(runlevel)
+
+            for key in rl_dict:
+                event_switch(session_id, 'BOX|' + key, rl_dict[key])
 
         log_list = box_events.get_events(session_id)
 
@@ -793,11 +920,24 @@ def post_data(session_id):
                 'bandwidth_burst': onionoo.get_details('bandwidth_burst'),
                 'observed_bandwidth': onionoo.get_details('observed_bandwidth'),
 
-                'bw': onionoo.get_bandwidth()
+                'bw': onionoo.get_bandwidth(),
+                'weights': onionoo.get_weights()
             }
+
+            # print(onionoo.get_weights())
 
             raw_data_dict['oo'] = oo_data
             session['last_oo'] = int(onionoo.timestamp())
+
+            # updating our long term data information as well
+            cumtor_values = {'d3': cum3d.get_values(),
+                             'w1': cum1w.get_values(),
+                             'm1': cum1m.get_values(),
+                             'm3': cum3m.get_values(),
+                             'y1': cum1y.get_values(),
+                             'y5': cum5y.get_values()}
+
+            raw_data_dict['ltd'] = cumtor_values
 
         # Now json everything... and return it!
         transfer_data = json.JSONEncoder().encode(raw_data_dict)
@@ -805,25 +945,28 @@ def post_data(session_id):
 
     if action == 'refresh_onionoo':
 
-        if onionoo.query(tor_info['tor/fingerprint']):
+        refresh_onionoo()
+        return
 
-            # create the data...
-            oo_data = {
-             'running': onionoo.get_details('running'),
-             'consensus_weight': onionoo.get_details('consensus_weight'),
-             'last_seen': onionoo.get_details('last_seen'),
-             'first_seen': onionoo.get_details('first_seen'),
-             'bw': onionoo.get_bandwidth()
-            }
-
-            session['last_oo'] = onionoo.timestamp()
-
-            # Now json everything... and return it!
-            transfer_data = json.JSONEncoder().encode(oo_data)
-            return transfer_data
-
-        else:
-            return HTTPError(500)
+        # if onionoo.query(tor_info['tor/fingerprint']):
+        #
+        #     # create the data...
+        #     oo_data = {
+        #      'running': onionoo.get_details('running'),
+        #      'consensus_weight': onionoo.get_details('consensus_weight'),
+        #      'last_seen': onionoo.get_details('last_seen'),
+        #      'first_seen': onionoo.get_details('first_seen'),
+        #      'bw': onionoo.get_bandwidth()
+        #     }
+        #
+        #     session['last_oo'] = onionoo.timestamp()
+        #
+        #     # Now json everything... and return it!
+        #     transfer_data = json.JSONEncoder().encode(oo_data)
+        #     return transfer_data
+        #
+        # else:
+        #     return HTTPError(500)
 
     return HTTPError(404)
 
@@ -887,8 +1030,15 @@ def handle_livedata(event):
                                   , bytes_read=event.read
                                   , bytes_written=event.written)
 
-    # Test: Filling the LongTerm Storage
-    # dbmanager.save(event.arrived_at, event.written, event.read)
+    # Filling the LongTerm Storage
+
+    for key, cumtor in cumtors.items():
+        cumtor.cumulate(timestamp=event.arrived_at,
+                        r=event.read, w=event.written)
+
+#        if box_debug:
+#            if key == '3d':
+#                print(cumtor.get_status())
 
     return True
 
@@ -950,27 +1100,6 @@ def request_bw_data():
     return
 
 
-def refresh_onionoo():
-
-    from random import randint
-    import time
-    its_now = box_time()
-    this_hour = its_now - (its_now % 3600)
-    next_run = int(this_hour) + 3600 + randint(0, 3590)
-
-    if onionoo.query(tor_info['tor/fingerprint']):
-
-        print("Now: {}".format(time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime(its_now))))
-        print("Next: {}".format(time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime(next_run))))
-        print("Diff: {}s".format(next_run - its_now))
-
-    global timer_onionoo
-    if timer_onionoo is not None:
-        timer_onionoo.cancel()
-    timer_onionoo = Timer(next_run - its_now, refresh_onionoo)
-    timer_onionoo.start()
-
-    return
 
 
 # prepare the message handlers for the TOR messages
@@ -1024,7 +1153,20 @@ def event_switch_off(session_id, runlevel):
 # Custom Server Adapters to allow shutdown() of the servers
 #
 from bottle import ServerAdapter
+from wsgiref.simple_server import WSGIRequestHandler
 
+# patched handler to output messages via our event_manager
+class box_FixedDebugHandler(WSGIRequestHandler):
+
+    def address_string(self): # Prevent reverse DNS lookups please.
+        return self.client_address[0]
+
+    def log_request(*args, **kw):
+            return WSGIRequestHandler.log_request(*args, **kw)
+
+    def log_message(self, format, *args):
+        payload = format % args
+        box_events.debug("{}: {}".format(self.address_string(), payload))
 
 class ShutDownAdapter(object):
     server = None
@@ -1065,6 +1207,7 @@ class ShutDownAdapter(object):
 #     def shutdown(self):
 #         print("shutting down!")
 #         self.server.shutdown()
+
 
 # Our WSGIRefServer - supporting SSL!
 class BoxWSGIRefServer(WSGIRefServer, ShutDownAdapter):
@@ -1176,14 +1319,11 @@ class BoxCherryPyServer(ServerAdapter, ShutDownAdapter):
 # showing the current day
 def job_NewDayNotification():
 
-    from datetime import datetime
-
     timestamp = box_time()
     box_events.log("----- Today is {}. -----".format(datetime.fromtimestamp(timestamp).strftime('%A, %Y-%m-%d')))
     return
 
-box_cron.add_job(job_NewDayNotification, 'cron', hour='0', minute='0', second='0')
-box_cron.start()
+box_cron.add_job(job_NewDayNotification, 'cron', id='ndn', hour='0', minute='0', second='0')
 
 
 
@@ -1196,7 +1336,9 @@ timer_housekeeping = None
 housekeeping_interval = 5  # seconds
 
 # NTP time is used to compensate for server clock adjustments
-ntp_countdown = 24*60*60/housekeeping_interval*3  # tree times a day
+box_cron.add_job(update_time_deviation, 'interval', hours=8)
+
+
 bw_countdown = 100
 
 
@@ -1290,16 +1432,16 @@ def session_housekeeping():
     #     if tor_password is not None:
     #         check('TRB', tor_password)
 
-    # 5: request the time from an NTP server to compensate the server clock
-    global ntp_countdown
-
-    if ntp_countdown < 0:
-
-        update_time_deviation()
-        ntp_countdown = 1000
-
-    else:
-        ntp_countdown -= 1
+    # # 5: request the time from an NTP server to compensate the server clock
+    # global ntp_countdown
+    #
+    # if ntp_countdown < 0:
+    #
+    #     update_time_deviation()
+    #     ntp_countdown = 1000
+    #
+    # else:
+    #     ntp_countdown -= 1
 
     # 6: update tor_info
     if tor.is_authenticated():
@@ -1322,12 +1464,13 @@ def sigint_handler(signal, frame):
 
 def exit_procedure(quit=True):
 
+    save_longterm_data()
+
     if timer_housekeeping:
         timer_housekeeping.cancel()
 
-    if timer_onionoo is not None:
-        timer_onionoo.cancel()
-
+    if box_cron:
+        box_cron.shutdown()
 
 #    if dbmanager:
 #        dbmanager.close()
@@ -1480,10 +1623,11 @@ if __name__ == '__main__':
             box_events.log("Operating with WSGIRefServer in SSL mode!")
         else:
             # Standard
-            tob_server = BoxWSGIRefServer(host=box_host, port=box_port)
+            tob_server_options = {'handler_class': box_FixedDebugHandler}
+            tob_server = BoxWSGIRefServer(host=box_host, port=box_port, **tob_server_options)
             # tob_server = WSGIRefServer(host=box_host, port=box_port)
             box_events.log('Operating with the default WebServer!')
-        box_events.log("Warning: A single IE request can stall this server and thus the BOX!")
+        box_events.warn("A single IE request can stall this server and thus the BOX!")
 
     # register Keyboard Interrupt handler
     # for sig in (signal.SIGINT, signal.SIGABRT, signal.SIGTERM):

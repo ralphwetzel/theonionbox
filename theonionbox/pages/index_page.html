@@ -34,7 +34,7 @@
     FLAG_COLORS = {"Authority": "black", "BadExit": "red", "BadDirectory": "red", "Exit": "orange",
                    "Fast": "blue",      "Guard": "blue",     "HSDir": "deepskyblue",       "Named": "blue",
                    "Stable": "blue",      "Running": "green",  "Unnamed": "red",     "Valid": "green",
-                   "V2Dir": "black",       "V3Dir": "black", "Tor Communication Error": "red"}
+                   "V2Dir": "black",       "V3Dir": "black", "Tor Communication Error": "red", 'none': 'cyan'}
 
     VERSION_STATUS_COLORS = {"new": "blue", "new in series": "blue", "obsolete": "red", "recommended": "green",
                              "old": "red",  "unrecommended": "red",  "unknown": "cyan"}
@@ -91,7 +91,7 @@
     <nav class="navbar navbar-default navbar-fixed-top" style="padding: 50px 0px 0px 0px; background-color: #c9302c;">
         <div class="container-fluid collapse" id="network_error_warning" >
 
-            <p class="navbar-text" style="color: white;">A Network Error occured. Your connections to the server seems to be down. Try to reload the page...</p>
+            <p class="navbar-text" style="color: white;">A Network Error occured. Your connections to the server seems to be down. 'Logout' to reconnect...</p>
 
         </div><!-- /.container-fluid -->
     </nav>
@@ -296,6 +296,18 @@
                             end
                             fs += '<code style="color: '+ FLAG_COLORS[flag] + ';">' + flag + '</code>'
                             end
+
+                        if (len(tor_info['tor/flags']) == 1) and (tor_info['tor/flags'][0] == 'none'):
+                            a_o = get('accounting_on')
+                            if a_o == True:
+                                a_s = get('accounting_stats')
+                                if a_s.status != 'awake':
+                                    fs += ' | could be due to '
+                                    fs += '<a href="#accounting">Hibernation Status</a>'
+                                    fs += ' <code style="color: green;">' + a_s.status + '</code>'
+                                end
+                            end
+                        end
                     %>
                     {{!fs}}
                 </p>
@@ -326,7 +338,7 @@
         <hr>
 
         <div class="collapse" id="oo_collapse">
-        {{!header_row('Tor', 'Network Status', 'network')}}
+        {{!header_row('Onionoo', 'Network Status', 'network')}}
         <div class="row">
             <div class="{{box_datum_grid}}">
                 <p>Status Time</p>
@@ -349,7 +361,11 @@
         </div>
         <div class="row">
             <div class="{{box_datum_grid}}">
-                Consensus Weight
+                <p id="show_consensus_charts" role="button"
+                       data-toggle="collapse" data-target=".cc_collapse" aria-expanded="false"
+                       aria-controls="cc_collapse">
+                    <span class="caret"></span> Consensus Weight
+                </p>
             </div>
             <div class="{{box_value_grid}}">
                 <p id="network_consensus_weight">
@@ -358,18 +374,60 @@
             </div>
             <div class="col-xs-1"></div>
         </div>
+        <div class="cc_collapse collapse">
+            <div class="row">
+                <div class="{{box_datum_grid}}"><p>Consensus Charts</p></div>
+                <div class="{{box_value_grid}}">
+                    <div class="btn-toolbar pull-left" role="group">
+                        <div class="btn-group" data-toggle="buttons" id="consensus_charts">
+                            <!-- labels for consensus charts will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xs-1"></div>
+            </div>
+            <div class="row">
+                <div class="{{box_datum_grid}}"><p></p></div>
+                <div class="{{box_value_grid}}">
+                    <canvas class="bw_chart box_canvas" id="chart-cw" width="300" height="150"></canvas>
+                </div>
+                <div class="col-xs-1"></div>
+            </div>
+            <div class="row">
+                <div class="{{box_datum_grid}}"><p></p></div>
+                <div class="{{box_value_grid}}">
+                    <canvas class="bw_chart box_canvas" id="chart-cwf" width="300" height="150"></canvas>
+                </div>
+                <div class="col-xs-1"></div>
+            </div>
+        </div>
+
         <div class="row">
             <div class="{{box_datum_grid}}">
-                Bandwidth
+                <p id="onionoo_bw" role="button"
+                       data-toggle="collapse" data-target="#more_onionoo_bw" aria-expanded="false"
+                       aria-controls="more_onionoo_bw">
+                    <span class="caret"></span> Bandwidth
+                </p>
             </div>
             <div class="{{box_value_grid}}">
-                <p id="network_advertised_bandwidth">
+                <p id="network_bandwidth">
                     %# {{onionoo_info['advertised_bandwidth']}}
                 </p>
             </div>
             <div class="col-xs-1"></div>
         </div>
 
+        <div class="row collapse" id="more_onionoo_bw">
+            <div class="{{box_datum_grid}}">
+            </div>
+            <div class="{{box_value_grid}}">
+                <p id="network_bandwidth_more">
+                    %# {{onionoo_info['advertised_bandwidth']}}
+                </p>
+            </div>
+            <div class="col-xs-1"></div>
+        </div>
         <div class="row">
             <div class="{{box_datum_grid}}">
                 First Seen
@@ -413,12 +471,12 @@
                             <input type="checkbox" autocomplete="off">Hours
                         </label>
                     </div>
-
+<!--
                     <label id="onionoo_more" class="btn btn-default" role="button" disabled="disabled"
                            data-toggle="collapse" data-target="#moreBandwidth" aria-expanded="false"
                            aria-controls="moreBandwidth">
                         More <span class="caret"></span>
-                    </label>
+                    </label> -->
 <!--
                     <label id="zoom" class="btn btn-default" role="button">
                         Zoom 1x
@@ -430,7 +488,7 @@
         </div>
 
         <div class="row collapse" id="moreBandwidth">
-            <div class="{{box_datum_grid}}"><p>Onionoo Data</p></div>
+            <div class="{{box_datum_grid}}"><p>Onionoo Charts</p></div>
             <div class="{{box_value_grid}}">
                 <div class="btn-toolbar pull-left" role="group">
                     <div class="btn-group" data-toggle="buttons" id="onionoo_charts">
@@ -526,7 +584,17 @@
 
         <div class="row">
             <div class="{{box_datum_grid}}">
-                <p>Level</p>
+
+                % box_debug = get('box_debug')
+                % if box_debug == True:
+                    <p id="show_box_messages" role="button"
+                           data-toggle="collapse" data-target="#box_message_selectors" aria-expanded="false"
+                           aria-controls="box_message_selectors">
+                        <span class="caret"></span> Level
+                    </p>
+                % else:
+                    <p>Level</p>
+                % end
             </div>
             <div class="{{box_value_grid}}">
 
@@ -537,18 +605,47 @@
                     <label class="btn btn-default message_selector" data-severity="INFO">
                         <input type="checkbox" autocomplete="off">INFO
                     </label>
-                    <label class="btn btn-info active" data-severity="NOTICE">
+                    <label class="btn btn-info active message_selector" data-severity="NOTICE">
                         <input type="checkbox" autocomplete="off" checked>NOTICE
                     </label>
-                    <label class="btn btn-warning active" data-severity="WARN">
+                    <label class="btn btn-warning active message_selector" data-severity="WARN">
                         <input type="checkbox" autocomplete="off" checked>WARN
                     </label>
-                    <label class="btn btn-danger active" data-severity="ERROR">
+                    <label class="btn btn-danger active message_selector" data-severity="ERROR">
                         <input type="checkbox" autocomplete="off" checked>ERROR
                     </label>
                 </div>
             </div>
         </div>
+
+        % if box_debug == True:
+
+            <div class="row collapse" id="box_message_selectors">
+                <div class="{{box_datum_grid}}">
+                    <p>Box Level</p>
+                </div>
+                <div class="{{box_value_grid}}">
+
+                    <div class="btn-group" data-toggle="buttons">
+                        <label class="btn btn-default box_messages" data-severity="DEBUG">
+                            <input type="checkbox" autocomplete="off" >DEBUG
+                        </label>
+                        <label class="btn btn-default box_messages" data-severity="INFO">
+                            <input type="checkbox" autocomplete="off">INFO
+                        </label>
+                        <label class="btn btn-info active box_messages" data-severity="NOTICE">
+                            <input type="checkbox" autocomplete="off" checked>NOTICE
+                        </label>
+                        <label class="btn btn-warning active box_messages" data-severity="WARN">
+                            <input type="checkbox" autocomplete="off" checked>WARN
+                        </label>
+                        <label class="btn btn-danger active box_messages" data-severity="ERROR">
+                            <input type="checkbox" autocomplete="off" checked>ERROR
+                        </label>
+                    </div>
+                </div>
+            </div>
+        % end
 
         <div class="row">
             <div class="{{box_datum_grid}}">
@@ -573,11 +670,16 @@
 
         <div class="row">
             <p class="text-center" style="color: grey; font-size: 10px; font-weight: 300">
-                The Onion Box | Version v{{box_version}} | Copyright &copy; 2015 Ralph Wetzel | License:
+                The Onion Box | Version v{{box_version}} | Copyright &copy; 2015 Ralph Wetzel |
                 <a role="button" data-toggle="collapse" href="#MIT"
-                   aria-expanded="false" aria-controls="MIT">
-                    MIT
-                </a>
+                   aria-expanded="false" aria-controls="MIT">License</a>: MIT
+            </p>
+        </div>
+        <div class="row">
+            <p class="text-center" style="color: grey; font-size: 10px; font-weight: 300">
+                Tor and the Tor Onion Logo are registered trademarks &reg of
+                <a href="https://torproject.org" target="_blank">The Tor Project</a>.
+                Onionoo is a service of The Tor Project.
             </p>
         </div>
 
@@ -623,6 +725,17 @@
                         LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
                         OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
                         SOFTWARE.
+                    </p>
+                </div>
+            </div>
+            {{!header_row('', 'Statement of Independence')}}
+            <div class="row">
+                <div class="{{box_datum_grid}}">
+                </div>
+                <div class="{{box_value_grid}}">
+                    <p>
+                        This product is produced independently from the Tor® anonymity software and carries no
+                        guarantee from The Tor Project about quality, suitability or anything else.
                     </p>
                 </div>
             </div>

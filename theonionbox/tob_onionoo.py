@@ -11,8 +11,11 @@ class OnionooManager(object):
     fp_hash = ''
     status = {}
     bw = {}
+    weights = {}
     _time = None
     _timestamp = None
+    events = None
+    # _timestamp_bw = None
 
     # https://onionoo.torproject.org/protocol.html#bandwidth
     history_object_keys = ['5_years', '1_year', '3_months', '1_month', '1_week', '3_days']
@@ -20,10 +23,13 @@ class OnionooManager(object):
 
     onionoo_lock = RLock()
 
-    def __init__(self, time_manager):
+    def __init__(self, time_manager, event_manager):
         self._time = time_manager
+        self.events = event_manager
 
     def query(self, fingerprint=None):
+
+        # print("Query start")
 
         if fingerprint:
             self.fingerprint = fingerprint
@@ -31,10 +37,11 @@ class OnionooManager(object):
             self.fp_hash = sha1(a2b_hex(self.fingerprint)).hexdigest()
 
         if self.fingerprint:
-            if self._query_details(self.fp_hash):
-                if self._query_bandwidth(self.fp_hash):
-                    self._timestamp = self._time()
-                    return True
+            self._query_details(self.fp_hash)
+            self._query_bandwidth(self.fp_hash)
+            self._query_weights(self.fp_hash)
+            self._timestamp = self._time()
+            return True
 
         return False
 
@@ -52,7 +59,7 @@ class OnionooManager(object):
         try:
             r = requests.get("https://onionoo.torproject.org/details", params=payload)
         except:
-            pass
+            self.events.info("Failed to query 'https://onionoo.torproject.org/details'. Trying again later...")
 
         if r is None or (r.status_code != requests.codes.ok):
             return False
@@ -60,13 +67,15 @@ class OnionooManager(object):
         self.onionoo_lock.acquire()
 
         j = r.json()
+        found = False
         if 'relays' in j:
             if len(j['relays']) == 1:
                 if 'fingerprint' in j['relays'][0]:
                     if j['relays'][0]['fingerprint'] == self.fingerprint:
                         self.status = j['relays'][0]
+                        found = True
 
-        if j['bridges']:
+        if not found and 'bridges' in j:
             if len(j['bridges']) == 1:
                 if 'hashed_fingerprint' in j['bridges'][0]:
                     if j['bridges'][0]['hashed_fingerprint'] == self.fp_hash:
@@ -106,10 +115,20 @@ class OnionooManager(object):
 
         return res
 
+    def get_weights(self):
+
+        self.onionoo_lock.acquire()
+        retval = self.weights
+        self.onionoo_lock.release()
+
+        return retval
+
     def timestamp(self):
         return self._timestamp
 
     def _query_bandwidth(self, hash, since=None):
+
+        # TODO: generalize this code !!
 
         # to prevent accidental misuse ;)
         if not self.fingerprint:
@@ -123,7 +142,9 @@ class OnionooManager(object):
         try:
             r = requests.get("https://onionoo.torproject.org/bandwidth", params=payload)
         except:
-            pass
+            self.events.info("Failed to query 'https://onionoo.torproject.org/bandwidth'. Trying again later...")
+
+        # print(r is None)
 
         if r is None or (r.status_code != requests.codes.ok):
             return False
@@ -136,13 +157,15 @@ class OnionooManager(object):
         except:
             pass
 
+        found = False
         if 'relays' in j:
             if len(j['relays']) == 1:
                 if 'fingerprint' in j['relays'][0]:
                     if j['relays'][0]['fingerprint'] == self.fingerprint:
                         query_result = j['relays'][0]
+                        found = True
 
-        if 'bridges' in j:
+        if not found and 'bridges' in j:
             if len(j['bridges']) == 1:
                 if 'hashed_fingerprint' in j['bridges'][0]:
                     if j['bridges'][0]['fingerprint'] == self.fp_hash:
@@ -178,6 +201,8 @@ class OnionooManager(object):
                 result.append([(data_timestamp - data_interval) * 1000, 0])
 
                 while data_index < data_count:
+                    if data[data_index] is None:
+                        data[data_index] = 0
                     result.append([data_timestamp * 1000, int(data[data_index]*data_factor)])
                     data_index += 1
                     data_timestamp += data_interval
@@ -216,7 +241,8 @@ class OnionooManager(object):
                 import datetime
 
                 while data_index < data_count:
-                    # print(datetime.datetime.fromtimestamp(data_timestamp).strftime('%Y-%m-%d %H:%M:%S'))
+                    if data[data_index] is None:
+                        data[data_index] = 0
                     result.append([data_timestamp * 1000, int(data[data_index]*data_factor)])
                     data_index += 1
                     data_timestamp += data_interval
@@ -258,3 +284,118 @@ class OnionooManager(object):
 
         # print("found: {}".format(found))
         return found
+
+    def _query_weights(self, hash, since=None):
+
+        # to prevent accidental misuse ;)
+        if not self.fingerprint:
+            return False
+
+        if not hash == self.fp_hash:
+            return False
+
+        payload = {'lookup': self.fp_hash}
+        r = None
+        try:
+            r = requests.get("https://onionoo.torproject.org/weights", params=payload)
+        except:
+            self.events.info("Failed to query 'https://onionoo.torproject.org/weights'. Trying again later...")
+
+        # print(r is None)
+
+        if r is None or (r.status_code != requests.codes.ok):
+            return False
+
+        query_result = {}
+
+        j = {}
+        try:
+            j = r.json()
+        except:
+            pass
+
+        found = False
+        if 'relays' in j:
+            if len(j['relays']) == 1:
+                if 'fingerprint' in j['relays'][0]:
+                    if j['relays'][0]['fingerprint'] == self.fingerprint:
+                        query_result = j['relays'][0]
+                        found = True
+
+        if not found and 'bridges' in j:
+            if len(j['bridges']) == 1:
+                if 'hashed_fingerprint' in j['bridges'][0]:
+                    if j['bridges'][0]['fingerprint'] == self.fp_hash:
+                        query_result = j['bridges'][0]
+
+        if not query_result:
+            return False
+
+        self.weights = {}
+
+        weights_to_unpack = {'consensus_weight': 'cw',
+                             'consensus_weight_fraction': 'cwf',
+                             'guard_probability': 'gp',
+                             'middle_probability': 'mp',
+                             'exit_probability': 'ep'}
+
+        self.onionoo_lock.acquire()
+
+        for key, value in weights_to_unpack.items():
+
+            wtup = query_result[key]
+            object_to_process_index = self._get_first_available_history_object_key_index(wtup)
+
+            while object_to_process_index is not None:
+
+                self.events.debug("Processing key {} of '{}':"
+                                  .format(self.result_object_keys[object_to_process_index], key))
+
+                result = self._unpack_onionoo_chart_object(wtup[self.history_object_keys[object_to_process_index]])
+
+                if not self.result_object_keys[object_to_process_index] in self.weights:
+                    self.weights[self.result_object_keys[object_to_process_index]] = {}
+
+                self.weights[self.result_object_keys[object_to_process_index]][value] = result
+                object_to_process_index = self._get_next_available_history_object_key_index(wtup, object_to_process_index)
+
+        self.onionoo_lock.release()
+
+        return True
+
+    def _unpack_onionoo_chart_object(self, oco):
+
+        result = []
+
+        data = oco['values']
+        data_index = 0
+        data_count = oco['count']
+        data_interval = oco['interval']
+        data_factor = oco['factor']
+
+        utc_timestruct = strptime(oco['first'], '%Y-%m-%d %H:%M:%S')
+        data_timestamp = timegm(utc_timestruct)
+
+        self.events.debug("*** First: {}, Count: {}, Interval: {}, Factor: {}"
+                          .format(oco['first'], data_count, data_interval, data_factor))
+
+        # to ensure the charts look nice #1
+        # result.append([(data_timestamp - data_interval) * 1000, 0])
+
+        while data_index < data_count:
+            # if data[data_index] is None:
+            #     data[data_index] = 0
+
+            value = data[data_index]
+            if value is None:
+                result.append([data_timestamp * 1000, None])
+            else:
+                result.append([data_timestamp * 1000, value*data_factor])
+
+            data_index += 1
+            data_timestamp += data_interval
+
+        # to ensure the charts look nice #2
+        # result.append([data_timestamp * 1000, 0])
+
+        return result

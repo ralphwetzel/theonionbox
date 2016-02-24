@@ -239,6 +239,22 @@ box_chart.prototype.render = function(canvas, time) {
                 return nm.getTime();
             }
         }
+        else if (chartOptions.grid.timeDividers == 'yearly') {
+
+            this_year = new Date(time);
+            this_year.setMinutes(0);
+            this_year.setHours(0);
+            this_year.setDate(1);
+            this_year.setMonth(1);
+
+            start_time = this_year.getTime();
+
+            var next_time_div = function (t) {
+                var ny = new Date(t);
+                ny.setFullYear(ny.getFullYear() - 1);
+                return ny.getTime();
+            }
+        }
 
         if (start_time) {
 
@@ -316,15 +332,24 @@ box_chart.prototype.render = function(canvas, time) {
       // Draw the line...
       context.beginPath();
       // Retain lastX, lastY for calculating the control points of bezier curves.
-      var firstX = 0, lastX = 0, lastY = 0;
+      var firstX = 0, lastX = 0, lastY = 0, has_null = false;
       for (var i = 0; i < dataSet.length && dataSet.length !== 1; i++) {
-        var x = timeToXPixel(dataSet[i][0]),
-            y = valueToYPixel(dataSet[i][1]);
+        var x = timeToXPixel(dataSet[i][0]), y = null;
+        var y_data = dataSet[i][1];
+        if (y_data != null) {
+            y = valueToYPixel(y_data);
+        } else {
+            has_null = true;
+        }
+
+        // console.log(x + ", " + y);
 
         if (i === 0) {
           firstX = x;
+          y = (y == null ? 0 : y)
           context.moveTo(x, y);
-        } else {
+        } else if (y != null) {
+
           switch (chartOptions.interpolation) {
             case "linear":
             case "line": {
@@ -354,8 +379,12 @@ box_chart.prototype.render = function(canvas, time) {
               break;
             }
             case "step": {
-              context.lineTo(x,lastY);
-              context.lineTo(x,y);
+                if (lastY == null) {
+                    context.moveTo(x,y);
+                } else {
+                    context.lineTo(x,lastY);
+                    context.lineTo(x,y);
+                }
               break;
             }
           }
@@ -365,7 +394,7 @@ box_chart.prototype.render = function(canvas, time) {
       }
 
       if (dataSet.length > 1) {
-        if (seriesOptions.fillStyle) {
+        if (seriesOptions.fillStyle && !has_null) {
           // Close up the fill region.
           context.lineTo(dimensions.width + seriesOptions.lineWidth + 1, lastY);
           context.lineTo(dimensions.width + seriesOptions.lineWidth + 1, dimensions.height + seriesOptions.lineWidth + 1);
@@ -482,6 +511,48 @@ box_chart.prototype.removeAllTimeSeries = function() {
 
 };
 
+/**
+* update the chart with one call
+*/
+box_chart.prototype.setDisplay = function(options) {
+
+    // copy paste from smoothie.js, from here ...
+    var Util = {
+        extend: function() {
+            arguments[0] = arguments[0] || {};
+            for (var i = 1; i < arguments.length; i++) {
+                for (var key in arguments[i]) {
+                    if (arguments[i].hasOwnProperty(key)) {
+                        if (typeof(arguments[i][key]) === 'object') {
+                            if (arguments[i][key] instanceof Array) {
+                                arguments[0][key] = arguments[i][key];
+                            } else {
+                                arguments[0][key] = Util.extend(arguments[0][key], arguments[i][key]);
+                            }
+                        } else {
+                            arguments[0][key] = arguments[i][key];
+                        }
+                    }
+                }
+            }
+            return arguments[0];
+        }
+    };
+    // ... to here!
+
+    this.removeAllTimeSeries();
+
+    this.options = Util.extend({}, this.options, options.chartOptions);
+    var tsl = options.timeseries.length;
+
+    for (var i = 0; i < tsl; ++i) {
+        var ts = options.timeseries[i];
+        if (ts.serie) {
+            this.addTimeSeries(ts.serie, ts.options);
+        }
+    }
+}
+
 function box_timeseries(options)
 {
     // to ensure that the new chartOptions (used for rendering) are handled correctly
@@ -497,3 +568,36 @@ box_timeseries.prototype.dropOldData = function(oldestValidTime, maxDataSetLengt
     if (this.options.dontDropOldData) { return; }
     TimeSeries.prototype.dropOldData.call(this, oldestValidTime, maxDataSetLength);
 };
+
+/*
+function box_display(options) {
+    this.options = Util.extend({}, box_display.defaultOptions, options)
+}
+
+box_display.defaultOptions = {
+
+    chartOptions: SmoothieChart.defaultChartOptions,
+    timeseries: []      // [ {serie: timeserie, options: {}}, {serie: ...}]
+}
+
+box_display.prototype.toChart(chart_name) = function() {
+
+    var chart = $(chart_name)
+
+    if (!chart.length) {
+        return;
+    }
+
+    chart.removeAllTimeSeries();
+    chart.mergeOptions(this.options.chartOptions);
+
+    var tsl = this.options.timeseries.length;
+
+    for (var i = 0; i < tsl; ++i) {
+        var ts = this.option.timeseries[i];
+        if (ts.serie) {
+            chart.addTimeSeries(ts.serie, ts.options);
+        }
+    }
+}
+*/

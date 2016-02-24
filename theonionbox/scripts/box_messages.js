@@ -112,10 +112,27 @@ function format_date(date_value)
     return out;
 }
 
-function box_LogSelector() {
+function box_LogSelector(options) {
 
     this.status = {'DEBUG': false, 'INFO': false, 'NOTICE': true, 'WARN': true, 'ERROR': true};
 
+    if (options) {
+        if (options.debug) {
+            this.status.DEBUG = options.debug;
+        }
+        if (options.info) {
+            this.status.INFO = options.info;
+        }
+        if (options.NOTICE) {
+            this.status.NOTICE = options.notice;
+        }
+        if (options.warn) {
+            this.status.WARN = options.warn;
+        }
+        if (options.error) {
+            this.status.ERROR = options.error;
+        }
+    }
 }
 
 box_LogSelector.prototype.set = function(key, value) {

@@ -119,11 +119,11 @@ body {
     vertical-align: top;
 }
 
-.DEBUG { color: Gray; display: block; }
-.INFO {display: block;}
+.DEBUG, .BOX_DEBUG { color: Gray; display: block; }
+.INFO, .BOX_INFO {display: block;}
 .NOTICE {display: block;}
-.WARN { color: OrangeRed; display: block;}
-.ERR { color: Red; display: block;}
+.WARN, .BOX_WARN { color: OrangeRed; display: block;}
+.ERR, .BOX_ERR { color: Red; display: block;}
 .BOX { color: Blue; display: block;}
 .THIS { color: #778899; display: block;}
 
