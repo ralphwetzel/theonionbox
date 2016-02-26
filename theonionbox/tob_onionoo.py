@@ -85,14 +85,16 @@ class OnionooManager(object):
 
         return True
 
-    def get_details(self, datum):
-        if datum in self.status:
+    def get_details(self, datum, default=None):
 
+        if datum in self.status:
             self.onionoo_lock.acquire()
             retval = self.status[datum]
             self.onionoo_lock.release()
 
             return retval
+        else:
+            return default
 
     def get_bandwidth(self):
 
@@ -238,7 +240,7 @@ class OnionooManager(object):
                 # to ensure the charts look nice #1
                 result.append([(data_timestamp - data_interval) * 1000, 0])
 
-                import datetime
+                # import datetime
 
                 while data_index < data_count:
                     if data[data_index] is None:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-__version__ = '2.0rc1'
+__version__ = '2.0rc2'
 
 # required pip's for raspberrypi
 # stem
@@ -349,6 +349,7 @@ tor_info_lock = RLock()
 
 def update_tor_info():
 
+    import stem
     from stem.version import Version
     import platform
 
@@ -377,23 +378,23 @@ def update_tor_info():
 
             if tor_info['tor/fingerprint'] is not '':
                 _result = None
+                tor_info['tor/flags'] = ['none']
                 # There's some ugly behaviour in GETINFO("ns/id/...")
                 # see https://trac.torproject.org/projects/tor/ticket/7646
                 # and https://trac.torproject.org/projects/tor/ticket/7059
                 # This behaviour seems to be uncoverable!
                 try:
                     _result = tor.get_info("ns/id/{}".format(tor_info['tor/fingerprint']))
-                except Exception as exc:
+                except stem.InvalidArguments as exc:
+                    # An exception is created and raised here by stem if the network doesn't know us.
+                    # It happens if the network thinks we're not running (which might be obvious)
+                    # and as well IF WE'RE IN HIBERNATION (which might not be so obvious)!
                     pass
-                    # tor_info['tor/flags'] = ["Tor Communication Error"]
                 else:
                     _result = _result.split('\n')
                     for line in _result:
                         if line.startswith("s "):
                             tor_info['tor/flags'] = line[2:].split()
-
-                if ('tor/flags' not in tor_info) or len(tor_info['tor/flags']) < 1:
-                    tor_info['tor/flags'] = ['none']
 
             tor_info['tor/orListenAddress'] = ""
             _orla = tor.get_conf('ORListenAddress', None)
@@ -633,7 +634,7 @@ def get_start():
     login['auth'] = 'digest' if tor_password else 'basic'
     login_template = "pages/login_page.html"
 
-    box_events.log("{}@{} is knocking for Login; '{}' procedure provided."
+    box_events.info("{}@{} is knocking for Login; '{}' procedure provided."
                    .format(login.id_short(), login.remote_addr(), login['auth']))
 
     return template(login_template
@@ -679,7 +680,7 @@ def get_login(login_id, login_file):
         # at this stage we have a successful login
         # and switch to standard session management
         session = box_sessions.create(login.remote_addr())
-        box_events.log("{}@{} received session token '{}'; immediate response expected."
+        box_events.info("{}@{} received session token '{}'; immediate response expected."
                        .format(login.id_short(), login.remote_addr(), session.id_short()))
         box_logins.delete(login.id())
 
@@ -712,7 +713,7 @@ def get_index(session_id):
 
         delay = box_time() - session.last_visit
         if delay > 1.0:  # seconds
-            box_events.log('{}@{}: Login to Session delay expired. Session canceled.'
+            box_events.info('{}@{}: Login to Session delay expired. Session canceled.'
                            .format(session.id_short(), session.remote_addr()))
             box_sessions.delete(session.id())
             redirect('/')
@@ -910,7 +911,8 @@ def post_data(session_id):
 
             oo_data = {
                 'timestamp': onionoo.timestamp() * 1000,
-                'running': onionoo.get_details('running'),
+                'running': onionoo.get_details('running', False),
+                'hibernating': onionoo.get_details('hibernating', False),
                 'last_restarted': lr * 1000,
                 'consensus_weight': onionoo.get_details('consensus_weight'),
                 'last_seen': onionoo.get_details('last_seen'),
@@ -919,6 +921,10 @@ def post_data(session_id):
                 'bandwidth_rate': onionoo.get_details('bandwidth_rate'),
                 'bandwidth_burst': onionoo.get_details('bandwidth_burst'),
                 'observed_bandwidth': onionoo.get_details('observed_bandwidth'),
+                'cwf': onionoo.get_details('consensus_weight_fraction', 0),
+                'gp': onionoo.get_details('guard_probability', 0),
+                'mp': onionoo.get_details('middle_probability', 0),
+                'ep': onionoo.get_details('exit_probability', 0),
 
                 'bw': onionoo.get_bandwidth(),
                 'weights': onionoo.get_weights()
@@ -1366,7 +1372,7 @@ def session_housekeeping():
 
             login = box_logins.recall_unsafe(expired_login_id)
             if login is not None:
-                box_events.log('{}@{}: Login request expired.'.format(login.id_short(), login.remote_addr()))
+                box_events.info('{}@{}: Login request expired.'.format(login.id_short(), login.remote_addr()))
             box_logins.delete(expired_login_id)
 
     # 2.2: check for expired session

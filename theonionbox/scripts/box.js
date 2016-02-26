@@ -439,27 +439,33 @@ var bandwidth_shows = 'hd';
 var bandwidth_player;
 var messages_player;
 
+var pull_error_counter = 0;
+
 function pull_error(jqXHR, textStatus, errorThrown)
 {
     if (jqXHR.status == 404 | jqXHR.status == 500) {
         window.location.href = "/{{session_id}}/logout.html";
     }
     else if (textStatus == 'error' && jqXHR.status == 0 && jqXHR.readyState == 0) {
-        $('#network_error_warning').collapse('show');
 
-        its_now = new Date().getTime();
+        pull_error_counter += 1;
 
-        read_data_hd.append(its_now, 0);
-        read_data_ld.append(its_now, 0);
-        written_data_hd.append(its_now, 0);
-        written_data_ld.append(its_now, 0);
+        if (pull_error_counter > 2) {
+            $('#network_error_warning').collapse('show');
 
-    %  for count in range(cpu_count):
-        proc_data_{{count}}.append(its_now, 0);
-    % end
+            its_now = new Date().getTime();
 
-        mem_data.append(its_now, 0);
+            read_data_hd.append(its_now, 0);
+            read_data_ld.append(its_now, 0);
+            written_data_hd.append(its_now, 0);
+            written_data_ld.append(its_now, 0);
 
+        %  for count in range(cpu_count):
+            proc_data_{{count}}.append(its_now, 0);
+        % end
+
+            mem_data.append(its_now, 0);
+        }
     }
     else {
         console.log('error: ' + jqXHR.status);
@@ -470,6 +476,8 @@ function process_livedata(json_text)
 {
     var json_data = JSON.parse(json_text);
     var client_delta = 0
+
+    pull_error_counter = 0;
 
     if (json_data && json_data.tick)
     {
@@ -631,11 +639,53 @@ function update_onionoo(json_data, is_json)
 
     // console.log(json_data.timestamp + " " + format_date(json_data.timestamp));
 
-    var txt = json_data.running ? 'True' : 'False';
-    txt += ' | since ' + format_date(json_data.last_restarted);
+    var txt = '';
+    if (json_data.running == true) {
+        txt = 'True | since ' + format_date(json_data.last_restarted);
+    } else {
+        txt = 'False | Last seen ' + json_data.last_seen;
+        txt += json_data.hibernating ? ' | Hibernation mode is activated.' : ''
+    }
     $('#network_running').text(txt);
 
-    $('#network_consensus_weight').text(json_data.consensus_weight);
+
+    txt = '';
+
+/*
+    if (json_data.cwf > 0) {
+        txt = "<span style='color: #AFD8F8'>" + 'Consensus Weight Fraction: ' + json_data.cwf + '%</span>'
+    }
+    if (json_data.mp > 0) {
+        txt += (txt.length > 0) ? ' | ' : ''
+        txt += "<span style='color: #EDC240'>" + 'Middle Probability: ' + json_data.mp + '%</span>'
+    }
+    if (json_data.ep > 0) {
+        txt += (txt.length > 0) ? ' | ' : ''
+        txt += "<span style='color: #4CA74C'>" + 'Exit Probability: ' + json_data.ep + '%</span>'
+    }
+    if (json_data.gp > 0) {
+        txt += (txt.length > 0) ? ' | ' : ''
+        txt += "<span style='color: #CB4B4B'>" + 'Guard Probability: ' + json_data.gp + '%</span>'
+    }
+*/
+
+    var to_percent = function(value) {
+        if (value == 0) {
+            return 0;
+        }
+
+        value *= 100;
+        var retval = value.toFixed(-Math.floor(Math.log10(Math.abs(value))));
+        return retval;
+    }
+
+    txt = "Current: <span style='color: #EDC240'>" + 'Middle: ' + to_percent(json_data.mp) + '%</span>'
+    txt += " | <span style='color: #4CA74C'>" + 'Exit: ' + to_percent(json_data.ep) + '%</span>'
+    txt += " | <span style='color: #CB4B4B'>" + 'Guard: ' + to_percent(json_data.gp) + '%</span>'
+    txt += " | <span style='color: #AFD8F8'>" + 'Consensus Weight Fraction: ' + to_percent(json_data.cwf) + '%</span>'
+    $('#network_probabilities').html(txt);
+
+    $('#network_consensus_weight').text('Current: ' + json_data.consensus_weight);
 
     $('#network_bandwidth').text('Advertised: ' + prettyNumber(json_data.advertised_bandwidth, '', 'si') + '/s');
 
@@ -803,8 +853,13 @@ function update_onionoo(json_data, is_json)
             }
 
             $('.cc_collapse').on('shown.bs.collapse', function () {
-                console.log('on.shown.bs.collapse');
-                $(window).trigger('resize');            })
+                $(window).trigger('resize');
+                })
+
+        }
+
+        if (last_inserted_button && last_inserted_button.length) {
+            $('.cc_collapse').collapse('show');
         }
 
         if (consensus_shows == '' && last_inserted_button && last_inserted_button.length) {
@@ -815,6 +870,8 @@ function update_onionoo(json_data, is_json)
                 if (last_inserted_button && last_inserted_button.length) {
                     last_inserted_button.click();
                 }
+            } else {
+                cb.click();
             }
         }
 
@@ -833,7 +890,7 @@ function update_onionoo(json_data, is_json)
     }
 
     $("#oo_collapse").collapse('show');
-
+    $("#oo_after").after($('<li style="font-size: 15px;"><a href="#network">Network Status</a></li>'));
 
 }
 
@@ -1177,6 +1234,7 @@ function set_consensus_display(selector)
 
         consensus_weight_fraction.setDisplay(style_cwf);
         consensus_weight_fraction.options.yMaxFormatter = function(data, precision) {
+            if (data == 0) { return "0 %"; }
             data *= 100;
             var retval = data.toFixed(-Math.floor(Math.log10(Math.abs(data))));
             return retval + " %";
@@ -1186,7 +1244,6 @@ function set_consensus_display(selector)
         consensus_shows = selector;
     }
 }
-
 
 %# // helper functions
 
