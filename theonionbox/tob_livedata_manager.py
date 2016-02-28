@@ -193,6 +193,8 @@ class Cumulator(object):
     interval = 0
     interval_js = 0
 
+    changed = False
+
     def __init__(self, interval, initial_status=None, max_count=None, time_manager=None, event_manager=None):
 
         if event_manager is not None:
@@ -241,10 +243,17 @@ class Cumulator(object):
 #        else:
 #            self.events.info('Cumulator {}: Protocol version used for initialisation == {};'
 #                             ' Not supported! Must be == 1'.format(interval, initial_status['protocol']))
+        self.changed = True
 
+    def get_values(self, only_if_changed=False):
+        if only_if_changed is True and self.changed is False:
+            return None
 
-    def get_values(self):
+        self.changed = False
         return self.values
+
+    def get_changed(self):
+        return self.changed
 
     def get_status(self):
 
@@ -310,3 +319,4 @@ class Cumulator(object):
             self.interval_start = int(floor(timestamp / self.interval))
             self.baskets = kargs
             self.count = 1
+            self.changed = True
