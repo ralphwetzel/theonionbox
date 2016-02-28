@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-__version__ = '2.0rc2'
+__version__ = '2.0rc3'
 
 # required pip's for raspberrypi
 # stem
@@ -935,15 +935,15 @@ def post_data(session_id):
             raw_data_dict['oo'] = oo_data
             session['last_oo'] = int(onionoo.timestamp())
 
-            # updating our long term data information as well
-            cumtor_values = {'d3': cum3d.get_values(),
-                             'w1': cum1w.get_values(),
-                             'm1': cum1m.get_values(),
-                             'm3': cum3m.get_values(),
-                             'y1': cum1y.get_values(),
-                             'y5': cum5y.get_values()}
+        # updating our long term data information as well
+        cumtor_values = {'d3': cum3d.get_values(only_if_changed=True),
+                         'w1': cum1w.get_values(only_if_changed=True),
+                         'm1': cum1m.get_values(only_if_changed=True),
+                         'm3': cum3m.get_values(only_if_changed=True),
+                         'y1': cum1y.get_values(only_if_changed=True),
+                         'y5': cum5y.get_values(only_if_changed=True)}
 
-            raw_data_dict['ltd'] = cumtor_values
+        raw_data_dict['ltd'] = cumtor_values
 
         # Now json everything... and return it!
         transfer_data = json.JSONEncoder().encode(raw_data_dict)

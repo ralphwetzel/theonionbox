@@ -648,27 +648,6 @@ function update_onionoo(json_data, is_json)
     }
     $('#network_running').text(txt);
 
-
-    txt = '';
-
-/*
-    if (json_data.cwf > 0) {
-        txt = "<span style='color: #AFD8F8'>" + 'Consensus Weight Fraction: ' + json_data.cwf + '%</span>'
-    }
-    if (json_data.mp > 0) {
-        txt += (txt.length > 0) ? ' | ' : ''
-        txt += "<span style='color: #EDC240'>" + 'Middle Probability: ' + json_data.mp + '%</span>'
-    }
-    if (json_data.ep > 0) {
-        txt += (txt.length > 0) ? ' | ' : ''
-        txt += "<span style='color: #4CA74C'>" + 'Exit Probability: ' + json_data.ep + '%</span>'
-    }
-    if (json_data.gp > 0) {
-        txt += (txt.length > 0) ? ' | ' : ''
-        txt += "<span style='color: #CB4B4B'>" + 'Guard Probability: ' + json_data.gp + '%</span>'
-    }
-*/
-
     var to_percent = function(value) {
         if (value == 0) {
             return 0;
@@ -679,13 +658,14 @@ function update_onionoo(json_data, is_json)
         return retval;
     }
 
-    txt = "Current: <span style='color: #EDC240'>" + 'Middle: ' + to_percent(json_data.mp) + '%</span>'
-    txt += " | <span style='color: #4CA74C'>" + 'Exit: ' + to_percent(json_data.ep) + '%</span>'
-    txt += " | <span style='color: #CB4B4B'>" + 'Guard: ' + to_percent(json_data.gp) + '%</span>'
-    txt += " | <span style='color: #AFD8F8'>" + 'Consensus Weight Fraction: ' + to_percent(json_data.cwf) + '%</span>'
+    txt = "Current: <span style='color: #EDC240'>" + 'Middle ' + to_percent(json_data.mp) + '%</span>'
+    txt += " | <span style='color: #4CA74C'>" + 'Exit ' + to_percent(json_data.ep) + '%</span>'
+    txt += " | <span style='color: #CB4B4B'>" + 'Guard ' + to_percent(json_data.gp) + '%</span>'
+    txt += " | <span style='color: #AFD8F8'>" + 'Consensus Weight Fraction ' + to_percent(json_data.cwf) + '%</span>'
     $('#network_probabilities').html(txt);
 
-    $('#network_consensus_weight').text('Current: ' + json_data.consensus_weight);
+    txt = "Current: <span style='color: #000099'>" + 'Consensus Weight ' + json_data.consensus_weight + '</span>'
+    $('#network_consensus_weight').html(txt);
 
     $('#network_bandwidth').text('Advertised: ' + prettyNumber(json_data.advertised_bandwidth, '', 'si') + '/s');
 
@@ -829,7 +809,7 @@ function update_onionoo(json_data, is_json)
                             }
                             button_code += ' box_chart_button\"';
                             button_code += ' onclick=\"set_consensus_display(\'' + key + '\')\">';
-                            button_code += '<input type=\"radio\" autocomplete=\"off\">';
+                            button_code += '<input type=\"radio\" autocomplete=\"off\" value=\"' + key + '\">';
                             button_code += history_chart_labels[i];
                             button_code += '</label>';
 
@@ -875,6 +855,16 @@ function update_onionoo(json_data, is_json)
             }
         }
 
+        // safety procedure!
+        if (!$("#consensus_charts label.active input")) {
+            for (len = history_chart_keys.length, i=len; i>0; --i) {
+                btn = "cw_" + history_chart_keys[i-1];
+                if ($("btn").length) {
+                    $("btn").click();
+                }
+            }
+        }
+
 /*
         if (last_inserted_button && last_inserted_button.length) {
             $('#moreConsensus').collapse('show');
@@ -887,10 +877,11 @@ function update_onionoo(json_data, is_json)
 
         }
 */
+        $("#oo_collapse").collapse('show');
+        if (!$("#oo_network").length) {
+            $("#oo_after").after($('<li id="oo_network" style="font-size: 15px;"><a href="#network">Network Status</a></li>'));
+        }
     }
-
-    $("#oo_collapse").collapse('show');
-    $("#oo_after").after($('<li style="font-size: 15px;"><a href="#network">Network Status</a></li>'));
 
 }
 
@@ -1178,71 +1169,75 @@ function set_download_display(selector)
 var consensus_shows = '';
 function set_consensus_display(selector)
 {
-    if (selector == consensus_shows) { return; }
+    console.log('CC: ' + selector);
 
     var charts = ['d3', 'w1', 'm1', 'm3', 'y1', 'y5'];
+    if ($.inArray(selector, charts) < 0) { return False; }
 
-    if ($.inArray(selector, charts) > -1) {
-        s = selector;
+    var s = selector;
 
-        var style_cw = {
-            chartOptions: chart_style[s],
-            timeseries: [ {
-                serie: consensus_weight_data_history[s],
-                options: {
-                    lineWidth:1,
-                    strokeStyle:'rgb(0, 0, 153)',
-                    // fillStyle:'rgba(0, 0, 153, 0.30)'
-                }
-            } ]
-        };
+    // to ensure that the correct button is always shown 'pressed'
+    $('cw_' + s).addClass('active');
+
+    if (s == consensus_shows) { return; }
+
+    var style_cw = {
+        chartOptions: chart_style[s],
+        timeseries: [ {
+            serie: consensus_weight_data_history[s],
+            options: {
+                lineWidth:1,
+                strokeStyle:'rgb(0, 0, 153)',
+                // fillStyle:'rgba(0, 0, 153, 0.30)'
+            }
+        } ]
+    };
 
 //        console.log(consensus_weight_fraction_history[s]);
 
-        var style_cwf = {
-            chartOptions: chart_style[s],
-            timeseries: [{
-                serie: guard_probability_history[s],
-                options: {
-                    lineWidth:1,
-                    strokeStyle:'rgb(203, 75, 75)',
-                    // fillStyle:'rgba(0, 0, 153, 0.30)'
-                } }, {
-                serie: middle_probability_history[s],
-                options: {
-                    lineWidth:1,
-                    strokeStyle:'rgb(237, 194, 64)',
-                    // fillStyle:'rgba(0, 0, 153, 0.30)'
-                } }, {
-                serie: consensus_weight_fraction_history[s],
-                options: {
-                    lineWidth:1,
-                    strokeStyle:'rgb(175, 216, 248)',
-                    // fillStyle:'rgba(0, 0, 153, 0.30)'
-                } }, {
-                serie: exit_probability_history[s],
-                options: {
-                    lineWidth:1,
-                    strokeStyle:'rgb(76, 167, 76)',
-                    // fillStyle:'rgba(0, 0, 153, 0.30)'
-                } }
-            ]
-        };
+    var style_cwf = {
+        chartOptions: chart_style[s],
+        timeseries: [{
+            serie: guard_probability_history[s],
+            options: {
+                lineWidth:1,
+                strokeStyle:'rgb(203, 75, 75)',
+                // fillStyle:'rgba(0, 0, 153, 0.30)'
+            } }, {
+            serie: middle_probability_history[s],
+            options: {
+                lineWidth:1,
+                strokeStyle:'rgb(237, 194, 64)',
+                // fillStyle:'rgba(0, 0, 153, 0.30)'
+            } }, {
+            serie: consensus_weight_fraction_history[s],
+            options: {
+                lineWidth:1,
+                strokeStyle:'rgb(175, 216, 248)',
+                // fillStyle:'rgba(0, 0, 153, 0.30)'
+            } }, {
+            serie: exit_probability_history[s],
+            options: {
+                lineWidth:1,
+                strokeStyle:'rgb(76, 167, 76)',
+                // fillStyle:'rgba(0, 0, 153, 0.30)'
+            } }
+        ]
+    };
 
-        consensus_weight.setDisplay(style_cw);
-        consensus_weight.options.yMaxFormatter = function(data, precision) { return parseInt(data); };
+    consensus_weight.setDisplay(style_cw);
+    consensus_weight.options.yMaxFormatter = function(data, precision) { return parseInt(data); };
 
-        consensus_weight_fraction.setDisplay(style_cwf);
-        consensus_weight_fraction.options.yMaxFormatter = function(data, precision) {
-            if (data == 0) { return "0 %"; }
-            data *= 100;
-            var retval = data.toFixed(-Math.floor(Math.log10(Math.abs(data))));
-            return retval + " %";
-        };
-        consensus_weight_fraction.options.grid.fillStyle = '#FFFFFF',
+    consensus_weight_fraction.setDisplay(style_cwf);
+    consensus_weight_fraction.options.yMaxFormatter = function(data, precision) {
+        if (data == 0) { return "0 %"; }
+        data *= 100;
+        var retval = data.toFixed(-Math.floor(Math.log10(Math.abs(data))));
+        return retval + " %";
+    };
+    consensus_weight_fraction.options.grid.fillStyle = '#FFFFFF',
+    consensus_shows = selector;
 
-        consensus_shows = selector;
-    }
 }
 
 %# // helper functions

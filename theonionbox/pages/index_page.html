@@ -337,126 +337,6 @@
 
         <hr>
 
-        <div class="collapse" id="oo_collapse">
-        {{!header_row('Tor', 'Network Status', 'network')}}
-        <div class="row">
-            <div class="{{box_datum_grid}}">
-                <p>Status Time</p>
-            </div>
-            <div class="{{box_value_grid}}">
-                <label id="network_timestamp" style="font-weight: 100" for="refresh_onionoo">{{time.strftime('%Y-%m-%d %H:%M:%S')}}</label>
-                <label id="refresh_onionoo" class="btn btn-default" style="color:'rgb(255,0,0)'" onclick="refresh_onionoo();">Refresh</label>
-            </div>
-        </div>
-        <div class="row">
-            <div class="{{box_datum_grid}}">
-                Running
-            </div>
-            <div class="{{box_value_grid}}">
-                <p id="network_running">
-                    %# {{onionoo_info['running']}}
-                </p>
-            </div>
-            <div class="col-xs-1"></div>
-        </div>
-        <div class="cc_collapse collapse">
-            <div class="row">
-                <div class="{{box_datum_grid}}"><p>Charts</p></div>
-                <div class="{{box_value_grid}}">
-                    <div class="btn-toolbar pull-left" role="group">
-                        <div class="btn-group" data-toggle="buttons" id="consensus_charts">
-                            <!-- labels for consensus charts will be inserted here -->
-                        </div>
-                    </div>
-                </div>
-                <div class="col-xs-1"></div>
-            </div>
-            <div class="row">
-                <div class="{{box_datum_grid}}"><p>Consensus Weight</p></div>
-                <div class="{{box_value_grid}}">
-                    <canvas class="bw_chart box_canvas" id="chart-cw" width="300" height="150"></canvas>
-                </div>
-                <div class="col-xs-1"></div>
-            </div>
-            <div class="row">
-                <div class="{{box_datum_grid}}"><p></p></div>
-                <div class="{{box_value_grid}}">
-                    <p id="network_consensus_weight">
-                        %# <!-- Current Consensus Weight: xxx -->
-                    </p>
-                </div>
-                <div class="col-xs-1"></div>
-            </div>
-            <div class="row">
-                <div class="{{box_datum_grid}}"><p>Probabilities</p></div>
-                <div class="{{box_value_grid}}">
-                    <canvas class="bw_chart box_canvas" id="chart-cwf" width="300" height="150"></canvas>
-                </div>
-                <div class="col-xs-1"></div>
-            </div>
-            <div class="row" id="network_probabilities_row">
-                <div class="{{box_datum_grid}}"><p></p></div>
-                <div class="{{box_value_grid}}">
-                    <p id="network_probabilities">
-                        %# <!-- Fractions & Probabilities: xxx -->
-                    </p>
-                </div>
-                <div class="col-xs-1"></div>
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="{{box_datum_grid}}">
-                <p id="onionoo_bw" role="button"
-                       data-toggle="collapse" data-target="#more_onionoo_bw" aria-expanded="false"
-                       aria-controls="more_onionoo_bw">
-                    <span class="caret"></span> Bandwidth
-                </p>
-            </div>
-            <div class="{{box_value_grid}}">
-                <p id="network_bandwidth">
-                    %# {{onionoo_info['advertised_bandwidth']}}
-                </p>
-            </div>
-            <div class="col-xs-1"></div>
-        </div>
-
-        <div class="row collapse" id="more_onionoo_bw">
-            <div class="{{box_datum_grid}}">
-            </div>
-            <div class="{{box_value_grid}}">
-                <p id="network_bandwidth_more">
-                    %# {{onionoo_info['advertised_bandwidth']}}
-                </p>
-            </div>
-            <div class="col-xs-1"></div>
-        </div>
-        <div class="row">
-            <div class="{{box_datum_grid}}">
-                First Seen
-            </div>
-            <div class="{{box_value_grid}}">
-                <p id="network_first_seen">
-                    %# {{onionoo_info['first_seen']}}
-                </p>
-            </div>
-            <div class="col-xs-1"></div>
-        </div>
-        <div class="row">
-            <div class="{{box_datum_grid}}">
-                Last Seen
-            </div>
-            <div class="{{box_value_grid}}">
-                <p id="network_last_seen">
-                    %# {{onionoo_info['last_seen']}}
-                </p>
-            </div>
-            <div class="col-xs-1"></div>
-        </div>
-
-
-        <hr>
-
         </div>
 
 
@@ -537,8 +417,127 @@
             <div class="col-xs-1"></div>
         </div>
 
-
         <hr>
+
+        <div class="collapse" id="oo_collapse">
+            {{!header_row('Tor', 'Network Status', 'network')}}
+            <div class="row">
+                <div class="{{box_datum_grid}}">
+                    <p>Status Time</p>
+                </div>
+                <div class="{{box_value_grid}}">
+                    <label id="network_timestamp" style="font-weight: 300" for="refresh_onionoo">{{time.strftime('%Y-%m-%d %H:%M:%S')}}  </label>
+                    <label id="refresh_onionoo" class="btn btn-default" style="color:'rgb(255,0,0)'" onclick="refresh_onionoo();">Refresh</label>
+                </div>
+            </div>
+            <div class="row">
+                <div class="{{box_datum_grid}}">
+                    Running
+                </div>
+                <div class="{{box_value_grid}}">
+                    <p id="network_running">
+                        %# {{onionoo_info['running']}}
+                    </p>
+                </div>
+                <div class="col-xs-1"></div>
+            </div>
+            <div class="cc_collapse collapse">
+                <div class="row">
+                    <div class="{{box_datum_grid}}"><p>Charts</p></div>
+                    <div class="{{box_value_grid}}">
+                        <div class="btn-toolbar pull-left" role="group">
+                            <div class="btn-group" data-toggle="buttons" id="consensus_charts">
+                                <!-- labels for consensus charts will be inserted here -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xs-1"></div>
+                </div>
+                <div class="row">
+                    <div class="{{box_datum_grid}}"><p>Consensus Weight</p></div>
+                    <div class="{{box_value_grid}}">
+                        <canvas class="bw_chart box_canvas" id="chart-cw" width="300" height="150"></canvas>
+                    </div>
+                    <div class="col-xs-1"></div>
+                </div>
+                <div class="row">
+                    <div class="{{box_datum_grid}}"><p></p></div>
+                    <div class="{{box_value_grid}}">
+                        <p id="network_consensus_weight">
+                            %# <!-- Current Consensus Weight: xxx -->
+                        </p>
+                    </div>
+                    <div class="col-xs-1"></div>
+                </div>
+                <div class="row">
+                    <div class="{{box_datum_grid}}"><p>Probabilities</p></div>
+                    <div class="{{box_value_grid}}">
+                        <canvas class="bw_chart box_canvas" id="chart-cwf" width="300" height="150"></canvas>
+                    </div>
+                    <div class="col-xs-1"></div>
+                </div>
+                <div class="row" id="network_probabilities_row">
+                    <div class="{{box_datum_grid}}"><p></p></div>
+                    <div class="{{box_value_grid}}">
+                        <p id="network_probabilities">
+                            %# <!-- Fractions & Probabilities: xxx -->
+                        </p>
+                    </div>
+                    <div class="col-xs-1"></div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="{{box_datum_grid}}">
+                    <p id="onionoo_bw" role="button"
+                           data-toggle="collapse" data-target="#more_onionoo_bw" aria-expanded="false"
+                           aria-controls="more_onionoo_bw">
+                        <span class="caret"></span> Bandwidth
+                    </p>
+                </div>
+                <div class="{{box_value_grid}}">
+                    <p id="network_bandwidth">
+                        %# {{onionoo_info['advertised_bandwidth']}}
+                    </p>
+                </div>
+                <div class="col-xs-1"></div>
+            </div>
+
+            <div class="row collapse" id="more_onionoo_bw">
+                <div class="{{box_datum_grid}}">
+                </div>
+                <div class="{{box_value_grid}}">
+                    <p id="network_bandwidth_more">
+                        %# {{onionoo_info['advertised_bandwidth']}}
+                    </p>
+                </div>
+                <div class="col-xs-1"></div>
+            </div>
+            <div class="row">
+                <div class="{{box_datum_grid}}">
+                    First Seen
+                </div>
+                <div class="{{box_value_grid}}">
+                    <p id="network_first_seen">
+                        %# {{onionoo_info['first_seen']}}
+                    </p>
+                </div>
+                <div class="col-xs-1"></div>
+            </div>
+            <div class="row">
+                <div class="{{box_datum_grid}}">
+                    Last Seen
+                </div>
+                <div class="{{box_value_grid}}">
+                    <p id="network_last_seen">
+                        %# {{onionoo_info['last_seen']}}
+                    </p>
+                </div>
+                <div class="col-xs-1"></div>
+            </div>
+
+            <hr>
+        </div>
 
 
         {{!header_row('Tor', 'Accounting', 'accounting')}}
