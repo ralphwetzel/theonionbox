@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-__version__ = '2.0rc4'
+__version__ = '2.0rc5'
 
 # required pip's for raspberrypi
 # stem
@@ -275,11 +275,17 @@ tor_bwdata = {'upload': 0, 'download': 0, 'limit': 0, 'burst': 0, 'measure': 0}
 import json
 
 ltd = {}
+ltd_file = "theonionbox.ltd"
+
 try:
-    with open("theonionbox.ltd") as json_file:
+    with open(ltd_file) as json_file:
         ltd = json.load(json_file)
-except:
+except Exception as exc:
+    box_events.info("Failed to load LongTerm Data from file '{}'. Exception raised says '{}'!".format(ltd_file, exc))
     pass
+else:
+    box_events.debug("Found LongTerm Data file '{}'. Reading data...".format(ltd_file))
+
 
 
 # this should be a bit more sophisticated
@@ -293,7 +299,11 @@ ltd_keys = ['3d', '1w', '1m', '3m', '1y', '5y']
 
 stat = {}
 for key in ltd_keys:
-    stat[key] = ltd[key] if key in ltd else None
+    if key in ltd:
+        stat[key] = ltd[key]
+        box_events.debug("Found data for key '{}'.".format(key))
+    else:
+        stat[key] = None
 
 cum3d = Cumulator(900 / 2, initial_status=stat['3d'], max_count=500, time_manager=box_time, event_manager=box_events)
 cum1w = Cumulator(3600 / 2, initial_status=stat['1w'], max_count=500, time_manager=box_time, event_manager=box_events)
@@ -309,6 +319,7 @@ cumtors = {'3d': cum3d,
            '1y': cum1y,
            '5y': cum5y}
 
+
 def save_longterm_data():
 
     cumtor_status = {'protocol': 1,
@@ -319,20 +330,20 @@ def save_longterm_data():
                      '1y': cum1y.get_status(),
                      '5y': cum5y.get_status()}
 
-    filename = 'theonionbox.ltd'
+    # filename = 'theonionbox.ltd'
 
     try:
-        with open(filename, 'w') as json_file:
+        with open(ltd_file, 'w') as json_file:
             json.dump(cumtor_status, json_file)
 
-        box_events.debug("Longterm Data saved to file '{}'.".format(filename))
+        box_events.debug("Longterm Data saved to file '{}'.".format(ltd_file))
 
     except Exception as exc:
-        box_events.info("Error while saving Longterm Data to file '{}': ".format(filename, exc))
+        box_events.info("Error while saving Longterm Data to file '{}': ".format(ltd_file, exc))
 
     return
 
-box_cron.add_job(save_longterm_data, 'interval', minutes=5)
+box_cron.add_job(save_longterm_data, 'interval', minutes=15)
 
 #####
 # TOR interface
@@ -1470,7 +1481,11 @@ def sigint_handler(signal, frame):
 
 def exit_procedure(quit=True):
 
-    save_longterm_data()
+    # We're NOT saving the LTD here to prevent corruption of the file.
+    # TODO: Introduce a smarter algorithm to handle the loading / (especially) saving of the LTD file!
+    # Until this is available, we accept to loose some minutes of date!
+
+    # save_longterm_data()
 
     if timer_housekeeping:
         timer_housekeeping.cancel()
