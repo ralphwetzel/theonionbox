@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-__version__ = '2.0rc5'
+__version__ = '2.0'
 
 # required pip's for raspberrypi
 # stem

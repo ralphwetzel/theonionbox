@@ -11,6 +11,12 @@ In addition to some static information regarding the host and Tor (like version
 numbers or IPs) the page displays the upload / download performance using real
 time charts and allows to switch Tor's event system.
 
+| NEW in v2 |
+| --- |
+| With v2 The Box supports [Onionoo](onionoo.torproject.org), the Tor network status protocol. In addition to the long term bandwidth data - which was added in the section **Bandwidth** next to the live bandwidth charts - The Box now presents a bunch of network status data like 'Consensus Weight' or 'Middle Probability' on dedicated charts:
+| ![image](https://cloud.githubusercontent.com/assets/16342003/13537878/95f0e4ce-e247-11e5-85c1-bd3d16c6c9c4.png) |
+| As this example shows, The Box thereby supports all level of details that are **provided** by the status protocol - and thus allows here to switch chart scale from '1 Week' to '3 Months'.
+
 ## Installation
 The Box depends on some additional libraries, so make sure they are
 installed:
@@ -20,9 +26,9 @@ installed:
 * [stem](https://pypi.python.org/pypi/stem)
 * [Bottle](https://pypi.python.org/pypi/bottle)
 
-New for v2:
-
-* [apscheduler](https://pypi.python.org/pypi/apscheduler)
+| NEW in v2 |
+| --- |
+| * [apscheduler](https://pypi.python.org/pypi/apscheduler)
 
 Additionally I recommend to install [CherryPy](https://pypi.python.org/pypi/CherryPy) as webserver to be used!
 (The Box runs as well with a standard server yet this one has issues with IE!)
