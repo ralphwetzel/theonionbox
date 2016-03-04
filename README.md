@@ -1,5 +1,5 @@
 # The Onion Box
-Web based Status Monitor for [Tor Relays](www.torproject.org)
+Web based Status Monitor for [Tor Relays](http://www.torproject.org)
 
 **The Onion Box** provides a web interface to connect to a Tor relay
 and monitor aspects of it's operation in "real time". That's how it looks like
@@ -13,7 +13,7 @@ time charts and allows to switch Tor's event system.
 
 | NEW in v2 |
 | --- |
-| With v2 The Box supports [Onionoo](onionoo.torproject.org), the Tor network status protocol. In addition to the long term bandwidth data - which was added in the section **Bandwidth** next to the live bandwidth charts - The Box now presents a bunch of network status data like 'Consensus Weight' or 'Middle Probability' on dedicated charts:
+| With v2 The Box supports [Onionoo](http://onionoo.torproject.org), the Tor network status protocol. In addition to the long term bandwidth data - which was added in the section **Bandwidth** next to the live bandwidth charts - The Box now presents a bunch of network status data like 'Consensus Weight' or 'Middle Probability' on dedicated charts:
 | ![image](https://cloud.githubusercontent.com/assets/16342003/13537878/95f0e4ce-e247-11e5-85c1-bd3d16c6c9c4.png) |
 | As this example shows, The Box thereby supports all level of details that are **provided** by the status protocol - and thus allows here to switch chart scale from '1 Week' to '3 Months'.
 
