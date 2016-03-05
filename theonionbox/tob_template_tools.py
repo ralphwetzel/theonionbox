@@ -35,13 +35,13 @@ def pretty_number(bytes_value=0, calc='si', units='si', separator=' '):
         abbrevs = ['Bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']
 
     i = int(math.floor(math.log(calc_bytes) / math.log(order_of_magnitude)))
-    result = calc_bytes / pow(order_of_magnitude, i)
+    result = float(calc_bytes) / pow(order_of_magnitude, i)     # explicit float()-ing necessary to work on linux!
 
     if bytes_value < 0:
         result *= -1
 
     # formatting
     if result >= 99.995 or i == 0:
-        return '{:d}{}{}'.format(result, separator, abbrevs[i])
+        return '{:d}{}{}'.format(int(result), separator, abbrevs[i])
     else:
         return '{:.2f}{}{}'.format(result, separator, abbrevs[i])

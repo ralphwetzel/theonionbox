@@ -52,6 +52,11 @@ class TimeManager(object):
         # return the amount of seconds we've adjusted "the clock"
         old_dev = self.time_deviation
         self.time_deviation = time() - ntp_time
+
+        # to smoothen neglectible deviations
+        if -1 < self.time_deviation < 1:
+            self.time_deviation = 0
+
         return old_dev - self.time_deviation
 
     def __call__(self, time_to_compensate=None):
@@ -63,3 +68,5 @@ class TimeManager(object):
     def get_deviation(self):
         return self.time_deviation
 
+    def from_utc(self, utc_time):
+        pass

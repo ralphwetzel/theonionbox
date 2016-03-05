@@ -5,6 +5,15 @@ function box_chart(options)
     if (options.timeLabelSeparation === void 0) { options.timeLabelSeparation = 0;}
 
     SmoothieChart.call(this, options);
+
+    if (options.yMinFormatter == null) {
+        this.options.yMinFormatter = null;
+    }
+
+    if (options.yMaxFormatter == null) {
+        this.options.yMaxFormatter = null;
+    }
+
 }
 
 box_chart.prototype = new SmoothieChart();
@@ -159,22 +168,118 @@ box_chart.prototype.render = function(canvas, time) {
     context.save();
     context.lineWidth = chartOptions.grid.lineWidth;
     context.strokeStyle = chartOptions.grid.strokeStyle;
+
+    var vertical_dividers = [];
+
     // Vertical (time) dividers.
     if (chartOptions.grid.millisPerLine > 0) {
-      context.beginPath();
-      for (var t = time - (time % chartOptions.grid.millisPerLine);
-           t >= oldestValidTime;
-           t -= chartOptions.grid.millisPerLine) {
-        var gx = timeToXPixel(t);
-        if (chartOptions.grid.sharpLines) {
-          gx -= 0.5;
+        context.beginPath();
+        for (var t = time - (time % chartOptions.grid.millisPerLine);
+            t >= oldestValidTime;
+            t -= chartOptions.grid.millisPerLine) {
+
+            vertical_dividers.push(t);
+
+            var gx = timeToXPixel(t);
+            if (chartOptions.grid.sharpLines) {
+                gx -= 0.5;
+            }
+            context.moveTo(gx, 0);
+            context.lineTo(gx, dimensions.height);
         }
-        context.moveTo(gx, 0);
-        context.lineTo(gx, dimensions.height);
-      }
-      context.stroke();
-      context.closePath();
+        context.stroke();
+        context.closePath();
     }
+    // inserted to draw 'weekly', 'monthly' lines
+    else if (chartOptions.grid.timeDividers) {
+
+        var start_time = 0;
+
+        if (chartOptions.grid.timeDividers == 'weekly') {
+            // http://stackoverflow.com/questions/4156434/javascript-get-the-first-day-of-the-week-from-current-date
+            function getMonday( date ) {
+                var day = date.getDay() || 7;
+                if( day !== 1 )
+                    date.setHours(-24 * (day - 1));
+                return date;
+            }
+
+            var this_monday = new Date(time);
+            this_monday = getMonday(this_monday);
+            this_monday.setHours(0);
+            this_monday.setMinutes(0);
+            this_monday.setSeconds(0);
+
+            start_time = this_monday.getTime();
+
+            var next_time_div = function (t) {
+                return t - 1000 * 60 * 60 * 24 * 7;
+            }
+        }
+        else if (chartOptions.grid.timeDividers == 'monthly') {
+
+            this_month = new Date(time);
+            this_month.setMinutes(0);
+            this_month.setHours(0);
+            this_month.setDate(1);
+
+            start_time = this_month.getTime();
+
+            var next_time_div = function (t) {
+                var nm = new Date(t);
+                var cm = nm.getMonth();
+                if (cm) {
+                    nm.setMonth(cm - 1);
+                }
+                else {
+                    nm.setFullYear(nm.getFullYear() - 1);
+                    nm.setMonth(11);
+                }
+
+                return nm.getTime();
+            }
+        }
+        else if (chartOptions.grid.timeDividers == 'yearly') {
+
+            this_year = new Date(time);
+            this_year.setMinutes(0);
+            this_year.setHours(0);
+            this_year.setDate(1);
+            this_year.setMonth(1);
+
+            start_time = this_year.getTime();
+
+            var next_time_div = function (t) {
+                var ny = new Date(t);
+                ny.setFullYear(ny.getFullYear() - 1);
+                return ny.getTime();
+            }
+        }
+
+        if (start_time) {
+
+            context.beginPath();
+            for (var t = start_time;
+                t >= oldestValidTime;
+                t = next_time_div(t)) {
+                var gx = timeToXPixel(t);
+
+                vertical_dividers.push(t);
+
+                if (chartOptions.grid.sharpLines) {
+                    gx -= 0.5;
+                }
+
+                context.moveTo(gx, 0);
+                context.lineTo(gx, dimensions.height);
+            }
+            context.stroke();
+            context.closePath();
+
+        }
+
+    }
+
 
     // Horizontal (value) dividers.
     for (var v = 1; v < chartOptions.grid.verticalSections; v++) {
@@ -227,15 +332,24 @@ box_chart.prototype.render = function(canvas, time) {
       // Draw the line...
       context.beginPath();
       // Retain lastX, lastY for calculating the control points of bezier curves.
-      var firstX = 0, lastX = 0, lastY = 0;
+      var firstX = 0, lastX = 0, lastY = 0, has_null = false;
       for (var i = 0; i < dataSet.length && dataSet.length !== 1; i++) {
-        var x = timeToXPixel(dataSet[i][0]),
-            y = valueToYPixel(dataSet[i][1]);
+        var x = timeToXPixel(dataSet[i][0]), y = null;
+        var y_data = dataSet[i][1];
+        if (y_data != null) {
+            y = valueToYPixel(y_data);
+        } else {
+            has_null = true;
+        }
+
+        // console.log(x + ", " + y);
 
         if (i === 0) {
           firstX = x;
+          y = (y == null ? 0 : y)
           context.moveTo(x, y);
-        } else {
+        } else if (y != null) {
+
           switch (chartOptions.interpolation) {
             case "linear":
             case "line": {
@@ -265,8 +379,12 @@ box_chart.prototype.render = function(canvas, time) {
               break;
             }
             case "step": {
-              context.lineTo(x,lastY);
-              context.lineTo(x,y);
+                if (lastY == null) {
+                    context.moveTo(x,y);
+                } else {
+                    context.lineTo(x,lastY);
+                    context.lineTo(x,y);
+                }
               break;
             }
           }
@@ -276,7 +394,7 @@ box_chart.prototype.render = function(canvas, time) {
       }
 
       if (dataSet.length > 1) {
-        if (seriesOptions.fillStyle) {
+        if (seriesOptions.fillStyle && !has_null) {
           // Close up the fill region.
           context.lineTo(dimensions.width + seriesOptions.lineWidth + 1, lastY);
           context.lineTo(dimensions.width + seriesOptions.lineWidth + 1, dimensions.height + seriesOptions.lineWidth + 1);
@@ -295,12 +413,29 @@ box_chart.prototype.render = function(canvas, time) {
 
     // Draw the axis values on the chart.
     if (!chartOptions.labels.disabled && !isNaN(this.valueRange.min) && !isNaN(this.valueRange.max)) {
-      var maxValueString = chartOptions.yMaxFormatter(this.valueRange.max, chartOptions.labels.precision),
-          minValueString = chartOptions.yMinFormatter(this.valueRange.min, chartOptions.labels.precision),
-          labelPos = chartOptions.scrollBackwards ? 0 : dimensions.width - context.measureText(maxValueString).width - 2;
-      context.fillStyle = chartOptions.labels.fillStyle;
-      context.fillText(maxValueString, labelPos, chartOptions.labels.fontSize);
-      context.fillText(minValueString, labelPos, dimensions.height - 2);
+
+        if (chartOptions.yMaxFormatter) {
+            var maxValueString = chartOptions.yMaxFormatter(this.valueRange.max, chartOptions.labels.precision);
+        }
+        if (chartOptions.yMinFormatter) {
+            var minValueString = chartOptions.yMinFormatter(this.valueRange.min, chartOptions.labels.precision);
+        }
+        if (maxValueString) {
+            var labelPos = chartOptions.scrollBackwards ? 0 : dimensions.width - context.measureText(maxValueString).width - 2;
+        }
+        else if (minValueString) {
+            var labelPos = chartOptions.scrollBackwards ? 0 : dimensions.width - context.measureText(maxValueString).width - 2;
+        }
+        else {
+            return;
+        }
+        context.fillStyle = chartOptions.labels.fillStyle;
+        if (maxValueString) {
+            context.fillText(maxValueString, labelPos, chartOptions.labels.fontSize);
+        }
+        if (minValueString) {
+            context.fillText(minValueString, labelPos, dimensions.height - 2);
+        }
     }
 
     // ... to here!
@@ -310,13 +445,17 @@ box_chart.prototype.render = function(canvas, time) {
     // (as the original implementation does)
 
     // Display timestamps along x-axis at the bottom of the chart.
-    if (chartOptions.timestampFormatter && chartOptions.grid.millisPerLine > 0) {
+    if (chartOptions.timestampFormatter && vertical_dividers.length > 0) {
       var textUntilX = chartOptions.scrollBackwards
         ? context.measureText(minValueString).width
         : dimensions.width - context.measureText(minValueString).width + 4;
-      for (var t = time - (time % chartOptions.grid.millisPerLine);
-           t >= oldestValidTime;
-           t -= chartOptions.grid.millisPerLine) {
+
+      var vd_length = vertical_dividers.length;
+
+      for (var i = 0; i < vd_length; i++) {
+
+        t = vertical_dividers[i];
+
         var gx = timeToXPixel(t);
         // Only draw the timestamp if it won't overlap with the previously drawn one.
         if ((!chartOptions.scrollBackwards && gx < textUntilX) || (chartOptions.scrollBackwards && gx > textUntilX))  {
@@ -360,3 +499,105 @@ box_chart.prototype.render = function(canvas, time) {
   };
 
 
+/**
+* Removes all <code>TimeSeries</code> from the chart.
+*/
+box_chart.prototype.removeAllTimeSeries = function() {
+
+    while (this.seriesSet.length > 0)
+    {
+        this.removeTimeSeries(this.seriesSet[0].timeSeries)
+    }
+
+};
+
+/**
+* update the chart with one call
+*/
+box_chart.prototype.setDisplay = function(options) {
+
+    // copy paste from smoothie.js, from here ...
+    var Util = {
+        extend: function() {
+            arguments[0] = arguments[0] || {};
+            for (var i = 1; i < arguments.length; i++) {
+                for (var key in arguments[i]) {
+                    if (arguments[i].hasOwnProperty(key)) {
+                        if (typeof(arguments[i][key]) === 'object') {
+                            if (arguments[i][key] instanceof Array) {
+                                arguments[0][key] = arguments[i][key];
+                            } else {
+                                arguments[0][key] = Util.extend(arguments[0][key], arguments[i][key]);
+                            }
+                        } else {
+                            arguments[0][key] = arguments[i][key];
+                        }
+                    }
+                }
+            }
+            return arguments[0];
+        }
+    };
+    // ... to here!
+
+    this.removeAllTimeSeries();
+
+    this.options = Util.extend({}, this.options, options.chartOptions);
+    var tsl = options.timeseries.length;
+
+    for (var i = 0; i < tsl; ++i) {
+        var ts = options.timeseries[i];
+        if (ts.serie) {
+            this.addTimeSeries(ts.serie, ts.options);
+        }
+    }
+}
+
+function box_timeseries(options)
+{
+    // to ensure that the new chartOptions (used for rendering) are handled correctly
+    if (options.dontDropOldData === void 0) { options.dontDropOldData = false;}
+
+    TimeSeries.call(this, options);
+}
+
+box_timeseries.prototype = new TimeSeries();
+
+box_timeseries.prototype.dropOldData = function(oldestValidTime, maxDataSetLength) {
+
+    if (this.options.dontDropOldData) { return; }
+    TimeSeries.prototype.dropOldData.call(this, oldestValidTime, maxDataSetLength);
+};
+
+/*
+function box_display(options) {
+    this.options = Util.extend({}, box_display.defaultOptions, options)
+}
+
+box_display.defaultOptions = {
+
+    chartOptions: SmoothieChart.defaultChartOptions,
+    timeseries: []      // [ {serie: timeserie, options: {}}, {serie: ...}]
+}
+
+box_display.prototype.toChart(chart_name) = function() {
+
+    var chart = $(chart_name)
+
+    if (!chart.length) {
+        return;
+    }
+
+    chart.removeAllTimeSeries();
+    chart.mergeOptions(this.options.chartOptions);
+
+    var tsl = this.options.timeseries.length;
+
+    for (var i = 0; i < tsl; ++i) {
+        var ts = this.option.timeseries[i];
+        if (ts.serie) {
+            chart.addTimeSeries(ts.serie, ts.options);
+        }
+    }
+}
+*/

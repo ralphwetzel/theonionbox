@@ -157,10 +157,7 @@ class Session(object):
         return self.session_id
 
     def id_short(self, chars=4):
-        retval = self.session_id
-        if chars > len(retval):
-            chars = 4
-        return retval[:chars] + '|' + retval[-chars:]
+        return make_short_id(self.session_id, chars)
 
     def remote_addr(self):
         return self.session_addr
@@ -185,3 +182,12 @@ class Session(object):
 
     def values(self):
         return self.session_data.values()
+
+
+# this allows us to reuse this code even if the session object is invalid!
+def make_short_id(session_id, chars=4):
+    retval = session_id
+    if chars > len(retval):
+        chars = 4
+    return retval[:chars] + '|' + retval[-chars:]
+
