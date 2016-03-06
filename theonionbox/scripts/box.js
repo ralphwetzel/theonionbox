@@ -654,7 +654,7 @@ function update_onionoo(json_data, is_json)
         }
 
         value *= 100;
-        var retval = value.toFixed(-Math.floor(Math.log10(Math.abs(value))));
+        var retval = value.toFixed(-Math.floor(Math.log10(Math.abs(value))) + 1);
         return retval;
     }
 
@@ -1232,7 +1232,7 @@ function set_consensus_display(selector)
     consensus_weight_fraction.options.yMaxFormatter = function(data, precision) {
         if (data == 0) { return "0 %"; }
         data *= 100;
-        var retval = data.toFixed(-Math.floor(Math.log10(Math.abs(data))));
+        var retval = data.toFixed(-Math.floor(Math.log10(Math.abs(data))) + 1);
         return retval + " %";
     };
     consensus_weight_fraction.options.grid.fillStyle = '#FFFFFF',
