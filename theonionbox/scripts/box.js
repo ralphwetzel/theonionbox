@@ -611,7 +611,7 @@ function play_bandwidth(data)
 
 function play_messages(data)
 {
-    log(data.m, data.s, data.l);
+    log(data.m, data.s, data.l, data.t);
 }
 
 function refresh_onionoo()
@@ -911,14 +911,14 @@ function update_ltd(json_data)
 }
 
 
-function log(message, timestamp, runlevel)
+function log(message, timestamp, runlevel, tag)
 {
     var runlevel_translate = {
-        'BOX|DEBUG': 'BOX_DEBUG',
-        'BOX|INFO': 'BOX_INFO',
-        'BOX|NOTICE': 'BOX',
-        'BOX|WARN': 'BOX_WARN',
-        'BOX|ERR': 'BOX_ERR',
+        'D': 'DEBUG',
+        'I': 'INFO',
+        'N': 'NOTICE',
+        'W': 'WARN',
+        'E': 'ERROR'
     }
 
     if (!message) { return;}
@@ -929,17 +929,22 @@ function log(message, timestamp, runlevel)
 
     if (!runlevel) { runlevel = 'THIS';}
 
-    var runlevel_class = runlevel;
-    var runlevel_display = runlevel;
     if (runlevel_translate[runlevel]) {
-        runlevel_class = runlevel_translate[runlevel];
+        runlevel = runlevel_translate[runlevel];
     }
 
-    if (runlevel_display == 'BOX|NOTICE') {
-        runlevel_display = 'BOX';
+    if (tag == 'b') {
+        if (runlevel == 'NOTICE') {
+            runlevel = 'BOX'
+        }
+        else {
+            message = '[BOX] ' + message
+        }
     }
 
-    var log_msg = "<tr class='%s'><td class='box_Log_runlevel'>[%s]</td>".$(runlevel_class, runlevel_display);
+    runlevel_display = runlevel
+
+    var log_msg = "<tr class='%s'><td class='box_Log_runlevel'>[%s]</td>".$(runlevel, runlevel_display);
     log_msg += "<td nowrap class='box_Log_stamp'>" + format_time(timestamp) + "</td>";
     log_msg += '<td>' + message + '</td></tr>';
 
@@ -1067,9 +1072,11 @@ $(window).load(function() {
     LogStatus = new box_LogSelector();
     LogBox = new box_LogSelector();
 
-    % preserved_events = get('preserved_events')
-    % for event in reversed(preserved_events):
-        log("{{event['m']}}", {{event['s']}}, "{{event['l']}}");
+    % preserved_events = get('preserved_events', None)
+    % if preserved_events is not None:
+    %   for event in preserved_events:
+            log("{{event['m']}}", {{event['s']}}, "{{event['l']}}", "{{event['t']}}");
+    %   end
     % end
 
     log("Client Script Operation launched.");

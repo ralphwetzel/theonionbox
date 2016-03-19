@@ -4,6 +4,8 @@ from binascii import a2b_hex
 from time import time, strptime
 from calendar import timegm
 from threading import RLock
+import logging
+
 
 class OnionooManager(object):
 
@@ -14,7 +16,6 @@ class OnionooManager(object):
     weights = {}
     _time = None
     _timestamp = None
-    events = None
     # _timestamp_bw = None
 
     # https://onionoo.torproject.org/protocol.html#bandwidth
@@ -23,9 +24,8 @@ class OnionooManager(object):
 
     onionoo_lock = RLock()
 
-    def __init__(self, time_manager, event_manager):
+    def __init__(self, time_manager):
         self._time = time_manager
-        self.events = event_manager
 
     def query(self, fingerprint=None):
 
@@ -59,7 +59,8 @@ class OnionooManager(object):
         try:
             r = requests.get("https://onionoo.torproject.org/details", params=payload)
         except:
-            self.events.info("Failed to query 'https://onionoo.torproject.org/details'. Trying again later...")
+            lgr = logging.getLogger('theonionbox')
+            lgr.info("Failed to query 'https://onionoo.torproject.org/details'. Trying again later...")
 
         if r is None or (r.status_code != requests.codes.ok):
             return False
@@ -144,7 +145,8 @@ class OnionooManager(object):
         try:
             r = requests.get("https://onionoo.torproject.org/bandwidth", params=payload)
         except:
-            self.events.info("Failed to query 'https://onionoo.torproject.org/bandwidth'. Trying again later...")
+            lgr = logging.getLogger('theonionbox')
+            lgr.info("Failed to query 'https://onionoo.torproject.org/bandwidth'. Trying again later...")
 
         # print(r is None)
 
@@ -301,7 +303,8 @@ class OnionooManager(object):
         try:
             r = requests.get("https://onionoo.torproject.org/weights", params=payload)
         except:
-            self.events.info("Failed to query 'https://onionoo.torproject.org/weights'. Trying again later...")
+            lgr = logging.getLogger('theonionbox')
+            lgr.info("Failed to query 'https://onionoo.torproject.org/weights'. Trying again later...")
 
         # print(r is None)
 
@@ -348,10 +351,11 @@ class OnionooManager(object):
             wtup = query_result[key]
             object_to_process_index = self._get_first_available_history_object_key_index(wtup)
 
+            lgr = logging.getLogger('theonionbox')
             while object_to_process_index is not None:
 
-                self.events.debug("Processing key {} of '{}':"
-                                  .format(self.result_object_keys[object_to_process_index], key))
+                lgr.debug("Processing key {} of '{}':"
+                          .format(self.result_object_keys[object_to_process_index], key))
 
                 result = self._unpack_onionoo_chart_object(wtup[self.history_object_keys[object_to_process_index]])
 
@@ -378,8 +382,9 @@ class OnionooManager(object):
         utc_timestruct = strptime(oco['first'], '%Y-%m-%d %H:%M:%S')
         data_timestamp = timegm(utc_timestruct)
 
-        self.events.debug("*** First: {}, Count: {}, Interval: {}, Factor: {}"
-                          .format(oco['first'], data_count, data_interval, data_factor))
+        lgr = logging.getLogger('theonionbox')
+        lgr.debug("*** First: {}, Count: {}, Interval: {}, Factor: {}"
+                  .format(oco['first'], data_count, data_interval, data_factor))
 
         # to ensure the charts look nice #1
         # result.append([(data_timestamp - data_interval) * 1000, 0])

@@ -4,6 +4,12 @@ from math import floor
 import itertools
 # from tob_time import TimeManager
 from threading import RLock
+import tob_time
+
+class tob_list(list):
+
+    def append(self, p_object):
+        list.append(self, p_object)
 
 
 class LiveDataManager(object):
@@ -15,12 +21,13 @@ class LiveDataManager(object):
 
     bandwidth_hd_record = deque(maxlen=900)     # a deque of dicts, one dict per second, max 900 secs (= 15+ minutes)
     bandwidth_ld_record = deque(maxlen=1440)    # an increasing deque of dict; one dict per minute; max 24h
+
     minute_of_last_record = 0                   # flag to check if to add a new minute record to bandwidth_ld_record
 
-    bandwidth_history_read = deque()    # a deque of arrays; one array per day; unlimited
-    bandwidth_history_write = deque()   # a deque of arrays; one array per day; unlimited
-    history_hour = 0                    # this is the hour we're just recording for the history
-    bandwidth_history_today = []        #
+#    bandwidth_history_read = deque()    # a deque of arrays; one array per day; unlimited
+#    bandwidth_history_write = deque()   # a deque of arrays; one array per day; unlimited
+#    history_hour = 0                    # this is the hour we're just recording for the history
+#    bandwidth_history_today = []        #
 
     # TODO: Can this overflow?
     # bandwidth_total = {'up': 0, 'down': 0}      # all the data we've recorded are cumulated here;
@@ -33,23 +40,22 @@ class LiveDataManager(object):
 
     bandwidth_total_count = 0
 
-    _time = None
-
     # to ensure thread resistance
     hd_Lock = RLock()
     ld_Lock = RLock()
 
-    def __init__(self, time_manager, filename='theonionbox.data'):
-        self._time = time_manager
+    def __init__(self):
         self.record_bandwidth()     # record '0,0' a bit more than a minute ago to initialize
 
     def record_bandwidth(self, time_stamp=None, bytes_read=0, bytes_written=0, compensate_deviation=True):
+
+        timer = tob_time.getTimer()
 
         if time_stamp is None:
             time_stamp = time()
 
         if compensate_deviation is True:
-            time_stamp = self._time(time_stamp)
+            time_stamp = timer.compensate(time_stamp)
 
         minute_of_current_record = floor(time_stamp / 60)   # minutes for LD
         js_time_stamp = int(time_stamp*1000)                # ms for JS!
@@ -69,14 +75,14 @@ class LiveDataManager(object):
 
             # HD Data
             self.hd_Lock.acquire()
-            self.bandwidth_hd_record.appendleft({'s': js_time_stamp,
-                                                 'r': bytes_read,
-                                                 'w': bytes_written,
-                                                 'tr': self.basis_total_read + self.bandwidth_total_read,
-                                                 'tw': self.basis_total_written + self.bandwidth_total_written,
-                                                 'ar': self.bandwidth_total_read / self.bandwidth_total_count,
-                                                 'aw': self.bandwidth_total_written / self.bandwidth_total_count
-                                                 })
+            self.bandwidth_hd_record.append({'s': js_time_stamp,
+                                             'r': bytes_read,
+                                             'w': bytes_written,
+                                             'tr': self.basis_total_read + self.bandwidth_total_read,
+                                             'tw': self.basis_total_written + self.bandwidth_total_written,
+                                             'ar': self.bandwidth_total_read / self.bandwidth_total_count,
+                                             'aw': self.bandwidth_total_written / self.bandwidth_total_count
+                                             })
             self.hd_Lock.release()
 
             # # Total Count
@@ -107,10 +113,10 @@ class LiveDataManager(object):
                     self.bandwidth_ld_record[0]['s'] = js_time_stamp
 
                 # no: appendleft & init a new element to store the data for this new minute
-                self.bandwidth_ld_record.appendleft({'s': js_time_stamp,
-                                                     'm': minute_of_current_record * 60 * 1000,
-                                                     'r': bytes_read,
-                                                     'w': bytes_written})
+                self.bandwidth_ld_record.append({'s': js_time_stamp,
+                                                 'm': minute_of_current_record * 60 * 1000,
+                                                 'r': bytes_read,
+                                                 'w': bytes_written})
                 # molr keeps the minute we are cumulating data for!
                 self.minute_of_last_record = minute_of_current_record
 
@@ -121,14 +127,22 @@ class LiveDataManager(object):
     def get_data_hd(self, limit=None):
         # return HD Data; limit is in seconds
         self.hd_Lock.acquire()
-        retval = list(itertools.islice(self.bandwidth_hd_record, 0, limit))
+        length = len(self.bandwidth_hd_record)
+        if limit is None or length <= limit:
+            retval = list(self.bandwidth_hd_record)
+        else:
+            retval = list(itertools.islice(self.bandwidth_hd_record, length - limit, limit))
         self.hd_Lock.release()
         return retval
 
     def get_data_ld(self, limit=None):
         # return LD Data; limit is in minutes
         self.ld_Lock.acquire()
-        retval = list(itertools.islice(self.bandwidth_ld_record, 0, limit))
+        length = len(self.bandwidth_ld_record)
+        if limit is None or length <= limit:
+            retval = list(self.bandwidth_ld_record)
+        else:
+            retval = list(itertools.islice(self.bandwidth_ld_record, length - limit, limit))
         self.ld_Lock.release()
         return retval
 
@@ -138,7 +152,7 @@ class LiveDataManager(object):
             return self.get_data_hd()
         else:
             self.hd_Lock.acquire()
-            retval = list(itertools.takewhile(lambda x: x['s'] >= since_timestamp, self.bandwidth_hd_record))
+            retval = list(itertools.dropwhile(lambda x: x['s'] < since_timestamp, self.bandwidth_hd_record))
             self.hd_Lock.release()
             return retval
 
@@ -148,7 +162,7 @@ class LiveDataManager(object):
             return self.get_data_ld()
         else:
             self.ld_Lock.acquire()
-            retval = list(itertools.takewhile(lambda x: x['s'] >= since_timestamp, self.bandwidth_ld_record))
+            retval = list(itertools.dropwhile(lambda x: x['s'] < since_timestamp, self.bandwidth_ld_record))
             self.ld_Lock.release()
             return retval
 
@@ -170,19 +184,17 @@ class LiveDataManager(object):
     #     self.bandwidth_total = {}
     #     return
 
-    def init_total_basis(self, bytes_read, bytes_written):
-        self.basis_total_read = bytes_read
-        self.basis_total_written = bytes_written
-        self.bandwidth_total_read = 0
-        self.bandwidth_total_written = 0
-        self.bandwidth_total_count = 0
-        return
+    # def init_total_basis(self, bytes_read, bytes_written):
+    #     self.basis_total_read = bytes_read
+    #     self.basis_total_written = bytes_written
+    #     self.bandwidth_total_read = 0
+    #     self.bandwidth_total_written = 0
+    #     self.bandwidth_total_count = 0
+    #     return
 
+import logging
 
 class Cumulator(object):
-
-    _time = None
-    events = None
 
     values = {}
     interval_start = 0
@@ -195,10 +207,7 @@ class Cumulator(object):
 
     changed = False
 
-    def __init__(self, interval, initial_status=None, max_count=None, time_manager=None, event_manager=None):
-
-        if event_manager is not None:
-            self.events = event_manager
+    def __init__(self, interval, initial_status=None, max_count=None):
 
         self.interval = int(interval)
         self.interval_js = int(interval * 1000)
@@ -206,10 +215,7 @@ class Cumulator(object):
         if max_count is not None:
             self.max_count = max_count
 
-        timestamp = time()
-        if time_manager is not None:
-            self._time = time_manager
-            timestamp = time_manager(timestamp)
+        timestamp = tob_time.getTimer().time()
 
         self.values = {}
         self.baskets = {}
@@ -232,8 +238,8 @@ class Cumulator(object):
             now_interval = int(floor(timestamp / self.interval))
             if self.interval_start > now_interval:
                 # this shall never happen!
-                if self.events is not None:
-                    self.events.info("Cumulator {}: Data used to initialize seems to be corrupt!".format(interval))
+                lgr = logging.getLogger('theonionbox')
+                lgr.warn("Cumulator {}: Data used to initialize seems to be corrupt!".format(interval))
             elif self.interval_start < now_interval - 1:
                 # if the status' interval_start is in the past (more than one step)
                 # cumulate one entry @ interval_start + 1
@@ -266,26 +272,23 @@ class Cumulator(object):
                   'cbc': self.count}
         return status
 
-    def cumulate(self, timestamp=None, **kargs):
+    def cumulate(self, timestamp=None, **kwargs):
 
-        if timestamp is None:
-            timestamp = time()
-        if self._time is not None:
-            timestamp = self._time(timestamp)
+        timestamp = tob_time.getTimer().compensate(timestamp)
 
-        if len(kargs) == 0:
+        if len(kwargs) == 0:
             size = len(self.values)
             if size == 0:
                 return False
             else:
                 # kargs = {}
                 for key, value in self.values.items():
-                    kargs[key] = 0
+                    kwargs[key] = 0
 
         if self.interval_start == int(floor(timestamp / self.interval)):
 
             # enumerating over the given arguments
-            for key, value in kargs.items():
+            for key, value in kwargs.items():
 
                 # to ensure the list grows as necessary
                 if key not in self.baskets:
@@ -317,6 +320,6 @@ class Cumulator(object):
                     self.values[key] = self.values[key][:self.max_count]
 
             self.interval_start = int(floor(timestamp / self.interval))
-            self.baskets = kargs
+            self.baskets = kwargs
             self.count = 1
             self.changed = True
