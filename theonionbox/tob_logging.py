@@ -9,6 +9,7 @@ import logging
 from logging.handlers import MemoryHandler, BufferingHandler
 import functools
 from tob_time import getTimer
+import sys
 
 from json import dumps
 
@@ -23,6 +24,20 @@ level_box_to_tor = {'DEBUG': 'DEBUG',
                     'NOTICE': 'NOTICE',
                     'WARNING': 'WARN',
                     'ERROR': 'ERR'}
+
+py = sys.version_info
+py32 = py >= (3, 2, 0)
+
+
+class FilterCallback(object):
+
+    filter_callback = None
+
+    def __init__(self, filter_function):
+        self.filter_callback = filter_function
+
+    def filter(self, record):
+        return self.filter_callback(record)
 
 
 # this is the callback to receive the events from tor / stem
@@ -116,7 +131,11 @@ class LoggingManager(object):
             self.buffer = deque(maxlen=capacity)
 
             self.levels = {}
-            self.addFilter(self._filter)
+
+            if py32:
+                self.addFilter(self._filter)
+            else:
+                self.addFilter(FilterCallback(self._filter))
 
             self.clear_at_flush = clear_at_flush
 
@@ -370,7 +389,10 @@ class ForwardHandler(MemoryHandler):
         if tag is not None:
             self.tag = tag
         self.level = level
-        self.addFilter(self._filter)
+        if py32:
+            self.addFilter(self._filter)
+        else:
+            self.addFilter(FilterCallback(self._filter))
 
     def shouldFlush(self, record):
         return self.target is not None
