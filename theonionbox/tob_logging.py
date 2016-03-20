@@ -13,20 +13,22 @@ import sys
 
 from json import dumps
 
-level_tor_to_box = {'DEBUG': 'DEBUG',
-                    'INFO': 'INFO',
-                    'NOTICE': 'NOTICE',
-                    'WARN': 'WARNING',
-                    'ERR': 'ERROR'}
+# level_tor_to_box = {'DEBUG': 'DEBUG',
+#                     'INFO': 'INFO',
+#                     'NOTICE': 'NOTICE',
+#                     'WARN': 'WARNING',
+#                     'ERR': 'ERROR'}
 
-level_box_to_tor = {'DEBUG': 'DEBUG',
-                    'INFO': 'INFO',
-                    'NOTICE': 'NOTICE',
-                    'WARNING': 'WARN',
-                    'ERROR': 'ERR'}
+level_box_to_tor = {'DEBUG': logging.DEBUG,
+                    'INFO': logging.INFO,
+                    'NOTICE': 25,
+                    'WARN': logging.WARNING,
+                    'ERR': logging.ERROR}
 
 py = sys.version_info
 py32 = py >= (3, 2, 0)
+py34 = py >= (3, 4, 0)
+py342 = py >= (3, 4, 2)
 
 
 class FilterCallback(object):
@@ -60,16 +62,16 @@ def handle_tor_event(event, logger):
 
     # translate from Tor's runlevel
     level = event.runlevel
-    box_level = {'WARN': 'WARNING', 'ERR': 'ERROR'}
-    if level in box_level:
-        level = box_level[level]
 
     try:
-        logger.log(getLoggingLevel(level), msg=event.message, extra=extra)
+        # this could have been done by calling logging.getLevelName,
+        # yet the workaround to make this work in 3.4.0 <= version < 3.4.2
+        # is ridiculous! => https://docs.python.org/3/library/logging.html#logging.getLevelName
+        logger.log(level_box_to_tor[level], msg=event.message, extra=extra)
     except Exception as exc:
         boxLog = logging.getLogger('theonionbox')
-        boxLog.exception('Error while logging Tor event.')
-
+        boxLog.exception('Error while logging Tor event: level={} | msg={} | extra={}'
+                         .format(level, event.message, extra), exc_info=True)
 
 class LoggingManager(object):
 
@@ -226,20 +228,20 @@ class LoggingManager(object):
     def add_client(self, session_id, capacity=400, clear_at_flush=True):
 
         # check if this session_id already has a handler
-        if session_id in self.clients:
-            return
+        try:
+            mh = self.clients[session_id]
+        except KeyError as ke:
+            # if not: create a new MessageHandler
+            mh = self._EventHandler(capacity, clear_at_flush)
+            # ... and save this for later re-use
+            self.clients[session_id] = mh
 
-        # else: create a new MessageHandler
-        mh = self._EventHandler(capacity, clear_at_flush)
-        # ... and save this for later re-use
-        self.clients[session_id] = mh
+            # add the MessageHandler to Tor's Logger
+            logging.getLogger(self.__tor_logger__).addHandler(mh)
 
         # switch on the default events
         for level in self.levels:
             self.switch(session_id, level, self.levels[level])
-
-        # add the MessageHandler to Tor's Logger
-        logging.getLogger(self.__tor_logger__).addHandler(mh)
 
         # now fill it with the preserved messages
         if session_id is not self.self_id:
@@ -321,12 +323,6 @@ class LoggingManager(object):
         # and return the stored messages!
         return mh.flush()
 
-
-def getLoggingLevel(levelName):
-    if levelName not in logging._nameToLevel:
-        raise ValueError("Unknown level: %r" % levelName)
-
-    return logging._nameToLevel[levelName]
 
 # Thanks to 'Mad Physicist'
 # http://stackoverflow.com/questions/2183233/how-to-add-a-custom-loglevel-to-pythons-logging-facility
@@ -431,11 +427,11 @@ class ConsoleFormatter(logging.Formatter):
             out_lvlname = ''
 
         # https://en.wikipedia.org/wiki/ANSI_escape_code
-        colorcodes = {'DEBUG': '\033[37m',      # gray
-                      'INFO': '\033[34m',       # blue
+        colorcodes = {'DEBUG': '\033[37m',      # light gray
+                      'INFO': '\033[94m',       # light blue
                       'NOTICE': '',             # default
-                      'WARNING': '\033[31m',    # red
-                      'ERROR': '\033[31;1m'}    # red (bold)
+                      'WARNING': '\033[91m',    # light red
+                      'ERROR': '\033[93;1m'}      # yellow (bold)
 
         out = ' ' * 8
         if out_lvlname != '':
@@ -482,3 +478,24 @@ class ClientFormatter(logging.Formatter):
 
         return out
 
+
+class FileFormatter(logging.Formatter):
+    def format(self, record):
+        msg = str(record.msg).strip()
+        lvlname = record.levelname
+
+        out_lvlname = lvlname
+        if lvlname == 'WARNING':
+            out_lvlname = 'WARN'
+        elif lvlname == 'NOTICE':
+            out_lvlname = ''
+
+        out = ' ' * 8
+        if out_lvlname != '':
+            out = ('[{}]' + out).format(out_lvlname)[:8]
+
+        if msg != '':
+            out += strftime('%H:%M:%S', gmtime(record.created)) + '.{:0=3d} '.format(int(record.msecs))
+            out += msg
+
+        return out

@@ -938,7 +938,7 @@ function log(message, timestamp, runlevel, tag)
             runlevel = 'BOX'
         }
         else {
-            message = '[BOX] ' + message
+            message = 'BOX | ' + message
         }
     }
 

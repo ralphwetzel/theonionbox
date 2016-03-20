@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/python
+
 __version__ = '3.0dev'
 
 # required pip's for raspberrypi
@@ -14,10 +15,32 @@ import sys
 from datetime import time
 
 #####
+# Python version detection
+py = sys.version_info
+py34 = py >= (3, 4, 0)
+
+#####
 # Operating System detection
 import platform
 boxOS = platform.system()
 
+#####
+# Script directory detection
+import inspect
+import os
+import sys
+
+def get_script_dir(follow_symlinks=True):
+    if getattr(sys, 'frozen', False): # py2exe, PyInstaller, cx_Freeze
+        path = os.path.abspath(sys.executable)
+    else:
+        path = inspect.getabsfile(get_script_dir)
+    if follow_symlinks:
+        path = os.path.realpath(path)
+    return os.path.dirname(path)
+
+# to ensure that our directory structure works as expected!
+os.chdir(get_script_dir())
 
 #####
 # Command line interface
@@ -71,7 +94,8 @@ if argv:
 # The Logging Infrastructure
 import logging
 from logging.handlers import TimedRotatingFileHandler
-from tob_logging import addLoggingLevel, LoggingManager, ConsoleFormatter, ForwardHandler
+from tob_logging import addLoggingLevel, LoggingManager, ForwardHandler
+from tob_logging import ConsoleFormatter, FileFormatter
 
 # Add Level to be inline with the Tor levels (DEBUG - INFO - NOTICE - WARN(ing) - ERROR)
 addLoggingLevel('NOTICE', 25)
@@ -110,28 +134,34 @@ if box_cmdline['mode'] not in box_cmdline_modes:
     box_cmdline['mode'] = None
 
 if box_cmdline['mode'] == 'service':
-    if boxOS is 'Windows':
+    if boxOS == 'Linux':
+        # I would prefer to write to /var/log/theonionbox ... yet someone with 'root' privileges has to create that
+        # directory first and then set the propper rights. We test if this was done:
+        boxLogPath = '/var/log/theonionbox'
+        if os.access(boxLogPath, os.F_OK | os.W_OK | os.X_OK) is False:
+            boxLogPath = 'log'
+        boxLogPath += '/theonionbox.log'
+        if py34:
+            box_handler = TimedRotatingFileHandler(boxLogPath, 'm', interval=2, backupCount=5, atTime=time())
+        else:
+            box_handler = TimedRotatingFileHandler(boxLogPath, 'm', interval=2, backupCount=5)
+        ff = FileFormatter()
+        box_handler.setFormatter(ff)
+        boxLog.addHandler(box_handler)
+    else:
         # we'll emit this message later!
         # boxLog.warning('Running as --mode=service currently not supported on Windows Operating System.')
-        box_cmdline['mode'] = 'windows'
-    elif boxOS is 'Linux':
-        # Logging goes to a rotated file in /var/log/...
-        box_handler = TimedRotatingFileHandler('/var/log/theonionbox/log', 'W0', backupCount=5, atTime=time())
-        cf = ConsoleFormatter()
-        box_handler.setFormatter(cf)
+        box_cmdline['mode'] = 'WrongOS'
 
 if box_cmdline['mode'] != 'service':
     # Log to console
     box_handler = logging.StreamHandler(sys.stdout)
     cf = ConsoleFormatter()
     box_handler.setFormatter(cf)
+    boxLog.addHandler(box_handler)
 
 boxLog.setLevel('DEBUG')
 box_handler.setLevel('DEBUG')
-
-boxLog.addHandler(box_handler)
-
-# TODO: add the Handler to transfer messages to the clients -> torLog!
 
 # Here we go!
 boxLog.notice('')
@@ -141,8 +171,8 @@ boxLog.notice('Running on a {} Host.'.format(boxOS))
 if box_cmdline['debug'] is True:
     boxLog.notice('Debug Mode activated from command line.')
 
-if box_cmdline['mode'] is 'windows':
-    boxLog.warning('Running as --mode=service currently not supported on Windows Operating Systems.')
+if box_cmdline['mode'] is 'WrongOS':
+    boxLog.warning('Running as --mode=service currently not supported on {} Operating Systems.'.format(boxOS))
 
 #####
 # Module availability check
@@ -316,7 +346,7 @@ def update_time_deviation():
 # READY to GO!
 
 # give notice that we're alive NOW!
-boxLog.notice("Launching The Onion Box!")
+# boxLog.notice("Launching The Onion Box!")
 
 
 #####
