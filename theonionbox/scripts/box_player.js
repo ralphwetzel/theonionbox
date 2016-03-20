@@ -16,6 +16,7 @@ function box_DataPlayer(play_callback, delay, timestamp_index) {
 
     this.play_frame = null;
     this.play_data = null;
+    this.play_data_index = 0;
 
 }
 
@@ -48,23 +49,37 @@ box_DataPlayer.prototype.start = function() {
         this.play_data = null;
         do
         {
-            if (!this.play_frame)
-            {
+            // no play_frame?
+            if (!this.play_frame) {
+                // get a play_frame
                 this.play_frame = slice_frame();
+                // zero index pointer
+                this.play_data_index = 0;
+            }
+            else {
+                // increase index in the current frame
+                this.play_data_index += 1;
             }
 
+            // no frame? job done!
             if (!this.play_frame) { break; }
 
-            this.play_data = this.play_frame.pop();
+            // get the next play_data
+            this.play_data = null;
+            if (this.play_frame.length > this.play_data_index)
+                this.play_data = this.play_frame[this.play_data_index];
 
-            if (this.play_data === void 0)
+            // no play_data?
+            if (this.play_data == null)
             {
+                // this play_frame ran out of play_data
                 this.play_frame = null;
                 this.play_data = null;
             }
 
         } while (!this.play_data)
 
+        // signal 'job done!'
         if (!this.play_frame) { return false; }
 
         return true;

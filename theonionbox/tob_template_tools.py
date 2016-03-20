@@ -1,5 +1,32 @@
 import math
 
+box_bold_grid = 'col-xs-3 col-md-2 box_bold'
+box_section_grid = 'col-xs-8 col-md-9 box_section'
+box_datum_grid = 'col-xs-3 col-md-2 box_datum'
+box_value_grid = 'col-xs-8 col-md-9 box_value'
+box_title_grid = 'col-xs-8 col-md-9 box_title'
+box_subtitle_grid = 'col-xs-8 col-md-9 box_subtitle'
+
+
+def standard_row(datum='', value=''):
+    out = "<div class='row'>"
+    out += "<div class='{}'>{}</div>".format(box_datum_grid, datum)
+    out += "<div class='{}'><p>{}</p></div>".format(box_value_grid, value)
+    out += "<div class='col-xs-1'></div>"
+    out += "</div>"
+    return out
+
+
+def header_row(bold='', section='', target=''):
+    out = "<div class='row hash_target'"
+    if target is not '':
+        out += " id='{}'".format(target)
+    out += "><div class='{}'>{}</div>".format(box_bold_grid, bold)
+    out += "<div class='{}'><p>{}</p></div>".format(box_section_grid, section)
+    out += "<div class='col-xs-1'></div>"
+    out += "</div>"
+    return out
+
 # This is the python version of prettyNumber used in the html-template
 # Again: Thank's to 'Brennan T' on
 # http://stackoverflow.com/questions/15900485/correct-way-to-convert-size-in-bytes-to-kb-mb-gb-in-javascript
@@ -45,3 +72,4 @@ def pretty_number(bytes_value=0, calc='si', units='si', separator=' '):
         return '{:d}{}{}'.format(int(result), separator, abbrevs[i])
     else:
         return '{:.2f}{}{}'.format(result, separator, abbrevs[i])
+

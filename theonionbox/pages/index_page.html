@@ -40,36 +40,6 @@
                              "old": "red",  "unrecommended": "red",  "unknown": "cyan"}
 
 
-    box_bold_grid = 'col-xs-3 col-md-2 box_bold'
-    box_section_grid = 'col-xs-8 col-md-9 box_section'
-    box_datum_grid = 'col-xs-3 col-md-2 box_datum'
-    box_value_grid = 'col-xs-8 col-md-9 box_value'
-    box_title_grid = 'col-xs-8 col-md-9 box_title'
-    box_subtitle_grid = 'col-xs-8 col-md-9 box_subtitle'
-
-    def standard_row(datum='', value=''):
-        out =  "<div class='row'>"
-        out += "<div class='{}'>{}</div>".format(box_datum_grid, datum)
-        out += "<div class='{}'><p>{}</p></div>".format(box_value_grid, value)
-        out += "<div class='col-xs-1'></div>"
-        out += "</div>"
-
-        return out
-        end
-
-    def header_row(bold='', section='', target=''):
-        out =  "<div class='row hash_target'"
-        if target is not '':
-            out += " id='{}'".format(target)
-            end
-        out += "><div class='{}'>{}</div>".format(box_bold_grid, bold)
-        out += "<div class='{}'><p>{}</p></div>".format(box_section_grid, section)
-        out += "<div class='col-xs-1'></div>"
-        out += "</div>"
-
-        return out
-        end
-
 %>
 
 <html lang="en">

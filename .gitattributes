@@ -1,0 +1,4 @@
+# Set the end-of-line behavior, to get rid of an 'issue' in bottle's SimpleTemplate Engine
+*.html  text eol=lf
+*.css  text eol=lf
+*.js  text eol=lf
