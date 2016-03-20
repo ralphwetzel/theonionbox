@@ -40,8 +40,7 @@ in `~/config/theonionbox.cfg`. Every configuration option is well documented the
 so it shouldn't be too difficult to get along.
 
 ### ... of Tor
-The Box relies on Tor's authentication process to grant access. Therefore you
-**have to**
+The Box relies on Tor's authentication process to grant access. Therefore you **have to**
 * make sure that you configured a ControlPort.
 * set the `HashedControlPassword` option in Tor's config file and define a
 password to access the ControlPort.
@@ -49,10 +48,14 @@ password to access the ControlPort.
 ## Box Operations
 Open a console and launch The Box with `python theonionbox.py`.
 
-As of now there is no support to run The Box as a daemon. Be assured that this is part of the TODO - list.
+~~As of now there is no support to run The Box as a daemon. Be assured that this is part of the TODO - list.~~
 
-To see your relay in action browse to the address you configured and log
-into the Box using the password you defined for the ConfigPort.
+| NEW in v2.1 |
+| --- |
+| Alternatively you could run The Box as a background service on _init_ based Linux systems. Check the [HowTo](https://github.com/ralphwetzel/theonionbox/wiki/Run-The-Onion-Box-as-a-background-service!) for the detailed procedure.|
+
+
+To see your relay in action browse to the address you configured and log into the Box using the password you defined for the ConfigPort.
 
 Leave me a message if you encounter any issues... which might probably happen! :cold_sweat:
 
