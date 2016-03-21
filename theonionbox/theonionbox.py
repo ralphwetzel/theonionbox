@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-__version__ = '2.1'
+__version__ = '2.1.1'
 
 # required pip's for raspberrypi
 # stem
