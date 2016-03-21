@@ -100,23 +100,27 @@ class LiveDataManager(object):
             # check if we're still cumulating for the same minute
             self.ld_Lock.acquire()
 
+            # we use the last element in the deque to cumulate for the current minute!
+            ld_index = len(self.bandwidth_ld_record) - 1
+
             if self.minute_of_last_record == minute_of_current_record:
                 # yes: cumulate!
-                self.bandwidth_ld_record[0]['r'] += bytes_read
-                self.bandwidth_ld_record[0]['w'] += bytes_written
+                self.bandwidth_ld_record[ld_index]['r'] += bytes_read
+                self.bandwidth_ld_record[ld_index]['w'] += bytes_written
 
-                self.bandwidth_ld_record[0]['s'] = js_time_stamp
+                self.bandwidth_ld_record[ld_index]['s'] = js_time_stamp
             else:
                 # close the current record
                 # => save current timestamp to indicate that something has changed
-                if len(self.bandwidth_ld_record) > 0:
-                    self.bandwidth_ld_record[0]['s'] = js_time_stamp
+                if ld_index >= 0:
+                    self.bandwidth_ld_record[ld_index]['s'] = js_time_stamp
 
                 # no: appendleft & init a new element to store the data for this new minute
                 self.bandwidth_ld_record.append({'s': js_time_stamp,
                                                  'm': minute_of_current_record * 60 * 1000,
                                                  'r': bytes_read,
                                                  'w': bytes_written})
+
                 # molr keeps the minute we are cumulating data for!
                 self.minute_of_last_record = minute_of_current_record
 
