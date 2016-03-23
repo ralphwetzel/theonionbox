@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-__version__ = '2.1.1'
+__version__ = '3.0dev/debug'
 
 # required pip's for raspberrypi
 # stem
@@ -766,6 +766,8 @@ def get_start():
 
 @theonionbox.get('/<login_id>/<login_file:re:login\..*>')
 def get_login(login_id, login_file):
+
+    boxLog.debug('{}@{} requests {}'.format(make_short_id(login_id), request.remote_addr, login_file))
 
     login = box_logins.recall(login_id, request.remote_addr)
 

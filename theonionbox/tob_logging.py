@@ -439,6 +439,13 @@ class ConsoleFormatter(logging.Formatter):
 
         if msg != '':
             out += strftime('%H:%M:%S', gmtime(record.created)) + '.{:0=3d} '.format(int(record.msecs))
+
+            if lvlname == 'DEBUG':
+                out += '{}[{}'.format(record.filename, record.lineno)
+                if record.funcName != '<module>':
+                    out += '|{}'.format(record.funcName)
+                out += ']: '
+
             out += msg
 
             if lvlname in colorcodes:
