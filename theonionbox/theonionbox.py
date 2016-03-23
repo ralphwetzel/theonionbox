@@ -767,7 +767,8 @@ def get_start():
 @theonionbox.get('/<login_id>/<login_file:re:login\..*>')
 def get_login(login_id, login_file):
 
-    boxLog.debug('{}@{} requests {}'.format(make_short_id(login_id), request.remote_addr, login_file))
+    boxLog.debug("{}@{} requests '{}'".format(make_short_id(login_id), request.remote_addr, login_file))
+    boxLog.debug("{}: addr = {} / route = {}".format(make_short_id(login_id), request.remote_addr, request.remote_route))
 
     login = box_logins.recall(login_id, request.remote_addr)
 
