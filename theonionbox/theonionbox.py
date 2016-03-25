@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-__version__ = '3.0dev/debug'
+__version__ = '2.1.2RC1'
 
 # required pip's for raspberrypi
 # stem
@@ -243,6 +243,7 @@ box_login_ttl = 30
 box_server_to_use = 'default'
 box_ntp_server = 'pool.ntp.org'
 box_message_level = 'NOTICE'
+box_proxypath = ''
 
 box_ssl = False
 box_ssl_certificate = ''
@@ -277,6 +278,7 @@ if 'TheOnionBox' in config:
     box_ssl_key = box_config.get('ssl_key', box_ssl_key)
     box_ntp_server = box_config.get('ntp_server', box_ntp_server)
     box_message_level = box_config.get('message_level', box_message_level).upper()
+    box_proxypath = box_config.get('proxy_path', box_proxypath)
 
 if 'TorRelay' in config:
     tor_config = config['TorRelay']
@@ -302,6 +304,16 @@ if box_message_level not in boxLogLevels:
 
     boxLog.warn(msg)
     box_message_level = 'NOTICE'
+
+# Assure that the proxypath has the following format:
+# '/' (leading slash) + whatever + !'/' (NO trailing slash)
+if len(box_proxypath):
+    if box_proxypath[0] != '/':
+        box_proxypath = '/' + box_proxypath
+
+    if box_proxypath[-1] == '/':
+        box_proxypath = box_proxypath[:-1]
+
 
 #####
 # Set DEBUG mode and Message Level
@@ -752,7 +764,7 @@ def get_start():
     login_template = "pages/login_page.html"
 
     boxLog.info("{}@{} is knocking for Login; '{}' procedure provided."
-                   .format(login.id_short(), login.remote_addr(), login['auth']))
+                .format(login.id_short(), login.remote_addr(), login['auth']))
 
     return template(login_template
                     , session_id=login.id()
@@ -761,6 +773,7 @@ def get_start():
                     , remote_addr=request.get('REMOTE_ADDR')
                     , tor_info=tor_info
                     , icon=theonionbox_icon
+                    , proxypath=box_proxypath
                     )
 
 
@@ -770,7 +783,8 @@ def get_login(login_id, login_file):
     boxLog.debug("{}@{} requests '{}'".format(make_short_id(login_id), request.remote_addr, login_file))
     boxLog.debug("{}: addr = {} / route = {}".format(make_short_id(login_id), request.remote_addr, request.remote_route))
 
-    login = box_logins.recall(login_id, request.remote_addr)
+    # login = box_logins.recall(login_id, request.remote_addr)
+    login = box_logins.recall(login_id, request.remote_route[0])
 
     if login is None:
         raise HTTPError(404)
@@ -890,7 +904,8 @@ def get_index(session_id):
 #                    , template_directory='template'
                     , icon=theonionbox_icon
                     , box_version=__version__
-                    , box_debug = box_debug
+                    , box_debug=box_debug
+                    , proxypath=box_proxypath
                     )
 
 

@@ -40,10 +40,17 @@
                              "old": "red",  "unrecommended": "red",  "unknown": "cyan"}
 
 
+    proxy_path = get('proxypath', '')
+
 %>
 
 <html lang="en">
 <head>
+
+    % if len(proxy_path):
+        <base href="{{proxy_path}}">
+    % end
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 

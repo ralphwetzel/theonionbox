@@ -42,11 +42,18 @@
 
     my_name = 'The Onion Box'
 
+    proxy_path = get('proxypath', '')
+
 %>
 
 <html lang="en">
 
 <head>
+
+    % if len(proxy_path):
+        <base href="{{proxy_path}}">
+    % end
+
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -175,7 +182,11 @@
 
 </body>
 
-<script type="text/javascript" src=/{{session_id}}/login.js></script>
+% if proxy:
+    <script type="text/javascript" src={{session_id}}/login.js></script>
+% else
+    <script type="text/javascript" src=/{{session_id}}/login.js></script>
+% end
 <script type="text/javascript">
 
     function do_login(event)
