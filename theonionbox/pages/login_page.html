@@ -182,11 +182,7 @@
 
 </body>
 
-% if proxy:
-    <script type="text/javascript" src={{session_id}}/login.js></script>
-% else
-    <script type="text/javascript" src=/{{session_id}}/login.js></script>
-% end
+<script type="text/javascript" src=/{{session_id}}/login.js></script>
 <script type="text/javascript">
 
     function do_login(event)
