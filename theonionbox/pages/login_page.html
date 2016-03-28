@@ -42,17 +42,13 @@
 
     my_name = 'The Onion Box'
 
-    proxy_path = get('proxypath', '')
+    base_path = get('virtual_basepath', '') + '/'
 
 %>
 
 <html lang="en">
 
 <head>
-
-    % if len(proxy_path):
-        <base href="{{proxy_path}}">
-    % end
 
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -182,7 +178,7 @@
 
 </body>
 
-<script type="text/javascript" src=/{{session_id}}/login.js></script>
+<script type="text/javascript" src="{{base_path}}{{session_id}}/login.js"></script>
 <script type="text/javascript">
 
     function do_login(event)
@@ -205,7 +201,7 @@
             return false;
         }
         catch(err) {
-            document.location = "/";
+            document.location = 'base_path';
         }
     }
 
