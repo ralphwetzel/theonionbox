@@ -1,14 +1,23 @@
+%# Note that this file is not a valid *.js file!
+%# It is intended to be a bottlepy - style template
+%# used for the scripting part of TheOnionBox!
+
 // This code is based on the great work of
 // Jamie Perkins' "Digest Auth Request"
 // https://github.com/inorganik/digest-auth-request
 // adapted to suit our needs!
+
+<%
+    base_path = get('virtual_basepath', '') + '/'
+%>
+
 
 function authRequest(username, password) {
 
 	var self = this;
 
     this.method = 'GET';
-    this.url = '/' + username + '/login.html';
+    this.url = '{{base_path}}' + username + '/login.html';
 	this.scheme = null; // we just echo the scheme, to allow for 'basic', 'X-basic', 'Jbasic' etc
 	this.response = null; // hashed response to server challenge
 
@@ -78,7 +87,7 @@ function authRequest(username, password) {
                 // if (!(self.firstRequest.status >= 200 && self.firstRequest.status < 400)){
                 if (self.firstRequest.status !== 401) {
         		    // console.log('self.firstRequest.readyState');
-                    document.location = '/';
+                    document.location = '{{base_path}}';
                 }
 			}
 		}
@@ -87,7 +96,7 @@ function authRequest(username, password) {
 		self.firstRequest.onerror = function() {
 			if (self.firstRequest.status !== 401) {
     		    // console.log('self.firstRequest.onerror');
-		        document.location = '/';
+		        document.location = '{{base_path}}';
 			}
 		}
 
@@ -109,13 +118,13 @@ function authRequest(username, password) {
 		self.authenticatedRequest.setRequestHeader('Authorization', basicAuthHeader);
 
 		self.authenticatedRequest.onload = function() {
-		    var redirect_location = '/';
+		    var redirect_location = '{{base_path}}';
 			// success
   			if (self.authenticatedRequest.status >= 200 && self.authenticatedRequest.status < 400) {
 				if (self.authenticatedRequest.responseText !== 'undefined') {
 					if (self.authenticatedRequest.responseText.length > 0) {
 					    var location_id = self.authenticatedRequest.responseText;
-					    redirect_location = '/' + location_id + '/index.html';
+					    redirect_location = '{{base_path}}' + location_id + '/index.html';
 					}
 				}
 			}
@@ -126,7 +135,7 @@ function authRequest(username, password) {
 		// handle errors
 		self.authenticatedRequest.onerror = function() { 
 		    // console.log('self.authenticatedRequest.onerror');
-		    document.location = "/";
+		    document.location = '{{base_path}}';
 		};
 
 		self.authenticatedRequest.send();

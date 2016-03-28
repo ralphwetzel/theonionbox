@@ -2,14 +2,18 @@
 %# // It is intended to be a bottlepy - style template
 %# // used for the scripting part of TheOnionBox!
 
-%# // includes here!
-<script type="text/javascript" src=/{{session_id}}/{{jquery_lib}}></script>
-<script type="text/javascript" src=/{{session_id}}/{{bootstrap_js}}></script>
+<%
+    base_path = get('virtual_basepath', '') + '/'
+%>
 
-<script type="text/javascript" src="/{{session_id}}/smoothie.js"></script>
-<script type="text/javascript" src="/{{session_id}}/box_chart.js"></script>
-<script type="text/javascript" src="/{{session_id}}/box_messages.js"></script>
-<script type="text/javascript" src="/{{session_id}}/box_player.js"></script>
+%# // includes here!
+<script type="text/javascript" src="{{base_path}}{{session_id}}/{{jquery_lib}}"></script>
+<script type="text/javascript" src="{{base_path}}{{session_id}}/{{bootstrap_js}}"></script>
+
+<script type="text/javascript" src="{{base_path}}{{session_id}}/smoothie.js"></script>
+<script type="text/javascript" src="{{base_path}}{{session_id}}/box_chart.js"></script>
+<script type="text/javascript" src="{{base_path}}{{session_id}}/box_messages.js"></script>
+<script type="text/javascript" src="{{base_path}}{{session_id}}/box_player.js"></script>
 
 %# // page script starts here!
 <script>
@@ -444,7 +448,7 @@ var pull_error_counter = 0;
 function pull_error(jqXHR, textStatus, errorThrown)
 {
     if (jqXHR.status == 404 | jqXHR.status == 500) {
-        window.location.href = "/{{session_id}}/logout.html";
+        window.location.href = "{{base_path}}{{session_id}}/logout.html";
     }
     else if (textStatus == 'error' && jqXHR.status == 0 && jqXHR.readyState == 0) {
 
@@ -594,7 +598,7 @@ function pull_data()
 
     ajax_settings.data = action;
 
-    jQuery.ajax('/{{session_id}}/data.html', ajax_settings);
+    jQuery.ajax('{{base_path}}{{session_id}}/data.html', ajax_settings);
 
     if (stop_timer == false)
     {
@@ -624,7 +628,7 @@ function refresh_onionoo()
 
     ajax_settings.data = action;
 
-    jQuery.ajax('/{{session_id}}/data.html', ajax_settings);
+    jQuery.ajax('{{base_path}}{{session_id}}/data.html', ajax_settings);
 }
 
 function update_onionoo(json_data, is_json)

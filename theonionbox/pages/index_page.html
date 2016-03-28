@@ -40,10 +40,14 @@
                              "old": "red",  "unrecommended": "red",  "unknown": "cyan"}
 
 
+    base_path = get('virtual_basepath', '') + '/'
+
 %>
 
 <html lang="en">
 <head>
+
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -94,7 +98,7 @@
                     <li style="font-size: 15px;"><a href="#messages">Messages</a></li>
                 </ul>
 
-                <form class="navbar-form navbar-right" role="logout" method='get' action="/{{session_id}}/logout.html">
+                <form class="navbar-form navbar-right" role="logout" method='get' action="{{base_path}}{{session_id}}/logout.html">
                     <button type="submit" id="button_logout" class="btn btn-default" style="color:'rgb(255,0,0)'">Logout</button>
                 </form>
             </div><!-- /.navbar-collapse -->

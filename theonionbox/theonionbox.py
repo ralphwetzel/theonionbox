@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-__version__ = '2.1.1'
+__version__ = '2.1.2'
 
 # required pip's for raspberrypi
 # stem
@@ -243,6 +243,7 @@ box_login_ttl = 30
 box_server_to_use = 'default'
 box_ntp_server = 'pool.ntp.org'
 box_message_level = 'NOTICE'
+box_basepath = ''
 
 box_ssl = False
 box_ssl_certificate = ''
@@ -277,6 +278,7 @@ if 'TheOnionBox' in config:
     box_ssl_key = box_config.get('ssl_key', box_ssl_key)
     box_ntp_server = box_config.get('ntp_server', box_ntp_server)
     box_message_level = box_config.get('message_level', box_message_level).upper()
+    box_basepath = box_config.get('proxy_path', box_basepath)
 
 if 'TorRelay' in config:
     tor_config = config['TorRelay']
@@ -302,6 +304,16 @@ if box_message_level not in boxLogLevels:
 
     boxLog.warn(msg)
     box_message_level = 'NOTICE'
+
+# Assure that the base_path has the following format:
+# '/' (leading slash) + whatever + !'/' (NO trailing slash)
+if len(box_basepath):
+    if box_basepath[0] != '/':
+        box_basepath = '/' + box_basepath
+    if box_basepath[-1] == '/':
+        box_basepath = box_basepath[:-1]
+
+    boxLog.notice("Virtual base path set to '{}'.".format(box_basepath))
 
 #####
 # Set DEBUG mode and Message Level
@@ -603,6 +615,7 @@ from bottle import redirect, template, static_file
 from bottle import request
 from bottle import HTTPError, HTTPResponse
 from bottle import WSGIRefServer
+
 import bottle
 
 # set the bottle debug mode
@@ -625,6 +638,15 @@ theonionbox_name = 'The Onion Box'
 # to redirect the bottle() output to our logging framework
 bottle._stderr = boxLog.info
 bottle._stdout = boxLog.debug
+
+
+# bottle is so great!
+class ReBaseMiddleware(object):
+    def __init__(self, app):
+        self.app = app
+    def __call__(self, e, h):
+        e['PATH_INFO'] = e['PATH_INFO'].lstrip(box_basepath)
+        return self.app(e,h)
 
 #####
 #  The Authentication System
@@ -739,6 +761,12 @@ theonionbox_icon = "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAALGP
                      "kdLE/0/9+Z/G+AJ9+UUM+BIFlAAAAAElFTkSuQmCC"
 
 
+if box_debug:
+    @theonionbox.hook('before_request')
+    def debug_request():
+        boxLog.debug(request.environ['PATH_INFO'])
+
+
 # Default Landing Page
 @theonionbox.get('/')
 def get_start():
@@ -752,7 +780,7 @@ def get_start():
     login_template = "pages/login_page.html"
 
     boxLog.info("{}@{} is knocking for Login; '{}' procedure provided."
-                   .format(login.id_short(), login.remote_addr(), login['auth']))
+                .format(login.id_short(), login.remote_addr(), login['auth']))
 
     return template(login_template
                     , session_id=login.id()
@@ -761,13 +789,18 @@ def get_start():
                     , remote_addr=request.get('REMOTE_ADDR')
                     , tor_info=tor_info
                     , icon=theonionbox_icon
+                    , virtual_basepath=box_basepath
                     )
 
 
 @theonionbox.get('/<login_id>/<login_file:re:login\..*>')
 def get_login(login_id, login_file):
 
-    login = box_logins.recall(login_id, request.remote_addr)
+    boxLog.debug("{}@{} requests '{}'".format(make_short_id(login_id), request.remote_addr, login_file))
+    boxLog.debug("{}: addr = {} / route = {}".format(make_short_id(login_id), request.remote_addr, request.remote_route))
+
+    # login = box_logins.recall(login_id, request.remote_addr)
+    login = box_logins.recall(login_id, request.remote_route[0])
 
     if login is None:
         raise HTTPError(404)
@@ -780,10 +813,12 @@ def get_login(login_id, login_file):
     elif login_file == 'login.js':
         if 'auth' in login:
             if login['auth'] == 'basic':
-                return static_file('authrequest_basic.js', root='scripts', mimetype='text/javascript')
+                return template('scripts/authrequest_basic.js'
+                                , virtual_basepath=box_basepath)
             else:  # e.g. if login['auth'] == 'digest'
                 return template('scripts/authrequest_digest.js'
-                                , md5_js_file='scripts/md5.js')
+                                , md5_js_file='scripts/md5.js'
+                                , virtual_basepath=box_basepath)
         raise HTTPError(404)
 
     # Used to answer the AuthRequest
@@ -821,7 +856,7 @@ def get_index(session_id):
 
     # this is better than asserting!
     if session is None:
-        redirect('/')
+        redirect(box_basepath + '/')
         return False    # necessary?
 
     status = session.get('status', None)
@@ -829,11 +864,11 @@ def get_index(session_id):
     if status == 'prepared':
 
         delay = box_time() - session.last_visit
-        if delay > 1.0:  # seconds
+        if delay > 2.0:  # seconds
             boxLog.info('{}@{}: Login to Session delay expired. Session canceled.'
                            .format(session.id_short(), session.remote_addr()))
             box_sessions.delete(session.id())
-            redirect('/')
+            redirect(box_basepath + '/')
             return False
 
         session['status'] = 'ok'
@@ -887,7 +922,8 @@ def get_index(session_id):
 #                    , template_directory='template'
                     , icon=theonionbox_icon
                     , box_version=__version__
-                    , box_debug = box_debug
+                    , box_debug=box_debug
+                    , virtual_basepath=box_basepath
                     )
 
 
@@ -902,7 +938,7 @@ def get_logout(session_id):
     else:
         boxLog.warning('LogOut requested from unknown client: {}@{}'.format(make_short_id(session_id), request.remote_addr))
 
-    redirect('/')
+    redirect(box_basepath + '/')
 
 
 @theonionbox.post('/<session_id>/data.html')
@@ -1115,16 +1151,16 @@ def send_css(session_id, filename):
 @theonionbox.get('/<session_id>/<filename:re:.*\.js>')
 def send_js(session_id, filename):
 
-    js_files = [
-          'authrequest_basic.js'
-        , 'authrequest_digest.js'
-        , bootstrap_js
-        , 'box_chart.js'
-        , 'box_messages.js'
-        , 'box_player.js'
-        , jQuery_lib
-        , 'smoothie.js'
-        ]
+    js_files = {
+      #    'authrequest_basic.js': True
+      #  , 'authrequest_digest.js': True
+        bootstrap_js: False
+        , 'box_chart.js': False
+        , 'box_messages.js': False
+        , 'box_player.js': False
+        , jQuery_lib: False
+        , 'smoothie.js': False
+    }
 
     session = box_sessions.recall(session_id, request.remote_addr)
     if session is None:
@@ -1133,7 +1169,11 @@ def send_js(session_id, filename):
     guard = session.get('guard', False)
     if guard is True:
         if filename in js_files:
-            return static_file(filename, root='scripts', mimetype='text/javascript')
+
+            if js_files[filename]:
+                return template("scripts/"+filename, virtual_basepath=box_basepath)
+            else:
+                return static_file(filename, root='scripts', mimetype='text/javascript')
 
     raise HTTPError(404)
 
@@ -1556,7 +1596,7 @@ def exit_procedure(quit=True):
     # TODO: python sometimes emits a 'ResourceWarning' when we are here! This does not hurt ... but it's ugly!
     # TODO: Try to find a fix for this!
 
-    print("Shutting Down!")
+    boxLog.notice("Shutting Down!")
 
     if quit:
         sys.exit(0)
@@ -1726,7 +1766,7 @@ if __name__ == '__main__':
         pass
     finally:
         exit_procedure(False)
-        print("Almost Done!")
+        boxLog.notice("Shutdown: Almost Done!")
         # sys.exit(0)
 
         # while True:

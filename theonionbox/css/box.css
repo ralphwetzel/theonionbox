@@ -2,8 +2,12 @@
 %# It is intended to be a bottlepy - style template
 %# used for the scripting part of TheOnionBox!
 
+<%
+    base_path = get('virtual_basepath', '') + '/'
+%>
+
 %# <!-- includes here! -->
-<link href="/{{session_id}}/{{bootstrap_css}}" rel="stylesheet">
+<link href="{{base_path}}{{session_id}}/{{bootstrap_css}}" rel="stylesheet">
 
 %# <!-- styles start here! -->
 <style>
