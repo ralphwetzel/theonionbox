@@ -1,0 +1,35 @@
+<%
+    # Note that this file is not a valid *.html file!
+    # It is intended to be a bottlepy - style template
+    # used for the scripting part of TheOnionBox!
+
+%>
+
+{{!header_row('Tor', 'Login Request')}}
+
+<form role="login" onsubmit="return do_login();">
+
+    <div class = "row">
+        <div class="{{box_datum_grid}}">
+            <p>Password</p>
+        </div>
+        <div class="col-xs-3 col-md-3 box_value">
+                <div class="form-group">
+                    <input type="password" class="form-control" id='login_pwd' name='login_pwd' tabindex="1">
+                </div>
+        </div>
+
+    </div>
+
+    <div class = "row">
+    <div class="{{box_datum_grid}}">
+        <p></p>
+    </div>
+    <div class="{{box_value_grid}}">
+        <div class="form-group">
+            <button type="submit" id="button_login" class="btn btn-default">Login</button>
+        </div>
+    </div>
+    </div>
+</form>
+<hr>

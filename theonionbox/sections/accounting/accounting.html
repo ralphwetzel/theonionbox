@@ -1,0 +1,72 @@
+%# Note that this file is not a valid *.html file!
+%# It is intended to be a bottlepy - style template
+%# used for the scripting part of TheOnionBox!
+
+<%
+    import tob.template_tools
+    tor = get('tor', None)
+    accounting_on = tor.get_isAccountingEnabled() if tor else False
+    if accounting_on:
+        acc_stats = tor.get_accountingStats()
+    end
+%>
+
+{{!header_row('Tor', 'Accounting', 'accounting')}}
+
+<div class="row acc_off" style="display: none">
+    <div class="{{box_datum_grid}}">
+        <p>Status</p>
+    </div>
+    <div class="{{box_value_grid}}">
+        <p>
+            <code class="text-left" style="color: grey;">
+                disabled
+            </code>
+        </p>
+    </div>
+</div>
+<div class="row acc_on">
+    <div class="{{box_datum_grid}}">
+        <p>Status</p>
+    </div>
+    <div class="{{box_value_grid}}">
+        <p>
+            <code style="color: green;" id="acc_status">
+                %# <!-- acc_stats.status -->
+                ... waiting for data ...
+            </code>
+        </p>
+    </div>
+</div>
+<div class="row acc_on">
+    <div class="{{box_datum_grid}}">
+        <p>Download</p>
+    </div>
+    <div class="{{box_value_grid}}">
+        <p id="acc_down">
+            %# <!-- acc_stats.read_bytes -->
+        </p>
+    </div>
+</div>
+<div class="row acc_on">
+    <div class="{{box_datum_grid}}">
+        <p>Upload</p>
+    </div>
+    <div class="{{box_value_grid}}">
+        <p id="acc_up">
+            %# <!-- acc_stats.written_bytes -->
+        </p>
+    </div>
+</div>
+<div class="row acc_on">
+    <div class="{{box_datum_grid}}">
+        <p>End of Interval</p>
+    </div>
+    <div class="{{box_value_grid}}">
+        <p id="acc_interval">
+            %# <!-- acc_stats.interval_end-->
+        </p>
+    </div>
+</div>
+
+<hr>

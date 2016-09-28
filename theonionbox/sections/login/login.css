@@ -1,0 +1,21 @@
+%# Note that this file is not a valid *.css file!
+%# It is intended to be a bottlepy - style template
+%# used for the scripting part of TheOnionBox!
+
+.overlay
+{
+    position: relative;
+}
+
+.overlay:after
+{
+  content: " ";
+  z-index: 100;
+  display: block;
+  position: absolute;
+  height: 100%;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.6);
+}

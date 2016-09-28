@@ -1,6 +1,10 @@
 #!/usr/bin/python
+from __future__ import absolute_import
+from __future__ import print_function
 
-__version__ = '2.1.2'
+__version__ = '3.0RC1'      # stamp will be added later
+__description__ = 'The Onion Box: WebInterface to monitor Tor Relays and Bridges'
+
 
 # required pip's for raspberrypi
 # stem
@@ -8,27 +12,96 @@ __version__ = '2.1.2'
 # psutil
 # configparser
 # apscheduler
+# requests
 
 #####
 # Standard Imports
 import sys
+import platform
 from datetime import time
+
+#####
+# Module availability check
+from pkgutil import find_loader
+
+def warning(*objs):
+    print(' ', *objs, file=sys.stderr)
+
+module_missing = False
+
+# First: psutils
+if find_loader('psutil') is None:
+    warning(__description__)
+    warning("Required python module 'psutil' is missing.")
+    module_missing = True
+    host = platform.system
+    if host == 'Linux':
+        warning("You have to install it via 'pip install psutil'.")
+        warning("If this fails, make sure the python headers are installed, too: 'apt-get install python-dev'.")
+    elif host == 'Windows':
+        warning("Check 'https://pypi.python.org/pypi/psutil' for an installer package.")
+    else:
+        warning("Check 'https://pypi.python.org/pypi/psutil' for installation instructions.")
+
+# module name | extra info
+required_modules = [
+    'stem',
+    'bottle',
+    'configparser',
+    'apscheduler',
+    'requests'
+]
+
+for module_name in required_modules:
+    if find_loader(module_name) is None:
+        if module_missing is False:
+            # Be nice and once print a header line!
+            warning(__description__)
+            warning('Version v{}'.format(__version__))
+        warning("Required python module '{0}' is missing. You have to install it via 'pip install {0}'."
+                .format(module_name))
+        module_missing = True
+
+# We'll check this later!
+# cherrypy_missing = False
+# if find_loader('cherrypy') is None:
+#     boxLog.warning("Optional python module 'cherrypy' not found. Cannot use 'CherryPy' as webserver.")
+#     cherrypy_missing = True
+
+if module_missing:
+    warning("Hint: You need to have root privileges to operate 'pip'.")
+    sys.exit(0)
+
 
 #####
 # Python version detection
 py = sys.version_info
 py34 = py >= (3, 4, 0)
 
+
 #####
-# Operating System detection
+# Host System detection
+from psutil import virtual_memory
 import platform
-boxOS = platform.system()
+
+boxHost = {
+    'system': platform.system(),
+    'name': platform.node(),
+    'release': platform.release(),
+    'version': platform.version(),
+    'machine': platform.machine(),
+    'processor': platform.processor(),
+    'memory': virtual_memory().total,
+    'memory|MB': int(virtual_memory().total / (1024 ** 2))
+}
+
 
 #####
 # Script directory detection
 import inspect
 import os
 import sys
+
 
 def get_script_dir(follow_symlinks=True):
     if getattr(sys, 'frozen', False): # py2exe, PyInstaller, cx_Freeze
@@ -42,6 +115,17 @@ def get_script_dir(follow_symlinks=True):
 # to ensure that our directory structure works as expected!
 os.chdir(get_script_dir())
 
+
+#####
+# Version Stamping
+import os.path
+if os.path.exists('stamp.txt'):
+    with open('stamp.txt', 'r') as f:
+        lines = f.readlines()
+        if len(lines) == 1 and lines[0][8] == '|':
+            __version__ += ' (stamp {})'.format(lines[0])
+
+
 #####
 # Command line interface
 
@@ -49,7 +133,8 @@ from getopt import getopt, GetoptError
 
 
 def print_usage():
-    print('The Onion Box v{}: WebInterface for Tor Relays'.format(__version__))
+    print(__description__)
+    print('Version v{}'.format(__version__))
     print(""
           "Command line parameters:"
           " -c <path> | --config=<path>: Provide path & name of configuration file."
@@ -94,8 +179,8 @@ if argv:
 # The Logging Infrastructure
 import logging
 from logging.handlers import TimedRotatingFileHandler
-from tob_logging import addLoggingLevel, LoggingManager, ForwardHandler
-from tob_logging import ConsoleFormatter, FileFormatter
+from tob.tob_logging import addLoggingLevel, LoggingManager, ForwardHandler
+from tob.tob_logging import ConsoleFormatter, FileFormatter
 
 # Add Level to be inline with the Tor levels (DEBUG - INFO - NOTICE - WARN(ing) - ERROR)
 addLoggingLevel('NOTICE', 25)
@@ -134,17 +219,14 @@ if box_cmdline['mode'] not in box_cmdline_modes:
     box_cmdline['mode'] = None
 
 if box_cmdline['mode'] == 'service':
-    if boxOS == 'Linux':
+    if boxHost['system'] == 'Linux':
         # I would prefer to write to /var/log/theonionbox ... yet someone with 'root' privileges has to create that
-        # directory first and then set the propper rights. We test if this was done:
+        # directory first and then set the proper rights. We test if this was done:
         boxLogPath = '/var/log/theonionbox'
         if os.access(boxLogPath, os.F_OK | os.W_OK | os.X_OK) is False:
             boxLogPath = 'log'
         boxLogPath += '/theonionbox.log'
-        if py34:
-            box_handler = TimedRotatingFileHandler(boxLogPath, 'm', interval=2, backupCount=5, atTime=time())
-        else:
-            box_handler = TimedRotatingFileHandler(boxLogPath, 'm', interval=2, backupCount=5)
+        box_handler = TimedRotatingFileHandler(boxLogPath, when='midnight', backupCount=5)
         ff = FileFormatter()
         box_handler.setFormatter(ff)
         boxLog.addHandler(box_handler)
@@ -165,59 +247,39 @@ box_handler.setLevel('DEBUG')
 
 # Here we go!
 boxLog.notice('')
-boxLog.notice('The Onion Box v{}: WebInterface for Tor Relays'.format(__version__))
-boxLog.notice('Running on a {} Host.'.format(boxOS))
+boxLog.notice(__description__)
+boxLog.notice('Version v{}'.format(__version__))
+boxLog.info('Running on a {} Host.'.format(boxHost['system']))
+boxLog.info('Python version is {}.{}.{}.'.format(sys.version_info.major,
+                                                 sys.version_info.minor,
+                                                 sys.version_info.micro))
+
 
 if box_cmdline['debug'] is True:
     boxLog.notice('Debug Mode activated from command line.')
 
 if box_cmdline['mode'] is 'WrongOS':
-    boxLog.warning('Running as --mode=service currently not supported on {} Operating Systems.'.format(boxOS))
+    boxLog.warning('Running as --mode=service currently not supported on {} Operating Systems.'
+                   .format(boxHost['system']))
 
-#####
-# Module availability check
-from pkgutil import find_loader
-
-# module name | extra info
-required_modules = {
-    'psutil': "If this fails, make sure the python headers are installed, too: 'apt-get install python-dev'",
-    'configparser': '',
-    'stem': '',
-    'bottle': '',
-    'apscheduler': ''
-}
-
-module_missing = False
-for module_name in required_modules:
-    if find_loader(module_name) is None:
-        boxLog.warning("Required python module '{0}' is missing. You have to install it via 'pip install {0}'."
-                       .format(module_name))
-        if required_modules[module_name]:
-            boxLog.warning(required_modules[module_name])
-        module_missing = True
-
-cherrypy_missing = False
-if find_loader('cherrypy') is None:
-    boxLog.warning("Optional python module 'cherrypy' not found. Cannot use 'CherryPy' as webserver.")
-    cherrypy_missing = True
-
-if module_missing:
-    boxLog.notice("Hint: You need to have root privileges to operate 'pip'.")
-    sys.exit(0)
 
 
 #####
 # General stuff
 # import sys
 import json                                     # to prepare the LiveData for transmission
-from psutil import virtual_memory, cpu_percent  # to readout the cpu load
 import uuid                                     # e.g. for authentication
 from collections import deque
 import functools
 import itertools
 from threading import RLock
-from datetime import datetime, timedelta
+from datetime import datetime
 
+#####
+# TOR manpage Index Information
+
+from tob.manpage import ManPage
+box_manpage = ManPage('tor/tor.1.ndx')
 
 #####
 # Configuration Management
@@ -315,6 +377,13 @@ if len(box_basepath):
 
     boxLog.notice("Virtual base path set to '{}'.".format(box_basepath))
 
+cherrypy_missing = False
+if box_server_to_use == 'cherrypy':
+    if find_loader('cherrypy') is None:
+        boxLog.warning("Optional python module 'cherrypy' not found. Cannot use 'CherryPy' as webserver.")
+        cherrypy_missing = True
+
+
 #####
 # Set DEBUG mode and Message Level
 #
@@ -337,7 +406,7 @@ else:
 # Time Management
 from time import time
 # from tob_time import TimeManager
-from tob_time import getTimer
+from tob.tob_time import getTimer
 box_time = getTimer()
 box_time.setNTP(box_ntp_server)
 
@@ -355,11 +424,81 @@ def update_time_deviation():
     return ret_val
 
 #####
+# Temperature Sensor Detection
+#
+# @ the Windows users: Sorry folks! Windows needs admin rights to access the temp sensor.
+# As long as this is the case Temperature display will not be supported on Windows!!
+
+import os
+boxHost['temp'] = os.path.exists('/sys/class/thermal/thermal_zone0/temp') if boxHost['system'] == 'Linux' else False
+
+if boxHost['temp']:
+    boxLog.notice('Temperature sensor information located in file system. Expect to get a chart!')
+else:
+    boxLog.notice('No temperature sensor information found.')
+
+#####
+# Uptime Detection
+#
+# http://planzero.org/blog/2012/01/26/system_uptime_in_python,_a_better_way
+# currently only supported runnig on Linux!
+
+boxHost['up'] = None
+if boxHost['system'] == 'Linux':
+    try:
+        with open('/proc/uptime', 'r') as f:
+            up_sec = float(f.readline().split()[0])
+        boxHost['up'] = datetime.fromtimestamp(box_time.time() - up_sec).strftime('%Y-%m-%d %H:%M:%S')
+
+    except:
+        pass
+
+elif boxHost['system'] == 'Windows':
+
+    # Due to the situation that there is no 'reliable' way to retrieve the uptime
+    # on Windows, we rely on a third party tool:
+    # uptime version 1.1.0: http://uptimeexe.codeplex.com/
+    # Using v1.1.0 is critical/mandatory as the output changed from prior versions!
+    # We expect to find this uptime.exe in ./uptime!
+
+    import subprocess
+    from datetime import timedelta
+
+    uptimes = []
+    try:
+        upt_v = subprocess.check_output('uptime/uptime.exe -v').decode('utf-8').strip()
+    except:
+        boxLog.notice("Failed to run 'uptime' tool (http://uptimeexe.codeplex.com). "
+                      "Check documentation for further instructions!")
+    else:
+        # expected output format is exactly 'version 1.1.0'
+        if upt_v == 'version 1.1.0':
+            try:
+                uptimes = subprocess.check_output('uptime/uptime.exe').decode('utf-8').split()
+
+                # expected output format is now e.g. '22:23:43 uptime 02:16:21'
+                if len(uptimes) == 3 and uptimes[1] == 'uptime':
+                    upt = uptimes[2].split(':')
+                    if len(upt) == 3:
+                        its_now = datetime.fromtimestamp(box_time.time())
+                        upt_diff = timedelta(hours=int(upt[0]),
+                                             minutes=int(upt[1]),
+                                             seconds=int(upt[2]),
+                                             microseconds=its_now.microsecond)
+                        boxHost['up'] = its_now - upt_diff
+            except:
+                pass
+        else:
+            boxLog.notice("Found 'uptime' tool yet version is not v1.1.0. "
+                          "Check documentation for further instructions!")
+
+if boxHost['up']:
+    boxLog.notice('Uptime information located. Expect to get a readout!')
+else:
+    boxLog.notice('No uptime information available.')
+
+#####
 # READY to GO!
-
-# give notice that we're alive NOW!
-# boxLog.notice("Launching The Onion Box!")
-
 
 #####
 # The Scheduler
@@ -369,19 +508,18 @@ from apscheduler.schedulers.background import BackgroundScheduler
 box_cron = BackgroundScheduler()
 box_cron.start()
 
+
 #####
 # SESSION Management
-from tob_session import SessionFactory, Session, make_short_id
+from tob.session import SessionFactory, make_short_id
 
 # standard session management
 box_sessions = SessionFactory(box_time)
-# used for session management during login procedure
-box_logins = SessionFactory(box_time, 30)
 
 
 #####
 # Live Data Management
-from tob_livedata_manager import LiveDataManager, Cumulator
+from tob.livedata import LiveDataManager
 
 #####
 # Management of ...
@@ -396,221 +534,152 @@ tor_bwdata = {'upload': 0, 'download': 0, 'limit': 0, 'burst': 0, 'measure': 0}
 
 
 #####
-# ... LongTerm Storage
-import json
-
-ltd = {}
-ltd_file = "theonionbox.ltd"
-
-try:
-    with open(ltd_file) as json_file:
-        ltd = json.load(json_file)
-except Exception as exc:
-    boxLog.notice("Failed to load LongTerm Data from file '{}'. Exception raised says '{}'!".format(ltd_file, exc))
-    pass
-else:
-    boxLog.info("Found LongTerm Data file '{}'. Reading data...".format(ltd_file))
-
-
-# this should be a bit more sophisticated
-# if we add further protocol numbers
-if 'protocol' not in ltd:
-    ltd = {}
-elif not ltd['protocol'] == 1:
-    ltd = {}
-
-ltd_keys = ['3d', '1w', '1m', '3m', '1y', '5y']
-
-stat = {}
-for key in ltd_keys:
-    if key in ltd:
-        stat[key] = ltd[key]
-        boxLog.debug("Found data for key '{}'.".format(key))
-    else:
-        stat[key] = None
-
-cum3d = Cumulator(900 / 2, initial_status=stat['3d'], max_count=500)
-cum1w = Cumulator(3600 / 2, initial_status=stat['1w'], max_count=500)
-cum1m = Cumulator(14400 / 2, initial_status=stat['1m'], max_count=500)
-cum3m = Cumulator(43200 / 2, initial_status=stat['3m'], max_count=500)
-cum1y = Cumulator(172800 / 2, initial_status=stat['1y'], max_count=500)
-cum5y = Cumulator(864000 / 2, initial_status=stat['5y'], max_count=500)
-
-cumtors = {'3d': cum3d,
-           '1w': cum1w,
-           '1m': cum1m,
-           '3m': cum3m,
-           '1y': cum1y,
-           '5y': cum5y}
-
-
-def save_longterm_data():
-
-    cumtor_status = {'protocol': 1,
-                     '3d': cum3d.get_status(),
-                     '1w': cum1w.get_status(),
-                     '1m': cum1m.get_status(),
-                     '3m': cum3m.get_status(),
-                     '1y': cum1y.get_status(),
-                     '5y': cum5y.get_status()}
-
-    # filename = 'theonionbox.ltd'
-
-    try:
-        with open(ltd_file, 'w') as json_file:
-            json.dump(cumtor_status, json_file)
-
-        boxLog.info("Longterm Data saved to file '{}'.".format(ltd_file))
-
-    except Exception as exc:
-        boxLog.warning("Error while saving Longterm Data to file '{}': ".format(ltd_file, exc))
-
-    return
-
-box_cron.add_job(save_longterm_data, 'interval', minutes=15)
-
-#####
 # TOR interface
-# import stem
-from stem.control import Controller, EventType
-from stem.connection import AuthenticationFailure
+from stem.control import EventType
+from tob.controller import tobController
 
 # The TOR interface
-tor = None
+tor = None  # -> tobController
 tor_password = None
-tor_info = {}
-tor_info_lock = RLock()
 
 
+# this will be called by a cron job each minute once!
 def update_tor_info():
 
-    import stem
-    from stem.version import Version
-    import platform
+    try:
+        tor.refresh()
 
-    tor_info_lock.acquire()
+    except:
+        pass
 
-    if tor and tor.is_alive() and tor.is_authenticated():
+tor_conf = []
+def update_tor_conf():
 
-        # try:
-            tor_info['tor/version'] = tor.get_info('version', '')
-            if tor_info['tor/version'] is not '':
-                _vers = Version(tor_info['tor/version'])
-                tor_info['tor/version/short'] = ("{}.{}.{}.{}").format(_vers.major, _vers.minor, _vers.micro, _vers.patch)
-            else:
-                tor_info['tor/version/short'] = ''
-            tor_info['tor/version/current'] = tor.get_info('status/version/current', 'unknown')
-            tor_info['tor/fingerprint'] = tor.get_info('fingerprint', '')
-            tor_info['tor/address'] = tor.get_info('address', '')
+    # get all valid configuration names (only and drop attached information)
+    config_names = tor.get_info('config/names')
+    names_with_values = config_names.splitlines()
+    names_only = [line.split(' ')[0].lower() for line in names_with_values]
 
-            tor_info['tor/nickname'] = tor.get_conf('Nickname', '')
-            tor_info['tor/orPort'] = tor.get_conf('ORPort', '0')
-            tor_info['tor/dirPort'] = tor.get_conf('DirPort', '0')
-            tor_info['tor/controlPort'] = tor.get_conf('ControlPort', '0')
-            tor_info['tor/controlSocket'] = tor.get_conf('ControlSocket', '')
-            tor_info['tor/isAuthPassword'] = tor.get_conf('HashedControlPassword', None) is not None
-            tor_info['tor/isAuthCookie'] = tor.get_conf('CookieAuthentication', 0) == "1"
+    # get the used configuration files
+    # could be up to two (depending on the tor version)
+    tor_cf = []
 
-            if tor_info['tor/fingerprint'] is not '':
-                _result = None
-                tor_info['tor/flags'] = ['none']
-                # There's some ugly behaviour in GETINFO("ns/id/...")
-                # see https://trac.torproject.org/projects/tor/ticket/7646
-                # and https://trac.torproject.org/projects/tor/ticket/7059
-                # This behaviour seems to be uncoverable!
-                try:
-                    _result = tor.get_info("ns/id/{}".format(tor_info['tor/fingerprint']))
-                except stem.InvalidArguments as exc:
-                    # An exception is created and raised here by stem if the network doesn't know us.
-                    # It happens if the network thinks we're not running (which might be obvious)
-                    # and as well IF WE'RE IN HIBERNATION (which might not be so obvious)!
-                    pass
-                else:
-                    _result = _result.split('\n')
-                    for line in _result:
-                        if line.startswith("s "):
-                            tor_info['tor/flags'] = line[2:].split()
+    # this one should be available always
+    cf = ''
+    try:
+        cf = tor.get_info('config-file', '')
+    except:
+        pass
+    if len(cf):
+        tor_cf.append(cf)
 
-            tor_info['tor/orListenAddress'] = ""
-            _orla = tor.get_conf('ORListenAddress', None)
+    # this was first implemented in 0.2.3.9-alpha
+    cf = ''
+    try:
+        cf = tor.get_info('config-defaults-file', '')
+    except:
+        pass
+    if len(cf):
+        tor_cf.append(cf)
 
-            if _orla:
-                if ":" in _orla:
-                    # both ip and port overwritten
-                    tor_info['tor/orListenAddress'] = _orla[:_orla.find(":")]
-                    tor_info['tor/orPort'] = _orla[_orla.find(":") + 1:]
-                else:
-                    tor_info['tor/orListenAddress'] = _orla
-
-
-            _epConf = []
-            try:
-                _epConf = tor.get_conf("ExitPolicy", [], True)
-            except:
-                pass
-
-            _epList = []
-            if _epConf is not None:
-                for _ep in _epConf:
-                    _epList += [_pol.strip() for _pol in _ep.split(",")]
-
-            tor_info['tor/exitPolicies'] = _epList
-
-        # except:
+    # read defined parameters from the config files (if used)
+    # and verify them with the valid parameter names
+    out = []
+    for conf_file in cf:
+        lines = []
+        try:
+            with open(conf_file) as file:
+                lines = file.readlines()
+        except:
             pass
+        for line in lines:
+            line.lstrip()   #strip white spaces at the beginning of the line
+            if line[0] != '#':  # check if it's a comment
+                token = line.split(' ')[0].lower()    # if not: get the first token
+                if token:
+                    if (token not in out) and (token in names_only):    # and record this to the result - if new
+                        out.append(token)
 
-            tor_info['host/system'] = platform.system()
-            tor_info['host/name'] = platform.node()
-            tor_info['host/release'] = platform.release()
-            tor_info['host/version'] = platform.version()
-            tor_info['host/machine'] = platform.machine()
-            tor_info['host/processor'] = platform.processor()
-            tor_info['host/memory'] = virtual_memory().total
-            tor_info['host/memory/MB'] = int(virtual_memory().total / (1024 ** 2))
 
-    tor_info_lock.release()
+    # finally get the command line and check if there are parameters defined additionally
+    from psutil import Process
+    cmd_line = ''
+    try:
+        pid = tor.get_pid(0)
+        if pid:
+            prc = Process(pid)
+            if prc:
+                cmd_line = prc.cmdline()
+    except:
+        pass
 
-    return
+    if len(cmd_line)> 0:
+        boxLog.notice("TODO: Parse Commandline -> {}".format(cmd_line))
+
+    if len(out) > 0:
+        out.sort()
+        tor_conf = out
+        print(out)
+
+def handle_conf_changed(event):
+    print('handle_conf_changed!!')
+    print(event)
+
 
 #####
 # ONIONOO Protocol Interface
-from tob_onionoo import OnionooManager
-onionoo = OnionooManager(box_time)
 
+from tob.onionoo import Details, Bandwidth, Weights
+onionoo_details = Details()
+onionoo_bw = Bandwidth()
+onionoo_weights = Weights()
 
 def refresh_onionoo(relaunch_job=False):
 
     from random import randint
-    import time
 
-    boxLog.info('Trying to refresh ONIONOO data.')
-    its_now = box_time()
-    this_hour = its_now - (its_now % 3600)
-    next_run = int(this_hour) + 3600 + randint(0, 3590)
+    fp = tor.get_fingerprint() if tor else None
 
-    if 'tor/fingerprint' in tor_info:
-        boxLog.debug('Fingerprint for query: {}'.format(tor_info['tor/fingerprint']))
-        if onionoo.query(tor_info['tor/fingerprint']):
-            boxLog.info('ONIONOO data successfully refreshed')
+    if fp is not None:
+        onionoo_details.refresh(fp)
+        onionoo_bw.refresh(fp)
+        onionoo_weights.refresh(fp)
 
-    else:
-        boxLog.info('No Fingerprint to query.')
+    if box_cron.get_job('onionoo') is not None:
+        return
 
-    run_date = datetime.fromtimestamp(next_run)
-    boxLog.info('Next scheduled retry to refresh ONIONOO @ {}'.format(run_date.strftime('%Y-%m-%d %H:%M:%S')))
-
+    # schedule the next run...
     if relaunch_job:
+        next_run = int(box_time()) + randint(3600*4, 3600*12)
+        run_date = datetime.fromtimestamp(next_run)
+        boxLog.info('Next scheduled retry to refresh ONIONOO @ {}'.format(run_date.strftime('%Y-%m-%d %H:%M:%S')))
         box_cron.add_job(refresh_onionoo, 'date', id='onionoo', run_date=run_date, args=[True])
 
     return
 
-# to initiate the standard onionoo_refresh cycle (about once an hour)
-refresh_onionoo(relaunch_job=True)
+
+#####
+# Cumulated Bandwidth information
+
+def refresh_bw():
+
+    try:
+        tr = int(tor.get_info('traffic/read'))
+        tw = int(tor.get_info('traffic/written'))
+    except:
+        pass
+    else:
+        tor_livedata.set_traffic(tr, tw)
+    finally:
+        if box_cron.get_job('bw') is not None:
+            return
+
+        box_cron.add_job(refresh_bw, 'interval', id='bw', minutes=5)
 
 
 #####
 # BOTTLE
-from bottle import Bottle, run, debug, auth_basic, error, _stderr, _stdout
+from bottle import Bottle, run, debug
 from bottle import redirect, template, static_file
 from bottle import request
 from bottle import HTTPError, HTTPResponse
@@ -619,17 +688,24 @@ from bottle import WSGIRefServer
 import bottle
 
 # set the bottle debug mode
-debug(box_debug)
+# debug(box_debug)
+debug(False)
 
 # jQuery version
 # jQuery_lib = "jquery-1.11.2.js"
-jQuery_lib = "jquery-1.11.2.min.js"
+# jQuery_lib = "jquery-1.12.2.min.js"
+jQuery_lib = "jquery-3.1.1.min.js"
 
 # Bootstrap
-# bootstrap_js="bootstrap.js"
-bootstrap_js = "bootstrap.min.js"
-# bootstrap_css = "bootstrap.css"
-bootstrap_css = "bootstrap.min.css"
+bootstrapVersion = '3.3.7'
+bootstrapDir = 'bootstrap-' + bootstrapVersion
+if box_debug:
+    bootstrapJS="bootstrap.js"
+    bootstrapCSS = "bootstrap.css"
+else:
+    bootstrapJS = "bootstrap.min.js"
+    bootstrapCSS = "bootstrap.min.css"
+
 
 # Our WebServer implementation
 theonionbox = Bottle()
@@ -640,19 +716,12 @@ bottle._stderr = boxLog.info
 bottle._stdout = boxLog.debug
 
 
-# bottle is so great!
-class ReBaseMiddleware(object):
-    def __init__(self, app):
-        self.app = app
-    def __call__(self, e, h):
-        e['PATH_INFO'] = e['PATH_INFO'].lstrip(box_basepath)
-        return self.app(e,h)
-
 #####
 #  The Authentication System
 
 from base64 import b64decode
 from hashlib import md5
+
 
 # from bottlepy
 def tob(s, enc='utf8'):
@@ -703,7 +772,8 @@ def authenticate_login(login, request):
                     response = md5(resp_prep).hexdigest()
 
                     if response == request_data['response']:
-                        raise_err = False
+                        if tor_authenticate(tor_password):
+                            raise_err = False
 
         except:
             pass
@@ -726,25 +796,35 @@ def authenticate_login(login, request):
 
 
 def tor_authenticate(password):
+
+    log = logging.getLogger('theonionbox')
+    log.debug('tor.is_alive(): {}'.format(tor.is_alive()))
+
     # check if there is a connection to TOR
     if not tor.is_alive():
         try:
             tor.connect()
         except:
             return False
+        log.debug('tor.is_alive() after connect(): {}'.format(tor.is_alive()))
 
     global tor_password
 
+    log.debug('tor.is_authenticated(): {}'.format(tor.is_authenticated()))
     if tor.is_authenticated():
         return password == tor_password
     else:
+        retval = False
         try:
-            tor.authenticate(password=password)
+            tor.authenticate_password(password=password)
             tor_password = password
-            return True
-        except AuthenticationFailure:
-            return False
+            retval = True
+        except:
+            pass
+        finally:
+            log.debug('tor.is_authenticated() after authenticate_password(): {}'.format(tor.is_authenticated()))
 
+        return retval
 
 #####
 # WebServer implementation starts here
@@ -760,7 +840,31 @@ theonionbox_icon = "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAALGP
                      "N6doGu0+jYIRJjCdxr5KqYNpWYayQzwbXsi/rgq1tpCFiKJX/VZiMLpdIvQHYXCd8fm2hI/lplGxxHACiN/hgS5QN" \
                      "kdLE/0/9+Z/G+AJ9+UUM+BIFlAAAAAElFTkSuQmCC"
 
+icon_marker = "iVBORw0KGgoAAAANSUhEUgAAAA4AAAAOCAYAAAAfSC3RAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAA" \
+              "DsMAAA7DAcdvqGQAAAAYdEVYdFNvZnR3YXJlAHBhaW50Lm5ldCA0LjAuOWwzfk4AAAC9SURBVDhPpZK9DcJADIVTUFBcmTXo" \
+              "KTNAxqFIiRR6RonEAhQMQUmRMSiO90U2csSBAhSfdLbf8/25yjk/OWxOSXRiEKPBmlyK2mhqxE3kN1BrZkYSQXARragN1mdB" \
+              "7S62k1ELjuc7HcXKuzrkRG+aq1iT5Py+04sporrvvCPg8gRtSRxBY9qBgJcjqEviCBrTjn8Zfz6qPw4XX/o4HUH8jr5kANX2" \
+              "pkGbPBkHgK6fBmCantjx+5EL5oVDnqsHL/DYhRMxwWIAAAAASUVORK5CYII="
 
+
+#####
+# Page Construction
+#
+# '!' as first character creates a named div
+# '-' as entry adds a <hr>
+
+# The sections of the index page
+box_sections = ['!header', 'header',
+                '!content', 'general', 'config', 'local',
+                'network', 'network_bandwidth', 'network_weights', '-',
+                'accounting', 'monitor', 'messages',
+                'license']
+
+# The sections of the login page
+login_sections = ['!header', 'header', '!content', 'login', 'license']
+
+
+# Additional DEBUG information
 if box_debug:
     @theonionbox.hook('before_request')
     def debug_request():
@@ -771,82 +875,87 @@ if box_debug:
 @theonionbox.get('/')
 def get_start():
 
-    login = box_logins.create(request.remote_addr)
+    session = box_sessions.create(request.remote_addr, 'login')
 
-    if login is None:
+    if session is None:
         raise HTTPError(404)
 
-    login['auth'] = 'digest' if tor_password else 'basic'
-    login_template = "pages/login_page.html"
+    session['auth'] = 'digest' if tor_password else 'basic'
 
     boxLog.info("{}@{} is knocking for Login; '{}' procedure provided."
-                .format(login.id_short(), login.remote_addr(), login['auth']))
+                .format(session.id_short(), session.remote_addr(), session['auth']))
 
-    return template(login_template
-                    , session_id=login.id()
-                    , bootstrap_css='login.css'
-                    , agent=request.get('HTTP_USER_AGENT')
-                    , remote_addr=request.get('REMOTE_ADDR')
-                    , tor_info=tor_info
-                    , icon=theonionbox_icon
-                    , virtual_basepath=box_basepath
-                    )
+    session['stylesheets'] = ['bootstrap.css', 'fonts.css', 'box.css']
+    session['scripts'] = ['jquery.js', 'bootstrap.js', 'auth.js', 'box.js']
+
+    section_config = {}
+    section_config['header'] = {
+        'logout': False,
+        'title': 'The Onion Box',
+        'subtitle': "Version: {}<br>Your address: {}".format(__version__, request.get('REMOTE_ADDR'))
+    }
+
+    params = {
+        'session': session
+        , 'tor': tor
+        , 'session_id': session.id()
+        , 'icon': theonionbox_icon
+        , 'box_version': __version__
+        , 'virtual_basepath': box_basepath
+        , 'sections': login_sections
+        , 'section_config': section_config
+        , 'box.js_login': True  # flag to manipulate the creation process of 'box.js'
+    }
+
+    # prepare the includes
+    session['box.js'] = template('scripts/box.js', **params)
+    session['box.css'] = template('css/box.css', **params)
+    session['fonts.css'] = template('css/latolatinfonts.css', **params)
+
+    if 'auth' in session:
+        if session['auth'] == 'basic':
+            session['auth.js'] = template('scripts/authrequest_basic.js', virtual_basepath=box_basepath)
+        else:  # e.g. if login['auth'] == 'digest'
+            session['auth.js'] = template('scripts/authrequest_digest.js'
+                            , md5_js_file='scripts/md5.js'
+                            , virtual_basepath=box_basepath)
+
+    # deliver the login page
+    return template("pages/index.html", **params)
 
 
-@theonionbox.get('/<login_id>/<login_file:re:login\..*>')
-def get_login(login_id, login_file):
+@theonionbox.get('/<login_id>/login.html')
+def perform_login(login_id):
 
-    boxLog.debug("{}@{} requests '{}'".format(make_short_id(login_id), request.remote_addr, login_file))
+    boxLog.debug("{}@{} requests '{}'".format(make_short_id(login_id), request.remote_addr, 'login.html'))
     boxLog.debug("{}: addr = {} / route = {}".format(make_short_id(login_id), request.remote_addr, request.remote_route))
 
-    # login = box_logins.recall(login_id, request.remote_addr)
-    login = box_logins.recall(login_id, request.remote_route[0])
+    login_session = box_sessions.recall(login_id, request.remote_route[0])
 
-    if login is None:
-        raise HTTPError(404)
+    if login_session is None:
+        redirect(box_basepath + '/')
+        return False  # necessary?
 
-    # to load the bootstrap css file
-    if login_file == 'login.css':
-        return static_file(bootstrap_css, root='css', mimetype='text/css')
+    if login_session['status'] != 'login':
+        box_sessions.delete(login_session.id())
+        redirect(box_basepath + '/')
+        return False  # necessary?
 
-    # to load the appropriate login script
-    elif login_file == 'login.js':
-        if 'auth' in login:
-            if login['auth'] == 'basic':
-                return template('scripts/authrequest_basic.js'
-                                , virtual_basepath=box_basepath)
-            else:  # e.g. if login['auth'] == 'digest'
-                return template('scripts/authrequest_digest.js'
-                                , md5_js_file='scripts/md5.js'
-                                , virtual_basepath=box_basepath)
-        raise HTTPError(404)
+    try:
+        authenticate_login(login_session, request)
+    except HTTPError:
+        raise
 
-    # Used to answer the AuthRequest
-    elif login_file == 'login.html':
+    # at this stage we have a successful login
+    # and switch to standard session management
+    active_session = box_sessions.create(login_session.remote_addr(),'prepared')
+    boxLog.info("{}@{} received session token '{}'; immediate response expected."
+                   .format(login_session.id_short(), login_session.remote_addr(), active_session.id_short()))
+    box_sessions.delete(login_session.id())
 
-        try:
-            authenticate_login(login, request)
-        except HTTPError:
-            raise
+    active_session['prep_time'] = box_time()
 
-        # at this stage we have a successful login
-        # and switch to standard session management
-        session = box_sessions.create(login.remote_addr())
-        boxLog.info("{}@{} received session token '{}'; immediate response expected."
-                       .format(login.id_short(), login.remote_addr(), session.id_short()))
-        box_logins.delete(login.id())
-
-        session['status'] = 'prepared'
-        session['prep_time'] = box_time()
-
-        return session.id()
-
-    # if we're here, something definitely went wrong!
-    boxLog.warning("{}@{} unauthorized tried to access '{}': Login terminated."
-                   .format(login.id_short(), login.remote_addr(), login_file))
-    box_logins.delete(login.id())
-    raise HTTPError(404)
-
+    return active_session.id()
 
 # This is the standard page!
 @theonionbox.get('/<session_id>/index.html')
@@ -863,28 +972,50 @@ def get_index(session_id):
 
     if status == 'prepared':
 
+        #TODO: RDW 20160913 shouldn't this be session[prep_time] ?
         delay = box_time() - session.last_visit
+
         if delay > 2.0:  # seconds
+            session['status'] = 'toolate'   # ;)
             boxLog.info('{}@{}: Login to Session delay expired. Session canceled.'
                            .format(session.id_short(), session.remote_addr()))
-            box_sessions.delete(session.id())
-            redirect(box_basepath + '/')
-            return False
+        else:
+            session['status'] = 'ok'
+            # we have a successfull connection! Celebrate this!
+            boxLog.notice('{}@{}: Session established.'.format(session.id_short(), session.remote_addr()))
 
-        session['status'] = 'ok'
-        session['guard'] = True
+    if session['status'] != 'ok':
+        box_sessions.delete(session.id())
+        redirect(box_basepath + '/')
+        return False
 
-        # we have a successfull connection! Celebrate this!
-        boxLog.notice('{}@{}: Session established.'.format(session.id_short(), session.remote_addr()))
+    #This should create an exception if the socket was closed unexpectedly
+    try:
+        version_short = tor.get_version_short()
+    except SocketError:
+        boxLog.warning('SocketError while initiating index.html creation process.')
+        # we lost the authentication. Therefore: Redirect!
+        box_sessions.delete(session.id())
+        redirect(box_basepath + '/')
+        return False
 
-    update_tor_info()
+    # asyncronously refreshing the bandwidth data
+    refresh_bw()
 
+    # reset the time flags!
+    del session['cpu']
+    del session['accounting']
+    del session['monitor']
+    del session['network']
+    del session['network_bw']
+    del session['network_weights']
+
+    # update_tor_info()
+
+    # show onionoo data ONLY if already available!!
+    onionoo_show = onionoo_details.has_data() or onionoo_bw.has_data() or onionoo_weights.has_data()
     # asyncronously refreshing the onionoo data
-    # TODO: This could be tracked (as it happens so regularily!)
-    box_cron.add_job(refresh_onionoo, 'date', run_date=datetime.now() + timedelta(seconds=10))
-
-    # dbmanager.prepare(tor_info['tor/fingerprint'], 'theonionbox.data')
-#    request_bw_data()
+    refresh_onionoo(True)
 
     # setup the MessageHandler for this session
     torLogMgr.add_client(session_id)
@@ -899,32 +1030,53 @@ def get_index(session_id):
     except:
         accounting_switch = False
 
+    # print(tor.get_info('config/names'))
+
+    session['stylesheets'] = ['bootstrap.css', 'fonts.css', 'box.css']
+    session['scripts'] = ['jquery.js', 'bootstrap.js', 'smoothie.js', 'box_chart.js', 'box.js']
+
+    import socket
+
+    section_config = {}
+    section_config['header'] = {
+        'logout': True,
+        'title': tor.get_nickname(),
+        'subtitle': "Tor {} @ {}<br>{}".format(version_short, socket.gethostname(), tor.get_fingerprint()),
+        'powered': "monitored by <b>The Onion Box</b> v{}".format(__version__)
+    }
+
+    params = {
+        'session': session
+        , 'read_bytes': tor_bwdata['download']
+        , 'written_bytes': tor_bwdata['upload']
+        , 'tor': tor
+        , 'host': boxHost
+        , 'session_id': session_id
+        , 'preserved_events': p_ev
+        , 'server_time': box_time()
+        , 'accounting_on': accounting_switch
+        , 'accounting_stats': accounting_stats
+        , 'icon': theonionbox_icon
+        , 'marker': icon_marker
+        , 'box_version': __version__
+        , 'box_debug': box_debug
+        , 'virtual_basepath': box_basepath
+        , 'sections': box_sections
+        , 'manpage': box_manpage
+        , 'oo_show': onionoo_show
+        , 'oo_details': onionoo_details
+        , 'oo_bw': onionoo_bw
+        , 'oo_weights': onionoo_weights
+        , 'section_config': section_config
+    }
+
+    # prepare the includes
+    session['box.js'] = template('scripts/box.js', **params)
+    session['box.css'] = template('css/box.css', **params)
+    session['fonts.css'] = template('css/latolatinfonts.css', **params)
+
     # deliver the main page
-    return template("pages/index_page.html"
-                    , jquery_lib=jQuery_lib
-                    , bootstrap_js=bootstrap_js
-                    , bootstrap_css=bootstrap_css
-                    , read_bytes=tor_bwdata['download']
-                    , written_bytes=tor_bwdata['upload']
-                    , version=tor_info['tor/version']
-                    , recom=tor_info['tor/version/current']
-#                    , version=tor.get_version()
-#                    , version = ("{}.{}.{}.{}").format(x_version.major, x_version.minor, x_version.micro, x_version.patch)
-                    , fingerprint=tor_info['tor/fingerprint']
-                    , address=tor_info['tor/address']
-                    , tor_info=tor_info
-#                    , strftime_lib=strftime_lib
-                    , session_id=session_id
-                    , preserved_events=p_ev
-                    , server_time=box_time()
-                    , accounting_on=accounting_switch
-                    , accounting_stats=accounting_stats
-#                    , template_directory='template'
-                    , icon=theonionbox_icon
-                    , box_version=__version__
-                    , box_debug=box_debug
-                    , virtual_basepath=box_basepath
-                    )
+    return template("pages/index.html", **params)
 
 
 @theonionbox.get('/<session_id>/logout.html')
@@ -941,6 +1093,42 @@ def get_logout(session_id):
     redirect(box_basepath + '/')
 
 
+@theonionbox.get('/<session_id>/manpage.html')
+def get_manpage(session_id):
+    session = box_sessions.recall(session_id, request.remote_addr)
+    if session is None or session['status'] != 'ok':
+        raise HTTPError(404)
+    return static_file('tor.1.html', root='tor', mimetype='text/html')
+
+# font provisioning
+@theonionbox.get('/<session_id>/fonts/<filename:re:.*\.eot>')
+@theonionbox.get('/<session_id>/fonts/<filename:re:.*\.ttf>')
+@theonionbox.get('/<session_id>/fonts/<filename:re:.*\.woff>')
+@theonionbox.get('/<session_id>/fonts/<filename:re:.*\.woff2>')
+def get_font(session_id, filename):
+    session = box_sessions.recall(session_id, request.remote_addr)
+    if session is None:
+        raise HTTPError(404)
+
+    status = session['status']
+    if status != 'login' and status != 'ok':
+        raise HTTPError(404)
+
+    mime_type = {
+        '.eot': 'application/vnd.ms-fontobject',
+        '.ttf': 'application/font-sfnt',
+        '.woff': 'application/font-woff',
+        '.woff2': 'application/font/woff2'
+    }
+
+    fname, fxtension = os.path.splitext(filename)
+
+    if fxtension not in mime_type:
+        raise HTTPError(404)
+
+    return static_file('LatoLatin/fonts/' + filename, root='font', mimetype=mime_type[fxtension])
+
+
 @theonionbox.post('/<session_id>/data.html')
 def post_data(session_id):
 
@@ -950,199 +1138,154 @@ def post_data(session_id):
     if session is None:
         raise HTTPError(404)
 
-    guard = session.get('guard', False)
-    if guard is False:
+    if session['status'] != 'ok':
         raise HTTPError(503)
 
-    action = request.forms.get('action')
-    if action is None:
-        raise HTTPError(404)
+    tts = tor.get_timestamp()
+    its_now = int(box_time()) * 1000    # JS!
 
-    # transfer_data = ''
+    return_data_dict = {'tick': its_now}
 
-    if action == 'pull_livedata':
+    # general
+    if 'general' in box_sections:
 
-        # ensure that the connection to Tor is available
-        if tor and not tor.is_alive():
-            boxLog.info('Connection to Tor probably lost! Trying to reconnect...')
-            try:
-                tor.connect()
-            except Exception as err:
-                boxLog.warning('Attempt to reconnect to Tor failed: {}'.format(err))
-            else:
-                boxLog.info('Reconnection performed; Tor is alive: {}'.format(tor.is_alive()))
-
-        limit_max = 500  # should be enough to fill the chart immediately
-        its_now = int(box_time()) * 1000  # JS!
-
-        pull_full = (request.forms.get('full', '0') == '1')
-        if pull_full:
-            if 'last_full' in session:
-                if (its_now - session['last_full']) < 5000:   # min time between two pull_full requests
-                    pull_full = False
-        if pull_full:
-            session['last_full'] = its_now
-
-        # HD Data: Bandwidth
-
-        if ('last_HD' in session) and not pull_full:
-            limit_timestamp = session['last_HD']
-            hd_list = tor_livedata.get_data_hd_since(since_timestamp=limit_timestamp)
-        else:
-            hd_list = tor_livedata.get_data_hd()
-
-        # HD Data: CPU & Memory
-        if ('last_CPU' in session) and not pull_full:
-            # print(session['last_CPU'])
-            limit_timestamp = session['last_CPU']
+        if ('cpu' not in session) or (session['cpu'] == 0):
             host_cpudata_lock.acquire()
-            cpu_list = list(itertools.takewhile(lambda x: x['s'] >= limit_timestamp, host_cpudata))
+            # cpu_list = list(itertools.islice(host_cpudata, None))
+            cpu_list = list(host_cpudata)
             host_cpudata_lock.release()
         else:
+            limit_timestamp = session['cpu']
             host_cpudata_lock.acquire()
-            cpu_list = list(itertools.islice(host_cpudata, 0, limit_max))
+            # cpu_list = list(itertools.takewhile(lambda x: x['s'] >= limit_timestamp, host_cpudata))
+            cpu_list = list(itertools.dropwhile(lambda x: x['s'] < limit_timestamp, host_cpudata))
             host_cpudata_lock.release()
 
-        session['last_HD'] = its_now
-        session['last_CPU'] = its_now
+        # this little hack ensures, that we deliver data on the
+        # first *two* calls after launch!
+        session['cpu'] = its_now if 'cpu' in session else 0
 
-        # LD Data: Bandwidth
-        if ('last_LD' in session) and not pull_full:
-            limit_timestamp = session['last_LD']
-            ld_list = tor_livedata.get_data_ld_since(since_timestamp=limit_timestamp)
-        else:
-            ld_list = tor_livedata.get_data_ld()    # dump what you have! ;)
+        if len(cpu_list) > 0:
+            return_data_dict['gen'] = cpu_list
 
-        session['last_LD'] = its_now
+    # accounting
+    if 'accounting' in box_sections:
 
-        # The Messages from Tor
-        runlevel= request.forms.get('runlevel', None)
+        if ('accounting' not in session) or (session['accounting'] < tts):
 
-        if runlevel is not None:
+            acc = {'enabled': False}
+
+            if tor.get_isAccountingEnabled():
+                acc['enabled'] = True
+                acc['stats'] = tor.get_accountingStats()
+
+            # this little hack ensures, that we deliver data on the
+            # first *two* calls after launch!
+            # session['accounting'] = tts if 'accounting' in session else 0
+            session['accounting'] = tts
+
+            return_data_dict['acc'] = acc
+
+    # messages
+    if 'messages' in box_sections:
+        runlevel = request.forms.get('runlevel', None)
+
+        if runlevel:
 
             rl_dict = json.JSONDecoder().decode(runlevel)
 
             for key in rl_dict:
                 torLogMgr.switch(session_id, key, rl_dict[key])
 
-        # The Messages from TheOnionBox
-        # runlevel = request.forms.get('box', None)
-
-        # if runlevel is not None:
-
-        #     rl_dict = json.JSONDecoder().decode(runlevel)
-
-        #     for key in rl_dict:
-        #         event_switch(session_id, 'BOX|' + key, rl_dict[key])
-
-        # log_list = box_events.get_events(session_id)
-
         log_list = torLogMgr.get_events(session_id)
+        if len(log_list) > 0:
+            return_data_dict['msg'] = log_list
 
-        # create the data...
-        raw_data_dict = {'tick': its_now, 'hd': hd_list, 'cpu': cpu_list, 'ld': ld_list, 'log': log_list}
+    # operations monitoring
+    if 'monitor' in box_sections:
 
-        # Onionoo Data
-        get_oo = False
-        if ('last_oo' in session):
-            last_oo = session['last_oo']
-            if last_oo < int(onionoo.timestamp()):
-                get_oo = True
+        if ('monitor' not in session) or (session['monitor'] == 0):
+            hd_list = tor_livedata.get_data_hd()
+            ld_list = tor_livedata.get_data_ld()
         else:
-            if onionoo.timestamp():
-                get_oo = True
+            last_ts = session['monitor']
+            hd_list = tor_livedata.get_data_hd_since(since_timestamp=last_ts)
+            ld_list = tor_livedata.get_data_ld_since(since_timestamp=last_ts)
 
-        if get_oo:
-            # create the data...
+        return_data_dict['mon'] = {'hd': hd_list, 'ld': ld_list}
 
-            from time import strptime
-            from calendar import timegm
+        # this little hack ensures, that we deliver data on the
+        # first *two* calls after launch!
+        session['monitor'] = its_now if 'monitor' in session else 0
 
-            lr = timegm(strptime(onionoo.get_details('last_restarted'), '%Y-%m-%d %H:%M:%S'))
+    if 'network' in box_sections:
+        # Once there was code here.
+        # It's no more ;) !
+        pass
 
-            oo_data = {
-                'timestamp': onionoo.timestamp() * 1000,
-                'running': onionoo.get_details('running', False),
-                'hibernating': onionoo.get_details('hibernating', False),
-                'last_restarted': lr * 1000,
-                'consensus_weight': onionoo.get_details('consensus_weight'),
-                'last_seen': onionoo.get_details('last_seen'),
-                'first_seen': onionoo.get_details('first_seen'),
-                'advertised_bandwidth': onionoo.get_details('advertised_bandwidth'),
-                'bandwidth_rate': onionoo.get_details('bandwidth_rate'),
-                'bandwidth_burst': onionoo.get_details('bandwidth_burst'),
-                'observed_bandwidth': onionoo.get_details('observed_bandwidth'),
-                'cwf': onionoo.get_details('consensus_weight_fraction', 0),
-                'gp': onionoo.get_details('guard_probability', 0),
-                'mp': onionoo.get_details('middle_probability', 0),
-                'ep': onionoo.get_details('exit_probability', 0),
+    if 'network_bandwidth' in box_sections:
+        if ('network_bw' not in session) or (session['network_bw'] == 0):
+            return_data_dict['oo_bw'] = {'read': onionoo_bw.read(), 'write': onionoo_bw.write()}
+            # this little hack ensures, that we deliver data on the
+            # first *two* calls after launch!
+            session['network_bw'] = onionoo_bw.published() if 'network_bw' in session else 0
+        elif session['network_bw'] != onionoo_bw.published():
+            del session['network_bw']
+            # if there's new data act as if we've not had any before!
+            # we'll therefore deliver the new data with the next run!
 
-                'bw': onionoo.get_bandwidth(),
-                'weights': onionoo.get_weights()
-            }
+    if 'network_weights' in box_sections:
+        if ('network_weights' not in session) or (session['network_weights'] == 0):
 
-            # print(onionoo.get_weights())
+            details = {'cw': onionoo_details('consensus_weight'),
+                       'cwf': onionoo_details('consensus_weight_fraction'),
+                       'gp': onionoo_details('guard_probability'),
+                       'mp': onionoo_details('middle_probability'),
+                       'ep': onionoo_details('exit_probability')}
 
-            raw_data_dict['oo'] = oo_data
-            session['last_oo'] = int(onionoo.timestamp())
+            return_data_dict['oo_weights'] = {'cw': onionoo_weights.consensus_weight(),
+                                              'cwf': onionoo_weights.consensus_weight_fraction(),
+                                              'ep': onionoo_weights.exit_probability(),
+                                              'gp': onionoo_weights.guard_probability(),
+                                              'mp': onionoo_weights.middle_probability(),
+                                              'data': details
+                                              }
 
-        # updating our long term data information as well
-        cumtor_values = {'d3': cum3d.get_values(only_if_changed=True),
-                         'w1': cum1w.get_values(only_if_changed=True),
-                         'm1': cum1m.get_values(only_if_changed=True),
-                         'm3': cum3m.get_values(only_if_changed=True),
-                         'y1': cum1y.get_values(only_if_changed=True),
-                         'y5': cum5y.get_values(only_if_changed=True)}
+            # this little hack ensures, that we deliver data on the
+            # first *two* calls after launch!
+            session['network_weights'] = onionoo_bw.published() if 'network_weights' in session else 0
+        elif session['network_weights'] != onionoo_bw.published():
+            del session['network_weights']
+            # if there's new data act as if we've not had any before!
+            # we'll therefore deliver the new data with the next run!
 
-        raw_data_dict['ltd'] = cumtor_values
+    # Now json everything... and return it!
+    return json.JSONEncoder().encode(return_data_dict)
 
-        # Now json everything... and return it!
-        transfer_data = json.JSONEncoder().encode(raw_data_dict)
-        return transfer_data
 
-    if action == 'refresh_onionoo':
-
-        refresh_onionoo()
-        return
-
-        # if onionoo.query(tor_info['tor/fingerprint']):
-        #
-        #     # create the data...
-        #     oo_data = {
-        #      'running': onionoo.get_details('running'),
-        #      'consensus_weight': onionoo.get_details('consensus_weight'),
-        #      'last_seen': onionoo.get_details('last_seen'),
-        #      'first_seen': onionoo.get_details('first_seen'),
-        #      'bw': onionoo.get_bandwidth()
-        #     }
-        #
-        #     session['last_oo'] = onionoo.timestamp()
-        #
-        #     # Now json everything... and return it!
-        #     transfer_data = json.JSONEncoder().encode(oo_data)
-        #     return transfer_data
-        #
-        # else:
-        #     return HTTPError(500)
-
-    return HTTPError(404)
-
-# standard file processing!
+#####
+# Standard file processing!
 
 @theonionbox.get('/<session_id>/<filename:re:.*\.css>')
 def send_css(session_id, filename):
-
-    css_files = [
-          bootstrap_css
-        ]
 
     session = box_sessions.recall(session_id, request.remote_addr)
     if session is None:
         raise HTTPError(404)
 
-    guard = session.get('guard', False)
-    if guard is True:
-        if filename in css_files:
+    css_files = []
+    status = session['status']
+
+    if filename in session['stylesheets']:
+        if filename in session:
+            file = session[filename]
+            del session[filename]
+            headers = {'Content-Type': 'text/css; charset=UTF-8'}
+            return HTTPResponse(file, **headers)
+
+        elif filename == 'bootstrap.css':
+            return static_file(bootstrapCSS, root=bootstrapDir + '/css', mimetype='text/css')
+        else:
             return static_file(filename, root='css', mimetype='text/css')
 
     raise HTTPError(404)
@@ -1151,29 +1294,26 @@ def send_css(session_id, filename):
 @theonionbox.get('/<session_id>/<filename:re:.*\.js>')
 def send_js(session_id, filename):
 
-    js_files = {
-      #    'authrequest_basic.js': True
-      #  , 'authrequest_digest.js': True
-        bootstrap_js: False
-        , 'box_chart.js': False
-        , 'box_messages.js': False
-        , 'box_player.js': False
-        , jQuery_lib: False
-        , 'smoothie.js': False
-    }
-
     session = box_sessions.recall(session_id, request.remote_addr)
     if session is None:
         raise HTTPError(404)
 
-    guard = session.get('guard', False)
-    if guard is True:
-        if filename in js_files:
+    js_files = []
+    status = session['status']
 
-            if js_files[filename]:
-                return template("scripts/"+filename, virtual_basepath=box_basepath)
-            else:
-                return static_file(filename, root='scripts', mimetype='text/javascript')
+    if filename in session['scripts']:
+        if filename in session:
+            file = session[filename]
+            del session[filename]
+            headers = {'Content-Type': 'application/javascript; charset=UTF-8'}
+            return HTTPResponse(file, **headers)
+
+        elif filename == 'bootstrap.js':
+            return static_file(bootstrapJS, root=bootstrapDir + '/js', mimetype='text/javascript')
+        elif filename == 'jquery.js':
+            return static_file(jQuery_lib, root='scripts', mimetype='text/javascript')
+        else:
+            return static_file(filename, root='scripts', mimetype='text/javascript')
 
     raise HTTPError(404)
 
@@ -1191,20 +1331,12 @@ def handle_livedata(event):
                                   , bytes_read=event.read
                                   , bytes_written=event.written)
 
-    # Filling the LongTerm Storage
-
-    for key, cumtor in cumtors.items():
-        cumtor.cumulate(timestamp=event.arrived_at,
-                        r=event.read, w=event.written)
-
-#        if box_debug:
-#            if key == '3d':
-#                print(cumtor.get_status())
-
     return True
 
 
 def record_cpu_data(timestamp=None, compensate_deviation=True):
+
+    from psutil import virtual_memory, cpu_percent, cpu_count  # to readout the cpu load
 
     if timestamp is None:
         timestamp = time()
@@ -1218,6 +1350,13 @@ def record_cpu_data(timestamp=None, compensate_deviation=True):
     cpu = {}
     count = 0
 
+    # first: overall cpu load:
+    cpu['c'] = cpu_percent(None, False)
+
+    # to indicate values according to the logic of the Windows Task Manager
+    if boxHost['system'] == 'Windows':
+        cpu['c'] /= cpu_count()
+
     # notice: psutil.cpu_percent() will return a meaningless 0.0 when called for the first time
     # this is not nice yet doesn't hurt!
     for cx in cpu_percent(None, True):
@@ -1229,36 +1368,23 @@ def record_cpu_data(timestamp=None, compensate_deviation=True):
     # ... and the percentage of memory usage
     cpu['mp'] = virtual_memory().percent
 
+    if boxHost['temp']:
+        try:
+            cpu['t'] = float(open('/sys/class/thermal/thermal_zone0/temp').read()) / 1000.0
+        except:
+           pass
+
     # append the data to the list
     host_cpudata_lock.acquire()
-
-    host_cpudata.appendleft(cpu)
-
+    host_cpudata.append(cpu)
     host_cpudata_lock.release()
-
-
-def request_bw_data():
-
-    # we use this method to align the counters
-    try:
-        req_info = ("traffic/read", "traffic/written")
-        req_answer = tor.get_info(req_info)
-
-        tor_bwdata['upload'] = int(req_answer["traffic/written"])
-        tor_bwdata['download'] = int(req_answer["traffic/read"])
-
-        tor_livedata.init_total_basis(bytes_read=tor_bwdata['download']
-                                      , bytes_written=tor_bwdata['upload'])
-
-    except:
-        pass
-
-    return
 
 
 #####
 # Custom Server Adapters to allow shutdown() of the servers
+# 20160925: WHICH CURRENTLY DOESN'T WORK
 #
+
 from bottle import ServerAdapter
 from wsgiref.simple_server import WSGIRequestHandler
 
@@ -1317,7 +1443,7 @@ class ShutDownAdapter(object):
 
 
 # Our WSGIRefServer - supporting SSL!
-class BoxWSGIRefServer(WSGIRefServer, ShutDownAdapter):
+class BoxWSGIRefServer(ServerAdapter):
 
     # This one incorporates a proposal from Matt Murfitt, posted on
     # http://www.socouldanyone.com/2014_01_01_archive.html or
@@ -1335,12 +1461,11 @@ class BoxWSGIRefServer(WSGIRefServer, ShutDownAdapter):
     # (see http://www.piware.de/2011/01/creating-an-https-server-in-python/#comment-11380)
     # from bottle import Bottle, get, run, ServerAdapter
 
-    def run(self, app): # pragma: no cover
+    # 20160925: Basic code updated to represent latest changes in bottleby 0.13-dev
 
-        # Majority of code copy/paste from bottlepy!
-
-        from wsgiref.simple_server import WSGIRequestHandler, WSGIServer
+    def run(self, app):  # pragma: no cover
         from wsgiref.simple_server import make_server
+        from wsgiref.simple_server import WSGIRequestHandler, WSGIServer
         import socket
         import ssl
 
@@ -1351,7 +1476,7 @@ class BoxWSGIRefServer(WSGIRefServer, ShutDownAdapter):
             del self.options['certificate']
 
         class FixedHandler(WSGIRequestHandler):
-            def address_string(self): # Prevent reverse DNS lookups please.
+            def address_string(self):  # Prevent reverse DNS lookups please.
                 return self.client_address[0]
 
             def log_request(*args, **kw):
@@ -1361,28 +1486,24 @@ class BoxWSGIRefServer(WSGIRefServer, ShutDownAdapter):
         handler_cls = self.options.get('handler_class', FixedHandler)
         server_cls = self.options.get('server_class', WSGIServer)
 
-        if ':' in self.host: # Fix wsgiref for IPv6 addresses.
+        if ':' in self.host:  # Fix wsgiref for IPv6 addresses.
             if getattr(server_cls, 'address_family') == socket.AF_INET:
                 class server_cls(server_cls):
                     address_family = socket.AF_INET6
 
-        srv = make_server(self.host, self.port, app, server_cls, handler_cls)
+        self.srv = make_server(self.host, self.port, app, server_cls,
+                               handler_cls)
+        self.port = self.srv.server_port  # update port actual port (0 means random)
 
         if certfile:
-            srv.socket = ssl.wrap_socket(srv.socket,
-                                         certfile=certfile,  # path to certificate
-                                         server_side=True)
-
-        self.server = srv
-        srv.serve_forever()
-
-    def shutdown(self):
-        boxLog.notice("Shutting Server down!!")
-        self.server._BaseServer__shutdown_request = True
-        self.server._BaseServer__is_shut_down.wait(2)
-
-        # self.server.shutdown()
-        boxLog.notice("Shutdown Server done!!")
+            self.srv.socket = ssl.wrap_socket(self.srv.socket,
+                                              certfile=certfile,  # path to certificate
+                                              server_side=True)
+        try:
+            self.srv.serve_forever()
+        except KeyboardInterrupt:
+            self.srv.server_close()  # Prevent ResourceWarning: unclosed socket
+            raise
 
 
 # We're using a slightly modified CherryPy - Server implementation
@@ -1421,6 +1542,14 @@ class BoxCherryPyServer(ServerAdapter, ShutDownAdapter):
     def shutdown(self):
         self.server.stop()
 
+# This is our new (v3) default server
+# https://fgallaire.github.io/wsgiserver/
+class WSGIserver(ServerAdapter):
+    def run(self, handler):
+        import wsgiserver
+        server = wsgiserver.WSGIServer(handler, host=self.host, port=self.port)
+        server.start()
+
 
 # This job runs at midnight to add a notification to the log
 # showing the current day
@@ -1432,49 +1561,17 @@ def job_NewDayNotification():
 
 box_cron.add_job(job_NewDayNotification, 'cron', id='ndn', hour='0', minute='0', second='0')
 
-
-
-# from time import strftime
-from threading import Timer
-
-# timer_housekeeping = Timer(10, session_housekeeping)
-# timer_housekeeping.start()
-timer_housekeeping = None
-housekeeping_interval = 5  # seconds
-
 # NTP time is used to compensate for server clock adjustments
 box_cron.add_job(update_time_deviation, 'interval', hours=8)
 
 
+housekeeping_interval = 5  # seconds
 bw_countdown = 100
 
 
 def session_housekeeping():
 
     # We perform HERE things that have to happen regularly
-
-    # 1: aligning the bandwidth counters
-    global bw_countdown
-    if bw_countdown < 0:
-
-        # request_bw_data()
-        bw_countdown = 100
-
-    else:
-        bw_countdown -= 1
-
-    # 2.1: clear expired logins
-    if box_logins:
-        while True:
-            expired_login_id = box_logins.check_for_expired_session(remove_expired_session=False)
-
-            if expired_login_id is None:
-                break
-
-            login = box_logins.recall_unsafe(expired_login_id)
-            if login is not None:
-                boxLog.info('{}@{}: Login request expired.'.format(login.id_short(), login.remote_addr()))
-            box_logins.delete(expired_login_id)
 
     # 2.2: check for expired session
     if box_sessions is not None:
@@ -1492,14 +1589,6 @@ def session_housekeeping():
 
             # un-subscribe this session_id from the event handling
             torLogMgr.remove_client(expired_session_id)
-
-    # 3: check if there's the need to remove_event_listeners (when there's no client asking for these events)
-    # for key in tor_event_handlers:
-    #     if box_events.get_active_clients(key) == 0:
-    #         try:
-    #             tor.remove_event_listener((tor_event_handlers[key]))
-    #         except:
-    #             return
 
     global tor_password
 
@@ -1533,58 +1622,14 @@ def session_housekeeping():
 
                 boxLog.notice(msg)
 
-    # 20150629/RDW: removed ... nit sure if really necessary anymore!
-    # else:
-    #     # ensure that we have an open connection
-    #     if tor_password is not None:
-    #         check('TRB', tor_password)
 
-    # # 5: request the time from an NTP server to compensate the server clock
-    # global ntp_countdown
-    #
-    # if ntp_countdown < 0:
-    #
-    #     update_time_deviation()
-    #     ntp_countdown = 1000
-    #
-    # else:
-    #     ntp_countdown -= 1
-
-    # 6: update tor_info
-    if tor.is_authenticated():
-        update_tor_info()
-
-    # finally: prepare and launch the next run...
-    timer_housekeeping = Timer(housekeeping_interval, session_housekeeping)
-    timer_housekeeping.start()
-
-
-#####
-# Keyboard Interrupt Handler
-import signal
-
-
-def sigint_handler(signal, frame):
-    exit_procedure(False)
-    sys.exit()
+box_cron.add_job(session_housekeeping, 'interval', seconds=housekeeping_interval)
 
 
 def exit_procedure(quit=True):
 
-    # We're NOT saving the LTD here to prevent corruption of the file.
-    # TODO: Introduce a smarter algorithm to handle the loading / (especially) saving of the LTD file!
-    # Until this is available, we accept to loose some minutes of date!
-
-    # save_longterm_data()
-
-    if timer_housekeeping:
-        timer_housekeeping.cancel()
-
     if box_cron:
         box_cron.shutdown()
-
-#    if dbmanager:
-#        dbmanager.close()
 
     try:
         if tob_server:
@@ -1592,95 +1637,22 @@ def exit_procedure(quit=True):
     except:
         pass
 
-    # RDW 20151224: Still valid?
-    # TODO: python sometimes emits a 'ResourceWarning' when we are here! This does not hurt ... but it's ugly!
-    # TODO: Try to find a fix for this!
-
     boxLog.notice("Shutting Down!")
 
     if quit:
         sys.exit(0)
 
-
-# patching the stem classes to control the timeout values!
-from stem.socket import ControlPort
-from stem import SocketError, util
-import socket
-
-
-class BoxControlPort(ControlPort):
-
-    timeout = None
-    control_socket = None
-
-    def __init__(self, address='127.0.0.1', port=9051, connect=True, timeout=None):
-
-        self.timeout = timeout
-        ControlPort.__init__(self, address, port, connect)
-
-    # this is basically stem.socket.ControlPort._make_socket adapted to set a custom timeout value
-    def _make_socket(self):
-
-        if self.control_socket:
-            self.close_socket()
-
-        try:
-            self.control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        except socket.error as exc:
-            raise SocketError(exc)
-
-        try:
-            # timeout management
-            if self.timeout:
-                self.control_socket.settimeout(self.timeout)
-                pass
-
-            self.control_socket.connect((self._control_addr, self._control_port))
-            return self.control_socket
-        except socket.error as exc:
-
-            # to compensate for a ResourceWarning 'unclosed socket'
-            self.close_socket()
-            raise SocketError(exc)
-
-    def close_socket(self):
-        if self.control_socket:
-            self.control_socket.close()
-            self.control_socket = None
-
-
-class BoxController(Controller):
-
-    @staticmethod
-    def from_port_timeout(address='127.0.0.1', port=9051, timeout=None):
-
-        # this one is basically stem.Controller.from_port patched
-        # to forward a timeout value to BoxControlPort
-
-        if not util.connection.is_valid_ipv4_address(address):
-            raise ValueError('Invalid IP address: %s' % address)
-        elif not util.connection.is_valid_port(port):
-            raise ValueError('Invalid port: %s' % port)
-
-        # timeout management
-        if timeout and timeout < 0:
-            timeout = None
-
-        control_port = BoxControlPort(address=address, port=port, timeout=timeout)
-        return BoxController(control_port)
-
-
 if __name__ == '__main__':
 
-    boxLog.notice('Trying to connect to Tor Relay on {}:{}.'.format(tor_host, tor_port))
+    from stem import SocketError
+
+    boxLog.notice('Trying to connect to Tor Relay on {}:{}...'.format(tor_host, tor_port))
     try:
         if tor_timeout:
             boxLog.notice('Timeout set to {}s.'.format(tor_timeout))
-            tor = BoxController.from_port_timeout(tor_host, tor_port, tor_timeout)
-        else:
-            tor = Controller.from_port(tor_host, tor_port)
+        tor = tobController.from_port_timeout(tor_host, tor_port, tor_timeout)
     except SocketError as err:
-        boxLog.warning('Failed to connect; exiting...')
+        boxLog.warning('Failed to connect; exiting.')
 
         # TODO: When this error occurs, there's still a socket error raised! Fix it!
         exit_procedure()
@@ -1690,7 +1662,7 @@ if __name__ == '__main__':
     if not tor.is_alive():
         sys.exit(0)
 
-    boxLog.notice('Connected...')
+    boxLog.notice('Connected!')
 
     update_time_deviation()
 
@@ -1699,15 +1671,9 @@ if __name__ == '__main__':
     # and enable the Forwarder
     boxFwrd.setTarget(torLog)
 
-    # start the to be persisted events
-    # if tor_ERR is True:
-    #     tor.add_event_listener(tor_ERR_event_handler, EventType.ERR)
-    #
-    # if tor_WARN is True:
-    #     tor.add_event_listener(tor_WARN_event_handler, EventType.WARN)
-    #
-    # if tor_NOTICE is True:
-    #     tor.add_event_listener(tor_NOTICE_event_handler, EventType.NOTICE)
+    # ensure that our tor related information is aways current
+    update_tor_info()
+    box_cron.add_job(update_tor_info, 'interval', minutes=1)
 
     # start the event handler for the Bandwidth data
     tor.add_event_listener(functools.partial(handle_livedata), EventType.BW)
@@ -1715,9 +1681,10 @@ if __name__ == '__main__':
     # we're able to use several servers ... if available on the host system
     # Currently implemented:
     # CherryPy
-    # WSGIRefServer (fallback!)
+    # WSGIserver (default!)
 
     tob_server = None
+
 
     if box_server_to_use == 'cherrypy' and not cherrypy_missing:
 
@@ -1735,20 +1702,14 @@ if __name__ == '__main__':
         # Be aware that WSGIRefServer has issues with IE, in the sense that *it doesnt work!!*
         if box_ssl is True:
             # SSL enabled
-            tob_server = BoxWSGIRefServer(host=box_host, port=box_port, certificate=box_ssl_certificate)
-            boxLog.notice("Operating with WSGIRefServer in SSL mode!")
+            tob_server = WSGIserver(host=box_host, port=box_port, certfile=box_ssl_certificate, keyfile=box_ssl_key)
+            boxLog.notice("Operating with WSGIserver in SSL mode!")
         else:
             # Standard
-            tob_server_options = {'handler_class': box_FixedDebugHandler}
-            tob_server = BoxWSGIRefServer(host=box_host, port=box_port, **tob_server_options)
-            # tob_server = WSGIRefServer(host=box_host, port=box_port)
-            boxLog.notice('Operating with the default WebServer!')
-        boxLog.warning("A single IE request can stall this server and thus the BOX!")
-
-    # register Keyboard Interrupt handler
-    # for sig in (signal.SIGINT, signal.SIGABRT, signal.SIGTERM):
-    # signal.signal(sig, sigint_handler)
-    # signal.signal(signal.SIGINT, sigint_handler)
+            # tob_server_options = {'handler_class': box_FixedDebugHandler}
+            # tob_server = BoxWSGIRefServer(host=box_host, port=box_port, **tob_server_options)
+            tob_server = WSGIserver(host=box_host, port=box_port)
+            boxLog.notice('Operating with WSGIserver!')
 
     # if we're here ... almost everything is setup and running
     # good time to launch the housekeeping for the first time!
@@ -1762,12 +1723,9 @@ if __name__ == '__main__':
         else:
             run(theonionbox, server=tob_server, host=box_host, port=box_port, quiet=True)
     except Exception as exc:
-        # print(exc)
+        print(exc)
         pass
     finally:
         exit_procedure(False)
-        boxLog.notice("Shutdown: Almost Done!")
-        # sys.exit(0)
+        boxLog.notice("Fine!")
 
-        # while True:
-        #     signal.pause()

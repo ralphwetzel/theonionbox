@@ -1,0 +1,96 @@
+%# Note that this file is not a valid *.html file!
+%# It is intended to be a bottlepy - style template
+%# used for the scripting part of TheOnionBox!
+
+<%
+    tor = get('tor') if tor is None else tor
+    oo_details = get('oo_details') if oo_details is None else oo_details
+    oo_bw = get('oo_bw')
+    oo_show = get('oo_show')
+
+    oo_read = None
+    oo_write = None
+    if oo_bw:
+        oo_read = oo_bw.read()
+        oo_write = oo_bw.write()
+    end
+
+    # do_bw = oo_read is not None or oo_write is not None
+    # do_bw = do_bw or oo_details('bandwidth_rate') or oo_details('bandwidth_burst')
+    # do_bw = do_bw or oo_details('observed_bandwidth') or oo_details('advertised_bandwidth')
+%>
+
+% if oo_show:
+    {{!group('Bandwidth')}}
+
+    % publ = oo_bw.published()
+    % if publ is not None:
+        {{!standard_row('Status Time', publ)}}
+    % end
+
+    % if (oo_read is not None or oo_write is not None):
+        <div class="row">
+            <div class="{{box_datum_grid}}"><p>History Charts</p></div>
+            <div class="{{box_value_grid}}">
+                <div class="btn-toolbar pull-left" role="group">
+                    <div class="btn-group" data-toggle="buttons" id="oo-charts">
+                        <!-- labels for oninoo charts will be inserted here -->
+                        <code style="color: green;">
+                            %# <!-- acc_stats.status -->
+                            ... waiting for data ...
+                        </code>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xs-1"></div>
+        </div>
+    % end
+
+    % if oo_read is not None:
+        <div class="row">
+            <div class="{{box_datum_grid}}">Download</div>
+            <div class="{{box_value_grid}}">
+                <canvas class="bw_chart box_canvas" id="oo-bw-read" width="300" height="150"></canvas>
+            </div>
+            <div class="col-xs-1"></div>
+        </div>
+    % end
+
+    % if oo_write is not None:
+        <div class="row">
+            <div class="{{box_datum_grid}}">Upload</div>
+            <div class="{{box_value_grid}}">
+                <canvas class="bw_chart box_canvas" id="oo-bw-write" width="300" height="150"></canvas>
+            </div>
+            <div class="col-xs-1"></div>
+        </div>
+    % end
+
+    <div class="row">
+        <div class="{{box_datum_grid}}">
+            <p>Values</p>
+        </div>
+        <div class="{{box_value_grid}}">
+            <p>
+                <%
+                    bwv = ''
+                    bwv_items = {'advertised_bandwidth': 'Advertised',
+                                'bandwidth_rate': 'Rate',
+                                'bandwidth_burst': 'Burst',
+                                'observed_bandwidth': 'Observed'}
+
+                    for key, text in bwv_items.items():
+                        if oo_details(key):
+                            if len(bwv) > 0:
+                                bwv += ' | '
+                            end
+                            bwv += '{}: {}/s'.format(text, pretty_number(oo_details(key)))
+                        end
+                    end
+                %>
+                {{bwv}}
+            </p>
+        </div>
+    </div>
+
+% end

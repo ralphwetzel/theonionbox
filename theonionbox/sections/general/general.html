@@ -1,0 +1,111 @@
+<%
+    # Note that this file is not a valid *.html file!
+    # It is intended to be a bottlepy - style template
+    # used for the scripting part of TheOnionBox!
+
+    # from tob_template_tools import *
+
+    import psutil
+    cpu_count = psutil.cpu_count()
+
+    host = get('host')
+
+%>
+
+{{!header_row('Host', 'General Information', 'host')}}
+{{!standard_row('Name', host['name'])}}
+{{!standard_row('OS', "{} {} (Version: {})".format(host['system'], host['release'], host['version']))}}
+{{!standard_row('System', "{} {}".format(host['processor'], host['machine']))}}
+
+% if host['up']:
+    {{!standard_row('Latest Reboot', host['up'])}}
+% end
+
+<div class="row">
+    <div class="{{box_datum_grid}}"><p>CPU Usage</p></div>
+    <div class="{{box_value_grid}}">
+        <div class="row">
+            % for count in range(cpu_count):
+            <div class="col-xs-6">
+                <p>
+                    <canvas class="processor_chart" id="processor_load_{{count}}" width="100" height="50"
+                            style="vertical-align: middle;"
+                            data-toggle="tooltip" data-placement="bottom"
+                            title="CPU#{{count}}: CPU Usage (%)">
+                    </canvas>
+                </p>
+            </div>
+            % end
+        </div>
+    </div>
+    <div class="{{box_right_grid}}"></div>
+</div>
+<div class="row">
+    <div class="{{box_datum_grid}}"></div>
+    <div class="{{box_value_grid}}">
+        <p id="general_cpu_current">
+            Currently:
+        </p>
+    </div>
+    <div class="{{box_right_grid}}"></div>
+</div>
+
+{{!standard_row('Memory', "{} MB".format(host['memory|MB']))}}
+
+<div class = "row">
+    <div class="{{box_datum_grid}}"><p>Memory Usage</p></div>
+    <div class="{{box_value_grid}}">
+        <div class="row">
+            <div class="col-xs-6">
+                <p>
+                    <canvas class="processor_chart" id="mem_load" width="100" height="50"
+                        style="vertical-align: middle;"
+                        data-toggle="tooltip" data-placement="bottom"
+                        title="Memory Usage (%)">
+                    </canvas>
+                </p>
+            </div>
+            <div class="col-xs-6"></div>
+        </div>
+    </div>
+    <div class="{{box_right_grid}}"></div>
+</div>
+<div class="row">
+    <div class="{{box_datum_grid}}"></div>
+    <div class="{{box_value_grid}}">
+        <p id="general_mem_current">
+            Currently:
+        </p>
+    </div>
+    <div class="{{box_right_grid}}"></div>
+</div>
+
+% if host['temp']:
+    <div class = "row">
+        <div class="{{box_datum_grid}}"><p>Temperature</p></div>
+        <div class="{{box_value_grid}}">
+            <div class="row">
+                <div class="col-xs-6">
+                    <p>
+                        <canvas class="processor_chart" id="temp" width="100" height="50"
+                            style="vertical-align: middle;">
+                        </canvas>
+                    </p>
+                </div>
+                <div class="col-xs-6"></div>
+            </div>
+        </div>
+        <div class="{{box_right_grid}}"></div>
+    </div>
+    <div class="row">
+        <div class="{{box_datum_grid}}"></div>
+        <div class="{{box_value_grid}}">
+            <p id="general_temp_current">
+                Currently:
+            </p>
+        </div>
+        <div class="{{box_right_grid}}"></div>
+    </div>
+
+% end
+<hr>

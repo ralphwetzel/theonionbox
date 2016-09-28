@@ -29,9 +29,12 @@ installed:
 | NEW in v2 |
 | --- |
 | * [apscheduler](https://pypi.python.org/pypi/apscheduler)
+| * [requests](https://pypi.python.org/pypi/requests)
 
-Additionally I recommend to install [CherryPy](https://pypi.python.org/pypi/CherryPy) as webserver to be used!
-(The Box runs as well with a standard server yet this one has issues with IE!)
+| NEW in v3 |
+| --- |
+| ~~Additionally I recommend to install [CherryPy](https://pypi.python.org/pypi/CherryPy) as webserver to be used! |
+| (The Box runs as well with a standard server yet this one has issues with IE!)~~ |
 
 ## Configuration
 ### ... of The Onion Box

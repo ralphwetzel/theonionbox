@@ -1,0 +1,51 @@
+%# Note that this file is not a valid *.html file!
+%# It is intended to be a bottlepy - style template
+%# used for the scripting part of TheOnionBox!
+
+{{!header_row('Tor', 'Messages', 'messages')}}
+
+<div class="row">
+    <div class="{{box_datum_grid}}">
+        <p>Level</p>
+    </div>
+    <div class="{{box_value_grid}}">
+
+        <div class="btn-group" data-toggle="buttons">
+            <label class="btn btn-default message_selector" data-severity="DEBUG">
+                <input type="checkbox" autocomplete="off" >DEBUG
+            </label>
+            <label class="btn btn-default message_selector" data-severity="INFO">
+                <input type="checkbox" autocomplete="off">INFO
+            </label>
+            <label class="btn btn-info active message_selector" data-severity="NOTICE">
+                <input type="checkbox" autocomplete="off" checked>NOTICE
+            </label>
+            <label class="btn btn-warning active message_selector" data-severity="WARN">
+                <input type="checkbox" autocomplete="off" checked>WARN
+            </label>
+            <label class="btn btn-danger active message_selector" data-severity="ERROR">
+                <input type="checkbox" autocomplete="off" checked>ERROR
+            </label>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="{{box_datum_grid}}">
+        <p>Messages</p>
+    </div>
+    <div class="{{box_value_grid}}">
+        <div style="border-radius: 4px; border-style: solid; border-color: #ddd; border-width: 1px; margin-top: 10px; overflow: hidden;" id="msg">
+            <div class="scroll_area">
+                <table id="log_table" class="box_Log" style="overflow: hidden;" height="250">
+                    <tbody id="log_data">
+                    %#    {{!preserved_events}}
+                    </tbody>
+                </table>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<hr>
