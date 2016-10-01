@@ -7,9 +7,10 @@ in action:
 
 ![image](https://cloud.githubusercontent.com/assets/16342003/12043105/c8f17f18-ae81-11e5-8b21-c7ecf80b37f9.png)
 
-In addition to some static information regarding the host and Tor (like version
-numbers or IPs) the page displays the upload / download performance using real
-time charts and allows to switch Tor's event system.
+You will get information concerning the host system (like cpu load or memory usage), your current Tor configuration and 
+a plentitude of data from the Onionoo Network (including a nice map showing the locality of your server based on
+the distributed GeoIP data). In addition, the page displays your relay's upload / download performance
+using real time charts and allows to switch Tor's event system.
 
 | NEW in v2 |
 | --- |
@@ -33,8 +34,8 @@ installed:
 
 | NEW in v3 |
 | --- |
-| ~~Additionally I recommend to install [CherryPy](https://pypi.python.org/pypi/CherryPy) as webserver to be used! |
-| (The Box runs as well with a standard server yet this one has issues with IE!)~~ |
+| ~~Additionally I recommend to install [CherryPy](https://pypi.python.org/pypi/CherryPy) as webserver to be used! (The Box runs as well with a standard server yet this one has issues with IE!)~~ 
+| v3 comes bundled with a very performant websever. You might still use CherryPy - yet there's no true demand anymore.
 
 ## Configuration
 ### ... of The Onion Box
