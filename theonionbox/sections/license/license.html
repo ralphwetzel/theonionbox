@@ -1,0 +1,100 @@
+<%
+    # Note that this file is not a valid *.html file!
+    # It is intended to be a bottlepy - style template
+    # used for the scripting part of TheOnionBox!
+%>
+<div class="row">
+    <div class="{{box_datum_grid}}">
+    </div>
+    <div class="{{box_value_grid}}">
+        <p style="color: grey; font-size: 10px; font-weight: 300">
+            The Onion Box | Version v{{box_version}} | Copyright &copy; 2015 - 2016 Ralph Wetzel | License:
+            <a role="button" data-toggle="collapse" href="#MIT"
+               aria-expanded="false" aria-controls="MIT">MIT</a>
+        </p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="{{box_datum_grid}}">
+    </div>
+    <div class="{{box_value_grid}}">
+        <p style="color: grey; font-size: 10px; font-weight: 300">
+            Tor and the Tor Onion Logo are registered trademarks &reg of
+            <a href="https://torproject.org" target="_blank">The Tor Project</a>.
+            Onionoo is a service of The Tor Project.
+        </p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="{{box_datum_grid}}">
+    </div>
+    <div class="{{box_value_grid}}">
+        <p style="color: grey; font-size: 10px; font-weight: 300">
+            The Onion Box uses the great <a href="https://latofonts.com" target="_blank">Lato</a> font. | Copyright
+            Łukasz Dziedzic | License:
+            <a href="http://scripts.sil.org/OFL" target="_blank">SIL Open Font License 1.1</a>.
+        </p>
+    </div>
+</div>
+
+<div class="collapse" id="MIT">
+
+    <hr>
+
+    {{!header_row('', 'The MIT License (MIT)')}}
+    {{!standard_row('','Copyright (c) 2015 ralphwetzel')}}
+    <div class="row">
+        <div class="{{box_datum_grid}}">
+        </div>
+        <div class="{{box_value_grid}}">
+            <p>
+                Permission is hereby granted, free of charge, to any person obtaining a copy
+                of this software and associated documentation files (the "Software"), to deal
+                in the Software without restriction, including without limitation the rights
+                to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+                copies of the Software, and to permit persons to whom the Software is
+                furnished to do so, subject to the following conditions:
+            </p>
+        </div>
+    </div>
+    <div class="row">
+        <div class="{{box_datum_grid}}">
+        </div>
+        <div class="{{box_value_grid}}">
+            <p>
+                The above copyright notice and this permission notice shall be included in all
+                copies or substantial portions of the Software.
+            </p>
+        </div>
+    </div>
+    <div class="row">
+        <div class="{{box_datum_grid}}">
+        </div>
+        <div class="{{box_value_grid}}">
+            <p>
+                THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+                IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+                FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+                AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+                LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+                OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+                SOFTWARE.
+            </p>
+        </div>
+    </div>
+    <hr>
+    {{!header_row('', 'Statement of Independence')}}
+    <div class="row">
+        <div class="{{box_datum_grid}}">
+        </div>
+        <div class="{{box_value_grid}}">
+            <p>
+                This product is produced independently from the Tor® anonymity software and carries no
+                guarantee from The Tor Project about quality, suitability or anything else.
+            </p>
+        </div>
+    </div>
+</div>
+<br>

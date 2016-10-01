@@ -1,0 +1,60 @@
+<%
+    # Note that this file is not a valid *.html file!
+    # It is intended to be a bottlepy - style template
+    # used for the scripting part of TheOnionBox!
+
+    # tor = get('tor')
+
+    # import socket
+    # host_name = socket.gethostname()
+
+    sc = get('section_config')
+    header = sc['header'] if 'header' in sc else {}
+%>
+
+<div class="row box_header" style="min-height: 50px;">
+%   if 'logout' in header:
+%       if header['logout'] == True:
+    <form role="logout" method='get' action="{{base_path}}{{session_id}}/logout.html">
+        <button type="submit" id="button_logout" class="btn btn-default btn-lg"
+                style="position: absolute; right: 20px; top: 20px;">Logout</button>
+    </form>
+%       end
+%   end
+</div>
+
+%   title = 'The Onion Box'
+%   if 'title' in header:
+%       title = header['title']
+%   end
+<div class="row box_header">
+    <div class="{{box_bold_grid}}"></div>
+    <div class="{{box_title_grid}}">
+        {{!title}}
+    </div>
+</div>
+
+%   subtitle = ''
+%   if 'subtitle' in header:
+%       subtitle = header['subtitle']
+%   end
+<div class="row box_header ">
+    <div class="{{box_bold_grid}}"></div>
+    <div class="truncate {{box_subtitle_grid}}">
+        {{!subtitle}}
+    </div>
+    <div class="col-xs-3"></div>
+</div>
+
+%   powered = ''
+%   if 'powered' in header:
+%       powered = header['powered']
+%   end
+<div class="row box_header " style="min-height: 70px;">
+    <div class="{{box_bold_grid}}"></div>
+    <div class="{{box_powered_grid}}">
+        {{!powered}}
+    </div>
+</div>
+
+<br>

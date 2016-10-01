@@ -1,3 +1,4 @@
+/theonionbox/scripts/jquery-1.12.2.min.map
 /.pypirc
 /theonionbox/config/myonionbox.cfg
 /.idea
@@ -16,6 +17,7 @@ develop-eggs/
 dist/
 downloads/
 eggs/
+/xtor
 .eggs/
 lib/
 lib64/

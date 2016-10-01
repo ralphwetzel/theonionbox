@@ -1,4 +1,32 @@
-function box_chart(options)
+
+// From smoothie.js
+
+  var Util = {
+    extend: function() {
+      arguments[0] = arguments[0] || {};
+      for (var i = 1; i < arguments.length; i++)
+      {
+        for (var key in arguments[i])
+        {
+          if (arguments[i].hasOwnProperty(key))
+          {
+            if (typeof(arguments[i][key]) === 'object') {
+              if (arguments[i][key] instanceof Array) {
+                arguments[0][key] = arguments[i][key];
+              } else {
+                arguments[0][key] = Util.extend(arguments[0][key], arguments[i][key]);
+              }
+            } else {
+              arguments[0][key] = arguments[i][key];
+            }
+          }
+        }
+      }
+      return arguments[0];
+    }
+  };
+
+function boxChart(options)
 {
     // to ensure that the new chartOptions (used for rendering) are handled correctly
     if (options.timeLabelLeftAlign === void 0) { options.timeLabelLeftAlign = false;}
@@ -16,10 +44,10 @@ function box_chart(options)
 
 }
 
-box_chart.prototype = new SmoothieChart();
+boxChart.prototype = new SmoothieChart();
 
 // Alternative resizing method ... as the original code didn't work!
-box_chart.prototype.resize = function() {
+boxChart.prototype.resize = function() {
 
     // we're ignoring the "enableDpiScaling" option
     if (!window)
@@ -81,10 +109,85 @@ box_chart.prototype.resize = function() {
 *    Added for TOB
 *    Method to alter the delay on the fly
 */
-box_chart.prototype.setDelay = function(delayMillis)
+boxChart.prototype.setDelay = function(delayMillis)
 {
     this.delay = delayMillis;
 };
+
+// patched to operate on bounds respecting the oldestValidTime - frame
+
+boxChart.prototype.updateValueRange = function() {
+    // Calculate the current scale of the chart, from all time series.
+    var chartOptions = this.options,
+        chartMaxValue = Number.NaN,
+        chartMinValue = Number.NaN;
+
+    for (var d = 0; d < this.seriesSet.length; d++) {
+        // TODO(ndunn): We could calculate / track these values as they stream in.
+
+        // original code:
+        // var timeSeries = this.seriesSet[d].timeSeries;
+
+        var timeSeries = {maxValue: NaN, minValue: NaN};
+
+        if (this.seriesSet[d].bounds && !isNaN(this.seriesSet[d].bounds.maxValue)) {
+            timeSeries.maxValue = this.seriesSet[d].bounds.maxValue
+        } else {
+            timeSeries.maxValue = this.seriesSet[d].timeSeries.maxValue;
+        }
+
+        if (this.seriesSet[d].bounds && !isNaN(this.seriesSet[d].bounds.minValue)) {
+            timeSeries.minValue = this.seriesSet[d].bounds.minValue
+        } else {
+            timeSeries.minValue = this.seriesSet[d].timeSeries.minValue;
+        }
+
+        // no change further on!
+
+        if (!isNaN(timeSeries.maxValue)) {
+            chartMaxValue = !isNaN(chartMaxValue) ? Math.max(chartMaxValue, timeSeries.maxValue) : timeSeries.maxValue;
+        }
+
+        if (!isNaN(timeSeries.minValue)) {
+            chartMinValue = !isNaN(chartMinValue) ? Math.min(chartMinValue, timeSeries.minValue) : timeSeries.minValue;
+        }
+    }
+
+    // Scale the chartMaxValue to add padding at the top if required
+    if (chartOptions.maxValue != null) {
+      chartMaxValue = chartOptions.maxValue;
+    } else {
+      chartMaxValue *= chartOptions.maxValueScale;
+    }
+
+    // Set the minimum if we've specified one
+    if (chartOptions.minValue != null) {
+      chartMinValue = chartOptions.minValue;
+    } else {
+      chartMinValue -= Math.abs(chartMinValue * chartOptions.minValueScale - chartMinValue);
+    }
+
+    // If a custom range function is set, call it
+    if (this.options.yRangeFunction) {
+      var range = this.options.yRangeFunction({min: chartMinValue, max: chartMaxValue});
+      chartMinValue = range.min;
+      chartMaxValue = range.max;
+    }
+
+    if (!isNaN(chartMaxValue) && !isNaN(chartMinValue)) {
+      var targetValueRange = chartMaxValue - chartMinValue;
+      var valueRangeDiff = (targetValueRange - this.currentValueRange);
+      var minValueDiff = (chartMinValue - this.currentVisMinValue);
+      this.isAnimatingScale = Math.abs(valueRangeDiff) > 0.1 || Math.abs(minValueDiff) > 0.1;
+      this.currentValueRange += chartOptions.scaleSmoothing * valueRangeDiff;
+      this.currentVisMinValue += chartOptions.scaleSmoothing * minValueDiff;
+    }
+
+    this.valueRange = { min: chartMinValue, max: chartMaxValue };
+  };
+
+
+
 
 // adaptation of the original smoothie code to allow for left-aligning the time labels
 // rather than right-aligning (as it's the smoothie standard)
@@ -93,7 +196,7 @@ box_chart.prototype.setDelay = function(delayMillis)
 // timeLabelLeftAlign = false;  true to RightAlign
 // timeLabelSeparation = 0;     px, to alter the distance between vertical grid line & label
 
-box_chart.prototype.render = function(canvas, time) {
+boxChart.prototype.render = function(canvas, time) {
 
     // no change from here ...
     var nowMillis = new Date().getTime();
@@ -138,6 +241,9 @@ box_chart.prototype.render = function(canvas, time) {
           }
           return Math.round(dimensions.width - ((time - t) / chartOptions.millisPerPixel));
         };
+
+    // to allow 'resetBounds' based on the visible timeframe
+    this.oldestValidTime = oldestValidTime;
 
     this.updateValueRange();
 
@@ -502,7 +608,7 @@ box_chart.prototype.render = function(canvas, time) {
 /**
 * Removes all <code>TimeSeries</code> from the chart.
 */
-box_chart.prototype.removeAllTimeSeries = function() {
+boxChart.prototype.removeAllTimeSeries = function() {
 
     while (this.seriesSet.length > 0)
     {
@@ -512,9 +618,46 @@ box_chart.prototype.removeAllTimeSeries = function() {
 };
 
 /**
+* Adds a <code>TimeSeries</code> to this chart, with optional presentation options.
+*
+* Presentation options should be of the form (defaults shown):
+*
+* <pre>
+* {
+*   lineWidth: 1,
+*   strokeStyle: '#ffffff',
+*   fillStyle: undefined
+* }
+* </pre>
+*/
+boxChart.prototype.addTimeSeries = function(timeSeries, options) {
+    var new_series = {timeSeries: timeSeries
+                    , options: Util.extend({}, SmoothieChart.defaultSeriesPresentationOptions, options)
+                    , bounds: {maxValue: NaN, minValue: NaN}
+                    };
+    this.seriesSet.push(new_series);
+    if (timeSeries.options.resetBounds && timeSeries.options.resetBoundsInterval > 0) {
+        timeSeries.resetBoundsTimerId = setInterval(
+            function() {
+                if (timeSeries.checkBounds) {
+                    var frameBounds = timeSeries.checkBounds(this.oldestValidTime);
+                } else {
+                    timeSeries.resetBounds();
+                    var frameBounds = {maxValue: timeSeries.maxValue, minValue: timeSeries.minValue}
+                }
+                new_series.bounds = frameBounds;
+            }.bind(this),
+            timeSeries.options.resetBoundsInterval
+        );
+    }
+};
+
+
+
+/**
 * update the chart with one call
 */
-box_chart.prototype.setDisplay = function(options) {
+boxChart.prototype.setDisplay = function(options) {
 
     // copy paste from smoothie.js, from here ...
     var Util = {
@@ -553,20 +696,69 @@ box_chart.prototype.setDisplay = function(options) {
     }
 }
 
-function box_timeseries(options)
+function boxTimeSeries(options)
 {
-    // to ensure that the new chartOptions (used for rendering) are handled correctly
-    if (options.dontDropOldData === void 0) { options.dontDropOldData = false;}
-
+    this.options = Util.extend({}, boxTimeSeries.defaultOptions, options);
     TimeSeries.call(this, options);
 }
 
-box_timeseries.prototype = new TimeSeries();
+boxTimeSeries.defaultOptions = {
+    dontDropOldData: false
+};
 
-box_timeseries.prototype.dropOldData = function(oldestValidTime, maxDataSetLength) {
+boxTimeSeries.prototype = new TimeSeries();
+
+boxTimeSeries.prototype.dropOldData = function(oldestValidTime, maxDataSetLength) {
 
     if (this.options.dontDropOldData) { return; }
     TimeSeries.prototype.dropOldData.call(this, oldestValidTime, maxDataSetLength);
+};
+
+/**
+* Recalculate the min/max values for this <code>TimeSeries</code> object.
+*
+* This function differs from the original as it takes an oldestValidTime - parameter to
+* determine the values within a given timeframe.
+*
+* This causes the graph to scale itself in the y-axis.
+*/
+boxTimeSeries.prototype.checkBounds = function(oldestValidTime) {
+
+    var i = this.data.length;
+    var frameBounds = {maxValue: NaN, minValue: NaN};
+
+    if (i) {
+        i--;
+        this.maxValue = this.data[i][1];
+        this.minValue = this.data[i][1];
+
+        frameBounds.maxValue = this.maxValue;
+        frameBounds.minValue = this.minValue;
+
+        while (i > 0) {
+            i--;
+            var value = this.data[i][1];
+            if (value > this.maxValue) {
+                this.maxValue = value;
+                if (this.data[i][0] >= oldestValidTime) {
+                    frameBounds.maxValue = value;
+                }
+            }
+            if (value < this.minValue) {
+                this.minValue = value;
+                if (this.data[i][0] >= oldestValidTime) {
+                    frameBounds.minValue = value;
+                }
+            }
+
+        }
+    } else {
+        // No data exists, so set min/max to NaN
+        this.maxValue = Number.NaN;
+        this.minValue = Number.NaN;
+    }
+
+    return frameBounds;
 };
 
 /*
@@ -601,3 +793,32 @@ box_display.prototype.toChart(chart_name) = function() {
     }
 }
 */
+
+function boxCanvas(canvas_element) {
+    this._canvas = canvas_element;
+
+    //Get the canvas & context
+    this._context = this._canvas.get(0).getContext('2d');
+    this._container = $(this._canvas).parent();
+
+    var respondCanvas = function(){
+
+        // console.log(this._container);
+
+        var tempCanvas = document.createElement('canvas');
+        tempCanvas.width = this._context.canvas.width;
+        tempCanvas.height = this._context.canvas.height;
+        var tempContext = tempCanvas.getContext("2d");
+
+        tempContext.drawImage(this._context.canvas, 0, 0);
+        this._canvas.attr('width', $(this._container).width() ); //max width
+        this._context.drawImage(tempContext.canvas, 0, 0);
+    }.bind(this)
+
+    //Run function when browser resizes
+    $(window).resize(respondCanvas);
+
+    //Initial call
+    respondCanvas();
+
+}

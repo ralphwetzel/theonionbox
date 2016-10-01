@@ -1,0 +1,133 @@
+<%
+    # Note that this file is not a valid *.html file!
+    # It is intended to be a bottlepy - style template
+    # used for the scripting part of TheOnionBox!
+
+    VERSION_STATUS_COLORS = {"new": "blue", "new in series": "blue", "obsolete": "red", "recommended": "green",
+                             "old": "red",  "unrecommended": "red",  "unknown": "cyan"}
+
+    tor = get('tor')
+
+    # This is Copy/Paste from ARM!
+
+    # see dir-spec.txt for description of FLAGS
+    FLAG_LABELS = {"Authority": "default",  "BadExit": "danger",     "BadDirectory": "danger",    "Exit": "warning",
+                   "Fast": "primary",      "Guard": "primary",     "HSDir": "info",       "Named": "primary",
+                   "Stable": "primary",      "Running": "success",  "Unnamed": "warning",     "Valid": "success",
+                   "V2Dir": "default",       "V3Dir": "default"}
+
+    FLAG_COLORS = {"Authority": "black", "BadExit": "red", "BadDirectory": "red", "Exit": "orange",
+                   "Fast": "blue",      "Guard": "blue",     "HSDir": "deepskyblue",       "Named": "blue",
+                   "Stable": "blue",      "Running": "green",  "Unnamed": "red",     "Valid": "green",
+                   "V2Dir": "black",       "V3Dir": "black", "Tor Communication Error": "red", 'none': 'cyan',
+                    "unknown": "black"}
+
+    def flags():
+        flags = []
+        try:
+            flags = tor.get_flags()
+        except:
+            pass
+        end
+
+        fs = ''
+        for flag in flags:
+            if fs is not '':
+                fs += ' '
+            end
+            fs += '<code style="color: '+ FLAG_COLORS[flag] + ';">' + flag + '</code>'
+        end
+
+        if (len(flags) == 1) and (flags[0] == 'none'):
+            a_o = get('accounting_on')
+            if a_o == True:
+                a_s = get('accounting_stats')
+                if a_s.status != 'awake':
+                    fs += ' | could be due to '
+                    fs += '<a href="#accounting">Hibernation Status</a>'
+                    fs += ' <code style="color: green;">' + a_s.status + '</code>'
+                end
+            end
+        end
+        return fs
+    end
+
+%>
+
+{{!header_row('Tor', 'Local Status', 'stats')}}
+
+<div class = "row">
+    <div class="{{box_datum_grid}}">
+        <p>Version</p>
+    </div>
+    <div class="{{box_value_grid}}">
+        <p>
+            {{tor.get_version()}}
+            % tvc = tor.get_version_current()
+            % if tvc in VERSION_STATUS_COLORS:
+                <code style="color: {{VERSION_STATUS_COLORS[tvc]}};">{{tvc}}</code>
+            % end
+        </p>
+    </div>
+</div>
+
+<%
+    from tob.version_tester import TorVersionTester
+    tvt = TorVersionTester()
+
+    tv = tor.get_version()
+    if tvt.is_latest_stable(tv) is False:
+%>
+        <div class = "row">
+            <div class="{{box_datum_grid}}">
+                <p>Latest Stable Version</p>
+            </div>
+            <div class="{{box_value_grid}}">
+                <p>
+                    <a href="https://dist.torproject.org/" target="_blank">{{tvt.latest_stable()}}</a>
+                </p>
+            </div>
+        </div>
+<%
+    end
+    if tvt.is_latest_alpha(tv) is False:
+%>
+        <div class = "row">
+            <div class="{{box_datum_grid}}">
+                <p>Latest Alpha Version</p>
+            </div>
+            <div class="{{box_value_grid}}">
+                <p>
+                    <a href="https://dist.torproject.org/" target="_blank">{{tvt.latest_alpha()}}</a>
+                </p>
+            </div>
+        </div>
+%   end
+
+{{!standard_row('PID', tor.get_pid())}}
+{{!standard_row('User', tor.get_user())}}
+
+<div class="row">
+    <div class="{{box_datum_grid}}">
+        <p>Fingerprint</p>
+    </div>
+    <div class="{{box_value_grid}}">
+        <%
+            _fngrprnt = 'failed'
+            try:
+                _fngrprnt = tor.get_fingerprint()
+            except:
+                pass
+            end
+        %>
+        <p>
+            %# <a href="https://atlas.torproject.org/#details/{{!_fngrprnt}}" target="_blank">
+                {{!_fngrprnt}}
+            %# </a>
+        </p>
+    </div>
+</div>
+
+{{!standard_row('Flags', flags())}}
+
+<hr>

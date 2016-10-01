@@ -1,0 +1,69 @@
+%# Note that this file is not a valid *.html file!
+%# It is intended to be a bottlepy - style template
+%# used for the scripting part of TheOnionBox!
+
+{{!header_row('Tor', 'Monitoring', 'monitor')}}
+
+<div class="row">
+    <div class="{{box_datum_grid}}"><p>Live Charts</p></div>
+    <div class="{{box_value_grid}}">
+        <div class="btn-toolbar pull-left" role="group">
+            <div class="btn-group" data-toggle="buttons">
+                <label id="hd" class="btn btn-default active box_chart_button" role="button" onclick="monitor_set_display('hd')">
+                    <input type="radio" autocomplete="off" checked>Minutes
+                </label>
+                <label id="ld" class="btn btn-default box_chart_button" role="button" onclick="monitor_set_display('ld')">
+                    <input type="radio" autocomplete="off">Hours
+                </label>
+            </div>
+<!--
+            <label id="onionoo_more" class="btn btn-default" role="button" disabled="disabled"
+                   data-toggle="collapse" data-target="#moreBandwidth" aria-expanded="false"
+                   aria-controls="moreBandwidth">
+                More <span class="caret"></span>
+            </label> -->
+<!--
+            <label id="zoom" class="btn btn-default" role="button">
+                Zoom 1x
+            </label>
+-->
+        </div>
+    </div>
+    <div class="col-xs-1"></div>
+</div>
+
+<div class="row">
+    <div class="{{box_datum_grid}}">Download</div>
+    <div class="{{box_value_grid}}">
+        <canvas class="bw_chart box_canvas" id="monitor-bw-read" width="300" height="150"></canvas>
+    </div>
+    <div class="col-xs-1"></div>
+</div>
+
+<div class="row">
+    <div class="{{box_datum_grid}}"></div>
+    <div class="{{box_value_grid}}">
+        <p id="bw_down">
+            Total: 0 Bytes | Current: 0 Bytes/s
+        </p>
+    </div>
+    <div class="col-xs-1"></div>
+</div>
+
+<div class="row">
+    <div class="{{box_datum_grid}}">Upload</div>
+    <div class="{{box_value_grid}}">
+        <canvas class="bw_chart box_canvas" id="monitor-bw-written" width="300" height="150"></canvas>
+    </div>
+    <div class="col-xs-1"></div>
+</div>
+<div class="row">
+    <div class="{{box_datum_grid}}"></div>
+    <div class="{{box_value_grid}}">
+        <p id="bw_up">
+            Total: 0 Bytes | Current: 0 Bytes/s
+        </p>
+    </div>
+    <div class="col-xs-1"></div>
+</div>
+<hr>

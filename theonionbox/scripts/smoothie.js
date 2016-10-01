@@ -136,7 +136,6 @@
     this.maxValue = Number.NaN; // The maximum value ever seen in this TimeSeries.
     this.minValue = Number.NaN; // The minimum value ever seen in this TimeSeries.
   };
-
   /**
    * Recalculate the min/max values for this <code>TimeSeries</code> object.
    *
@@ -162,6 +161,7 @@
       this.minValue = Number.NaN;
     }
   };
+
 
   /**
    * Adds a new data point to the <code>TimeSeries</code>, preserving chronological order.
