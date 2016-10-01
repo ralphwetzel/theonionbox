@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-__version__ = '3.0RC1'      # stamp will be added later
+__version__ = '3.0'      # stamp will be added later
 __description__ = 'The Onion Box: WebInterface to monitor Tor Relays and Bridges'
 
 
@@ -683,7 +683,6 @@ from bottle import Bottle, run, debug
 from bottle import redirect, template, static_file
 from bottle import request
 from bottle import HTTPError, HTTPResponse
-from bottle import WSGIRefServer
 
 import bottle
 
@@ -1546,8 +1545,8 @@ class BoxCherryPyServer(ServerAdapter, ShutDownAdapter):
 # https://fgallaire.github.io/wsgiserver/
 class WSGIserver(ServerAdapter):
     def run(self, handler):
-        import wsgiserver
-        server = wsgiserver.WSGIServer(handler, host=self.host, port=self.port)
+        from tob.wsgiserver import WSGIServer
+        server = WSGIServer(handler, host=self.host, port=self.port)
         server.start()
 
 

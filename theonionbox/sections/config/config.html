@@ -229,7 +229,11 @@ end
                                     %>
                                         {{!out}}
                                     % elif len(pt) > 0:
-                                        {{values[0]}}
+                                    %   if values is not None and len(values) > 0:
+                                            {{values[0]}}
+                                    %   else:
+                                            <code>none</code>
+                                    %   end
                                     % else:
                                         <code>Error</code>
                                     % end
