@@ -225,6 +225,18 @@ if box_cmdline['mode'] == 'service':
         boxLogPath = '/var/log/theonionbox'
         if os.access(boxLogPath, os.F_OK | os.W_OK | os.X_OK) is False:
             boxLogPath = 'log'
+
+            # ensure that the 'log' directory exists
+            # reasoning: if it doesn't, TimedRotatingFileHandler below will raise an exception!
+            try:
+                if py34:
+                    os.makedirs(boxLogPath, exist_ok=True)
+                else:
+                    os.makedirs(boxLogPath)
+            except OSError:
+                if not os.path.isdir(boxLogPath):
+                    raise
+
         boxLogPath += '/theonionbox.log'
         box_handler = TimedRotatingFileHandler(boxLogPath, when='midnight', backupCount=5)
         ff = FileFormatter()
