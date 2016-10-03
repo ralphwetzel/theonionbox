@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-__version__ = '3.0'      # stamp will be added later
+__version__ = '3.0.1'      # stamp will be added later
 __description__ = 'The Onion Box: WebInterface to monitor Tor Relays and Bridges'
 
 
@@ -11,7 +11,7 @@ __description__ = 'The Onion Box: WebInterface to monitor Tor Relays and Bridges
 # bottle
 # psutil
 # configparser
-# apscheduler
+# apscheduler (either v3.x or v2.x)
 # requests
 
 #####
@@ -515,11 +515,11 @@ else:
 #####
 # The Scheduler
 
-# used to run all async activities within TOB
-from apscheduler.schedulers.background import BackgroundScheduler
-box_cron = BackgroundScheduler()
-box_cron.start()
+from tob.scheduler import Scheduler
 
+# used to run all async activities within TOB
+box_cron = Scheduler()
+box_cron.start()
 
 #####
 # SESSION Management
