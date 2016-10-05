@@ -5,29 +5,28 @@
 class Scheduler(object):
 
     schedulr = None
-    aps30 = True
+    aps3 = True
 
     def __init__(self):
 
         #####
         # ApScheduler version detection
-        import apscheduler
-        self.aps30 = apscheduler.version_info >= (3, 0, 0)
-
-        if self.aps30:
+        try:
             # APScheduler 3.x implementation
             from apscheduler.schedulers.background import BackgroundScheduler
             self.schedulr = BackgroundScheduler()
-        else:
+            self.aps3 = True
+        except:
             # APScheduler 2.x implementation
             from apscheduler.scheduler import Scheduler
             self.schedulr = Scheduler()
+            self.aps3 = False
 
     def start(self):
         return self.schedulr.start()
 
     def get_job(self, name):
-        if self.aps30:
+        if self.aps3:
             return self.schedulr.get_job(name)
         else:
             jobs = self.schedulr.get_jobs()
@@ -38,7 +37,7 @@ class Scheduler(object):
             return None
 
     def add_job(self, func, trigger, args=None, kwargs=None, id=None, **trigger_args):
-        if self.aps30:
+        if self.aps3:
             return self.schedulr.add_job(func, trigger, id=id, args=args, kwargs=kwargs, **trigger_args)
         else:
             if trigger is 'date':
