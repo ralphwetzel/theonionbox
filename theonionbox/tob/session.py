@@ -3,7 +3,7 @@ from time import time
 
 # This is the TTL (in seconds) of the Session on server side;
 # Accessing the session resets the counter!
-SESSION_MAX_TTL = 30
+SESSION_MAX_TTL = 3600  # one hour
 
 
 class SessionFactory(object):
@@ -16,7 +16,7 @@ class SessionFactory(object):
 
     def __init__(self, time_manager, session_lifetime=SESSION_MAX_TTL):
 
-        self.session_lifetime = session_lifetime
+        self.session_lifetime = session_lifetime if session_lifetime < SESSION_MAX_TTL else SESSION_MAX_TTL
         self._time = time_manager
         self.reset()
 

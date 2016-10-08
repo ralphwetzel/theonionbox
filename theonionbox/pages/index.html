@@ -54,12 +54,15 @@
                 out = ''
                 if div_open:
                     out += '<' + '/div>'    # written in this way to not confuse the PyCharm IDE
+                    div_open = False
                 end
-                out += '<' + 'div id ="{}">'.format(section[1:])
+                if len(section) > 1:
+                    out += '<' + 'div id ="{}">'.format(section[1:])
+                    div_open = True
+                end
                 %>
                 {{!out}}
                 <%
-                div_open = True
                 continue
             end
 

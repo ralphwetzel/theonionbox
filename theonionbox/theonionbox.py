@@ -2,9 +2,15 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-__version__ = '3.0.1'      # stamp will be added later
+# __version__ = '3.0.1'      # stamp will be added later
+__version__ = '3.1-devel'      # stamp will be added later
 __description__ = 'The Onion Box: WebInterface to monitor Tor Relays and Bridges'
 
+
+# from tob.version_tester import Version
+# __version__ = Version(3, 0, 1)
+#
+# print(__version__)
 
 # required pip's for raspberrypi
 # stem
@@ -119,11 +125,12 @@ os.chdir(get_script_dir())
 #####
 # Version Stamping
 import os.path
+stamped_version = str(__version__)
 if os.path.exists('stamp.txt'):
     with open('stamp.txt', 'r') as f:
         lines = f.readlines()
         if len(lines) == 1 and lines[0][8] == '|':
-            __version__ += ' (stamp {})'.format(lines[0])
+            stamped_version += ' (stamp {})'.format(lines[0])
 
 
 #####
@@ -134,7 +141,7 @@ from getopt import getopt, GetoptError
 
 def print_usage():
     print(__description__)
-    print('Version v{}'.format(__version__))
+    print('Version v{}'.format(stamped_version))
     print(""
           "Command line parameters:"
           " -c <path> | --config=<path>: Provide path & name of configuration file."
@@ -260,7 +267,7 @@ box_handler.setLevel('DEBUG')
 # Here we go!
 boxLog.notice('')
 boxLog.notice(__description__)
-boxLog.notice('Version v{}'.format(__version__))
+boxLog.notice('Version v{}'.format(stamped_version))
 boxLog.info('Running on a {} Host.'.format(boxHost['system']))
 boxLog.info('Python version is {}.{}.{}.'.format(sys.version_info.major,
                                                  sys.version_info.minor,
@@ -313,7 +320,7 @@ tor_NOTICE = True
 # Configuration of this server
 box_host = 'localhost'
 box_port = 8080
-box_login_ttl = 30
+box_session_ttl = 30
 box_server_to_use = 'default'
 box_ntp_server = 'pool.ntp.org'
 box_message_level = 'NOTICE'
@@ -346,7 +353,7 @@ if 'TheOnionBox' in config:
     box_host = box_config.get('host', box_host)
     box_port = int(box_config.get('port', box_port))
     box_server_to_use = box_config.get('server', box_server_to_use)
-    box_login_ttl = int(box_config.get('login_ttl', box_login_ttl))
+    box_session_ttl = int(box_config.get('session_ttl', box_session_ttl))
     box_ssl = box_config.getboolean('ssl', box_ssl)
     box_ssl_certificate = box_config.get('ssl_certificate', box_ssl_certificate)
     box_ssl_key = box_config.get('ssl_key', box_ssl_key)
@@ -378,6 +385,11 @@ if box_message_level not in boxLogLevels:
 
     boxLog.warn(msg)
     box_message_level = 'NOTICE'
+
+if box_session_ttl > 3600:
+    box_session_ttl = 3600
+if box_session_ttl < 30:
+    box_session_ttl = 30
 
 # Assure that the base_path has the following format:
 # '/' (leading slash) + whatever + !'/' (NO trailing slash)
@@ -526,7 +538,7 @@ box_cron.start()
 from tob.session import SessionFactory, make_short_id
 
 # standard session management
-box_sessions = SessionFactory(box_time)
+box_sessions = SessionFactory(box_time, box_session_ttl)
 
 
 #####
@@ -903,7 +915,10 @@ def get_start():
     section_config['header'] = {
         'logout': False,
         'title': 'The Onion Box',
-        'subtitle': "Version: {}<br>Your address: {}".format(__version__, request.get('REMOTE_ADDR'))
+        'subtitle': "Version: {}<br>Your address: {}".format(stamped_version, request.get('REMOTE_ADDR'))
+    }
+    section_config['login'] = {
+        'timeout': box_session_ttl * 1000   # js!
     }
 
     params = {
@@ -911,7 +926,7 @@ def get_start():
         , 'tor': tor
         , 'session_id': session.id()
         , 'icon': theonionbox_icon
-        , 'box_version': __version__
+        , 'box_version': stamped_version
         , 'virtual_basepath': box_basepath
         , 'sections': login_sections
         , 'section_config': section_config
@@ -1053,7 +1068,7 @@ def get_index(session_id):
         'logout': True,
         'title': tor.get_nickname(),
         'subtitle': "Tor {} @ {}<br>{}".format(version_short, socket.gethostname(), tor.get_fingerprint()),
-        'powered': "monitored by <b>The Onion Box</b> v{}".format(__version__)
+        'powered': "monitored by <b>The Onion Box</b> v{}".format(stamped_version)
     }
 
     params = {
@@ -1069,7 +1084,7 @@ def get_index(session_id):
         , 'accounting_stats': accounting_stats
         , 'icon': theonionbox_icon
         , 'marker': icon_marker
-        , 'box_version': __version__
+        , 'box_version': stamped_version
         , 'box_debug': box_debug
         , 'virtual_basepath': box_basepath
         , 'sections': box_sections
