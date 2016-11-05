@@ -209,19 +209,26 @@ class Document(object):
             return None
 
     def _decode_history_object(self, data, name, key):
+
         if data is None:
             return None
 
-        if name not in data:
-            KeyError("No History Object named '{}' in chart data.".format(name))
+        lgr = logging.getLogger('theonionbox')
 
-        hist_obj = data[name]
-
-        if key not in hist_obj:
+        try:
+            hist_obj = data[name]
+        except Exception:
+            # This Exception will be raised if a wrong 'name' was provided while programming
+            # OR if the relay is so young that there are no historical infos in the onionoo data!
+            lgr.warn("While decoding Onionoo history data: Key '{}' not found.".format(name))
             return None
 
-        # go = graph objext
-        go = hist_obj[key]
+        try:
+            # go = graph objext
+            go = hist_obj[key]
+        except Exception:
+            return None
+
         result = []
 
         data = go['values']
