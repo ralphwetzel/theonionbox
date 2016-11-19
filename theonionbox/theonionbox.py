@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-__version__ = '3.0.3'      # stamp will be added later
+__version__ = '3.0.4'      # stamp will be added later
 __description__ = 'The Onion Box: WebInterface to monitor Tor Relays and Bridges'
 
 
@@ -1290,9 +1290,14 @@ def send_css(session_id, filename):
     if filename in session['stylesheets']:
         if filename in session:
             file = session[filename]
-            del session[filename]
-            headers = {'Content-Type': 'text/css; charset=UTF-8'}
-            return HTTPResponse(file, **headers)
+            # 3.0.4
+            session[filename] = None
+            if file is None:
+                # This happens when the file is requested more than once!
+                raise HTTPError(404)
+            else:
+                headers = {'Content-Type': 'text/css; charset=UTF-8'}
+                return HTTPResponse(file, **headers)
 
         elif filename == 'bootstrap.css':
             return static_file(bootstrapCSS, root=bootstrapDir + '/css', mimetype='text/css')
@@ -1315,9 +1320,14 @@ def send_js(session_id, filename):
     if filename in session['scripts']:
         if filename in session:
             file = session[filename]
-            del session[filename]
-            headers = {'Content-Type': 'application/javascript; charset=UTF-8'}
-            return HTTPResponse(file, **headers)
+            # 3.0.4
+            session[filename] = None
+            if file is None:
+                # This happens when the file is requested more than once!
+                raise HTTPError(404)
+            else:
+                headers = {'Content-Type': 'application/javascript; charset=UTF-8'}
+                return HTTPResponse(file, **headers)
 
         elif filename == 'bootstrap.js':
             return static_file(bootstrapJS, root=bootstrapDir + '/js', mimetype='text/javascript')
