@@ -1,8 +1,8 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 from __future__ import absolute_import
 from __future__ import print_function
 
-__version__ = '3.0.4'      # stamp will be added later
+__version__ = '3.0.5'      # stamp will be added later
 __description__ = 'The Onion Box: WebInterface to monitor Tor Relays and Bridges'
 
 
