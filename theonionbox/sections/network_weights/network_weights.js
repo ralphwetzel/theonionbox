@@ -97,6 +97,7 @@ cw_handler.prototype.process = function(data, timedelta) {
     txt = "Currently: <span style='color: #000099'>" + 'Consensus Weight ' + data.data.cw + '</span>'
     $('#network_consensus_weight').html(txt);
 
+% end
     // console.log(data);
 
 % if oo_show and oo_weights.has_data():

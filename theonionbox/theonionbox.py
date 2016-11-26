@@ -219,7 +219,7 @@ if box_cmdline['mode'] not in box_cmdline_modes:
     box_cmdline['mode'] = None
 
 if box_cmdline['mode'] == 'service':
-    if boxHost['system'] == 'Linux':
+    if boxHost['system'] == 'Linux' or boxHost['system'] == 'FreeBSD':
         # I would prefer to write to /var/log/theonionbox ... yet someone with 'root' privileges has to create that
         # directory first and then set the proper rights. We test if this was done:
         boxLogPath = '/var/log/theonionbox'
