@@ -6,11 +6,12 @@
 % import psutil
 % cpu_count = psutil.cpu_count()
 
-function general_handler() {};
+function general_handler() {}
+
 general_handler.prototype = new DataHandler();
 general_handler.prototype.process = function(data, timedelta) {
 
-    for (data_point in data) {
+    for (var data_point in data) {
         var timestamp = data[data_point].s + timedelta;
         data[data_point].s = timestamp;
 
@@ -60,7 +61,7 @@ var general_plyr_cpu = new boxDataPlayer(general_play_cpu, 5000, 's');
 
 
 $(document).ready(function() {
-    addNavBarButton('General Information', 'host')
+    addNavBarButton('General Information', 'host');
     boxData.addHandler('gen', new general_handler());
     general_plyr_temp.start();
     general_plyr_mem.start();
@@ -79,7 +80,7 @@ var proc_style = {
 
     yMaxFormatter: function() {return ''; },
     yMinFormatter: function() {return ''; },
-    enableDpiScaling: false,
+    enableDpiScaling: true,
     grid:
         {
         fillStyle: '#E6E6E6',
@@ -105,12 +106,6 @@ var chart_mem = new boxChart(proc_style);
 
 $(document).ready(function() {
 
-    % for count in range(cpu_count):
-        var plc{{count}} = new boxCanvas($('#processor_load_{{count}}'));
-    % end
-
-    var meml = new boxCanvas($('#mem_load'));
-
     var client_time = new Date().getTime();
 
     %  for count in range(cpu_count):
@@ -126,11 +121,10 @@ $(document).ready(function() {
     chart_mem.streamTo(canvas, 5000);
 
     % if host['temp']:
-        var tempc = new boxCanvas($('#temp'));
         temp_data.append(client_time - 5000, 0);
         canvas = document.getElementById('temp');
         chart_temp.addTimeSeries(temp_data, {lineWidth:1,strokeStyle:'rgb(255, 0, 0)',fillStyle:'rgba(255, 0, 0, 0.15)'});
         chart_temp.streamTo(canvas, 5000);
     % end
-
 });
+

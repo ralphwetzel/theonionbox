@@ -80,11 +80,30 @@
 
 <%
         def location_row(datum='', value=''):
-            out = """
-                <div class='row'>
-                    <div class='truncate col-xs-6 box_datum'>{}</div>
-                    <div class='col-xs-6 box_value'><p>{}</p></div>
-                </div>""".format(datum, value)
+
+            # If value holds unicode characters, standard processing generates an exception!
+            out = ""
+
+            # Python2
+            try:
+                out = unicode("""
+                    <div class='row'>
+                        <div class='truncate col-xs-6 box_datum'>{}</div>
+                        <div class='col-xs-6 box_value'><p>{}</p></div>
+                    </div>""").format(datum, value)
+            except:
+                # Python3
+                try:
+                    out = """
+                        <div class='row'>
+                            <div class='truncate col-xs-6 box_datum'>{}</div>
+                            <div class='col-xs-6 box_value'><p>{}</p></div>
+                        </div>""".format(datum, value)
+                except:
+                    pass
+                end
+            end
+
             return out
         end
 %>
@@ -145,7 +164,13 @@
                                     if len(out) > 0:
                                         out += '<br>'
                                     end
-                                    out += '<a href="https://atlas.torproject.org/#details/' + fp + '" target="_blank">'
+                                    # out += '<a href="https://atlas.torproject.org/#details/' + fp + '" target="_blank">'
+                                    out += '<a href="#family_node_'
+                                    if fp[0] is '$':
+                                        out += fp[1:] + '">'
+                                    else:
+                                        out += fp + '">'
+                                    end
                                     out += fp
                                     out += '</a>'
                                 end

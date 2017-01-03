@@ -42,51 +42,38 @@ function boxChart(options)
         this.options.yMaxFormatter = null;
     }
 
+    // options.enableDpiScaling = true;
+
+    this.options.sizeToParent = true;
 }
 
 boxChart.prototype = new SmoothieChart();
 
-// Alternative resizing method ... as the original code didn't work!
+
+/////
+// Customized resize function to respect the size of the parent container
+// as well as the DPI scaling of the screen
+
 boxChart.prototype.resize = function() {
 
-    // we're ignoring the "enableDpiScaling" option
+    // To ensure that this works as expected, canvas elements have to have
+    // the style="vertical-align: middle" assigned!
+
     if (!window)
         return;
 
-    // access the true (= computed) style as rendered in the page
-    var cstyle = window.getComputedStyle(this.canvas, null);
-
-    // check if both "width" values are the same
-    var width = parseInt(cstyle.width);
-    var att_width = parseInt(this.canvas.getAttribute('width'));    // this is the canvas internal width
-
-    if (att_width != width)
-    {
-        //if not, align them!
-        this.canvas.setAttribute('width', width.toString());
-    }
-
-    // check if both "height" values are the same
-    var height = parseInt(cstyle.height);
-    var att_height = parseInt(this.canvas.getAttribute('height'));    // this is the canvas internal height
-
-    //console.log(att_height + " " + height);
-
-    if (att_height != height)
-    {
-        //if not, align them!
-        this.canvas.setAttribute('height', height.toString());
-    }
-
-    /*
-    // THIS is the original Code
-    // ... that doesn't work!!
-    if (!this.options.enableDpiScaling || !window || window.devicePixelRatio === 1)
-    { return; }
-
-    var dpr = window.devicePixelRatio;
     var width = parseInt(this.canvas.getAttribute('width'));
     var height = parseInt(this.canvas.getAttribute('height'));
+
+    if (this.options.sizeToParent) {
+        var prnt = $(this.canvas).parent();
+        if (prnt) {
+            width = Math.floor(prnt.width());
+            height = Math.floor(prnt.height());
+        }
+    }
+
+    var dpr = this.options.enableDpiScaling ? window.devicePixelRatio : 1;
 
     if (!this.originalWidth || (Math.floor(this.originalWidth * dpr) !== width)) {
       this.originalWidth = width;
@@ -95,15 +82,13 @@ boxChart.prototype.resize = function() {
       this.canvas.getContext('2d').scale(dpr, dpr);
     }
 
-
     if (!this.originalHeight || (Math.floor(this.originalHeight * dpr) !== height)) {
       this.originalHeight = height;
       this.canvas.setAttribute('height', (Math.floor(height * dpr)).toString());
       this.canvas.style.height = height + 'px';
       this.canvas.getContext('2d').scale(dpr, dpr);
     }
-    */
-};
+  };
 
 /**
 *    Added for TOB
@@ -301,7 +286,7 @@ boxChart.prototype.render = function(canvas, time) {
 
         var start_time = 0;
 
-        if (chartOptions.grid.timeDividers == 'weekly') {
+        if (chartOptions.grid.timeDividers === 'weekly') {
             // http://stackoverflow.com/questions/4156434/javascript-get-the-first-day-of-the-week-from-current-date
             function getMonday( date ) {
                 var day = date.getDay() || 7;
@@ -320,9 +305,9 @@ boxChart.prototype.render = function(canvas, time) {
 
             var next_time_div = function (t) {
                 return t - 1000 * 60 * 60 * 24 * 7;
-            }
+            };
         }
-        else if (chartOptions.grid.timeDividers == 'monthly') {
+        else if (chartOptions.grid.timeDividers === 'monthly') {
 
             this_month = new Date(time);
             this_month.setMinutes(0);
@@ -343,7 +328,7 @@ boxChart.prototype.render = function(canvas, time) {
                 }
 
                 return nm.getTime();
-            }
+            };
         }
         else if (chartOptions.grid.timeDividers == 'yearly') {
 
@@ -351,7 +336,7 @@ boxChart.prototype.render = function(canvas, time) {
             this_year.setMinutes(0);
             this_year.setHours(0);
             this_year.setDate(1);
-            this_year.setMonth(1);
+            this_year.setMonth(0);
 
             start_time = this_year.getTime();
 
@@ -359,7 +344,7 @@ boxChart.prototype.render = function(canvas, time) {
                 var ny = new Date(t);
                 ny.setFullYear(ny.getFullYear() - 1);
                 return ny.getTime();
-            }
+            };
         }
 
         if (start_time) {
@@ -442,8 +427,11 @@ boxChart.prototype.render = function(canvas, time) {
       for (var i = 0; i < dataSet.length && dataSet.length !== 1; i++) {
         var x = timeToXPixel(dataSet[i][0]), y = null;
         var y_data = dataSet[i][1];
+
         if (y_data != null) {
             y = valueToYPixel(y_data);
+        } else if (seriesOptions.nullTo0 === true) {
+            y = valueToYPixel(-10);  // better than just '0'
         } else {
             has_null = true;
         }
@@ -452,9 +440,9 @@ boxChart.prototype.render = function(canvas, time) {
 
         if (i === 0) {
           firstX = x;
-          y = (y == null ? 0 : y)
+          y = (y === null ? -10 : y)
           context.moveTo(x, y);
-        } else if (y != null) {
+        } else if (y !== null) {
 
           switch (chartOptions.interpolation) {
             case "linear":
@@ -612,7 +600,7 @@ boxChart.prototype.removeAllTimeSeries = function() {
 
     while (this.seriesSet.length > 0)
     {
-        this.removeTimeSeries(this.seriesSet[0].timeSeries)
+        this.removeTimeSeries(this.seriesSet[0].timeSeries);
     }
 
 };
@@ -694,7 +682,7 @@ boxChart.prototype.setDisplay = function(options) {
             this.addTimeSeries(ts.serie, ts.options);
         }
     }
-}
+};
 
 function boxTimeSeries(options)
 {
@@ -703,7 +691,8 @@ function boxTimeSeries(options)
 }
 
 boxTimeSeries.defaultOptions = {
-    dontDropOldData: false
+    dontDropOldData: false,
+    nullTo0: true
 };
 
 boxTimeSeries.prototype = new TimeSeries();
@@ -793,32 +782,3 @@ box_display.prototype.toChart(chart_name) = function() {
     }
 }
 */
-
-function boxCanvas(canvas_element) {
-    this._canvas = canvas_element;
-
-    //Get the canvas & context
-    this._context = this._canvas.get(0).getContext('2d');
-    this._container = $(this._canvas).parent();
-
-    var respondCanvas = function(){
-
-        // console.log(this._container);
-
-        var tempCanvas = document.createElement('canvas');
-        tempCanvas.width = this._context.canvas.width;
-        tempCanvas.height = this._context.canvas.height;
-        var tempContext = tempCanvas.getContext("2d");
-
-        tempContext.drawImage(this._context.canvas, 0, 0);
-        this._canvas.attr('width', $(this._container).width() ); //max width
-        this._context.drawImage(tempContext.canvas, 0, 0);
-    }.bind(this)
-
-    //Run function when browser resizes
-    $(window).resize(respondCanvas);
-
-    //Initial call
-    respondCanvas();
-
-}

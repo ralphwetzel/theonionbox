@@ -118,6 +118,9 @@ class SessionFactory(object):
 
         return None
 
+    def sessions_count(self):
+        return len(self.session_ping_pool.keys())
+
 
 class Session(object):
 

@@ -2,7 +2,7 @@ from __future__ import absolute_import
 from stem.control import Controller
 from tob.tob_time import getTimer
 
-from stem.socket import ControlPort
+from stem.socket import ControlPort, ControlSocketFile
 import stem
 import socket
 
@@ -15,6 +15,7 @@ import sys
 py = sys.version_info
 py27 = py >= (2, 7, 0)
 py33 = py >= (3, 3, 0)
+
 
 class tobControlPort(ControlPort):
 
@@ -57,6 +58,52 @@ class tobControlPort(ControlPort):
             self.control_socket = None
 
 
+class tobControlSocketFile(ControlSocketFile):
+
+    timeout = None
+    control_socket = None
+
+    def __init__(self, path='/var/run/tor/control', connect=True, timeout=None):
+
+        self.timeout = timeout
+        ControlSocketFile.__init__(self, path, connect)
+
+    # this is basically stem.socket.ControlSocketFile._make_socket adapted to set a custom timeout value
+    def _make_socket(self):
+
+        try:
+            afunix = socket.AF_UNIX
+        except:
+            afunix = 1  # should be defined by stem - yet isn't!
+
+        if self.control_socket:
+            self.close_socket()
+
+        try:
+            self.control_socket = socket.socket(afunix, socket.SOCK_STREAM)
+        except socket.error as exc:
+            raise stem.SocketError(exc)
+
+        try:
+            # timeout management
+            if self.timeout:
+                self.control_socket.settimeout(self.timeout)
+                pass
+
+            self.control_socket.connect(self._socket_path)
+            return self.control_socket
+        except socket.error as exc:
+
+            # to compensate for a ResourceWarning 'unclosed socket'
+            self.close_socket()
+            raise stem.SocketError(exc)
+
+    def close_socket(self):
+        if self.control_socket:
+            self.control_socket.close()
+            self.control_socket = None
+
+
 class tobController(Controller):
 
     timestamp = 0   # Timestamp when the cache was refreshed the last time
@@ -78,8 +125,16 @@ class tobController(Controller):
         if timeout and timeout < 0:
             timeout = None
 
-        control_port = tobControlPort(address=address, port=port, timeout=timeout)
-        return tobController(control_port)
+        control_socket = tobControlPort(address=address, port=port, timeout=timeout)
+        return tobController(control_socket)
+
+    @staticmethod
+    def from_socket_file(path='/var/run/tor/control', timeout=None):
+        # this one is basically stem.Controller.from_port patched
+        # to forward a timeout value to BoxControlPort
+
+        control_socket = tobControlSocketFile(path)
+        return tobController(control_socket)
 
     def __init__(self, control_socket, is_authenticated=False):
         Controller.__init__(self, control_socket, is_authenticated)

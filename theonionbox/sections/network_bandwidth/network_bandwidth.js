@@ -13,7 +13,7 @@
 
 var history_series_options = {
     dontDropOldData: true
-}
+};
 
 var written_data_history = [];
 var read_data_history = [];
@@ -47,7 +47,7 @@ var oobw_style = {
         return (prettyNumber(data, '', 'si') + '/s');
     },
     yMinFormatter: function() { return ""; },
-    enableDpiScaling: false,
+    enableDpiScaling: true,
     timeLabelLeftAlign: true,
     timeLabelSeparation: 2,
     grid:
@@ -71,7 +71,7 @@ var oobw_read = new boxChart(oobw_style);
 var oobw_write = new boxChart(oobw_style);
 var oobw_shows = '';
 
-function oobw_handler() {};
+function oobw_handler() {}
 oobw_handler.prototype = new DataHandler();
 oobw_handler.prototype.process = function(data, timedelta) {
 
@@ -96,13 +96,13 @@ oobw_handler.prototype.process = function(data, timedelta) {
 
                 var result = [];
 
-                if (last_key_read != '') {
+                if (last_key_read !== '') {
                     var first_time = data.read[key][0][0];
                     var check_time = read_data_history[last_key_read].data[0][0];
                     var check_index = 0;
 
                     while (check_time < first_time) {
-                        result.push(read_data_history[last_key_read].data[check_index])
+                        result.push(read_data_history[last_key_read].data[check_index]);
                         ++check_index;
                         check_time = read_data_history[last_key_read].data[check_index][0];
                     }
@@ -118,13 +118,13 @@ oobw_handler.prototype.process = function(data, timedelta) {
 
                 var result = [];
 
-                if (last_key_write != '') {
+                if (last_key_write !== '') {
                     var first_time = data.write[key][0][0];
                     var check_time = written_data_history[last_key_write].data[0][0];
                     var check_index = 0;
 
                     while (check_time < first_time) {
-                        result.push(written_data_history[last_key_write].data[check_index])
+                        result.push(written_data_history[last_key_write].data[check_index]);
                         ++check_index;
                         check_time = written_data_history[last_key_write].data[check_index][0];
                     }
@@ -173,8 +173,11 @@ oobw_handler.prototype.process = function(data, timedelta) {
         last_inserted_button.addClass('active');
     }
 
-    if (oobw_shows != new_show_key) {
-        set_oobw_display(new_show_key);
+    // change chart to display only if no or invalid selection
+    if (oobw_shows === '' || oobw_shows !== '' && !$('#oobw_' + oobw_shows).length) {
+        if (oobw_shows != new_show_key) {
+            set_oobw_display(new_show_key);
+        }
     }
 
 % end
@@ -195,17 +198,14 @@ $(document).ready(function() {
     var canvas;
     % if oo_read is not None:
         canvas = document.getElementById('oo-bw-read');
-        oobw_read.streamTo(canvas, 5000)
-        var ooR = new boxCanvas($('#oo-bw-read'));
+        oobw_read.streamTo(canvas, 5000);
     % end
     % if oo_write is not None:
         canvas = document.getElementById('oo-bw-write');
-        oobw_write.streamTo(canvas, 5000)
-        var ooW = new boxCanvas($('#oo-bw-write'));
+        oobw_write.streamTo(canvas, 5000);
     % end
 
-
-})
+});
 
 function set_oobw_display(selector)
 {
@@ -223,7 +223,8 @@ function set_oobw_display(selector)
                 options: {
                     lineWidth:1,
                     strokeStyle:'rgb(0, 0, 153)',
-                    fillStyle:'rgba(0, 0, 153, 0.30)'
+                    fillStyle:'rgba(0, 0, 153, 0.30)',
+                    nullTo0:true
                 }
             } ]
         };
@@ -235,7 +236,8 @@ function set_oobw_display(selector)
                 options: {
                     lineWidth:1,
                     strokeStyle:'rgb(0, 0, 153)',
-                    fillStyle:'rgba(0, 0, 153, 0.30)'
+                    fillStyle:'rgba(0, 0, 153, 0.30)',
+                    nullTo0:true
                 }
             } ]
         };
@@ -243,6 +245,10 @@ function set_oobw_display(selector)
         oobw_read.setDisplay(style_r);
         oobw_write.setDisplay(style_w);
         oobw_shows = selector;
+
+        // console.log(oobw_read);
+        // console.log(oobw_write);
+
     }
 }
 
@@ -348,7 +354,7 @@ oo_style.y5 = {
         timeDividers: 'yearly'
     },
     timestampFormatter: function(date) {
-        return pad2(date.getDate()) + "." + pad2(date.getMonth() + 1) + "." ;
+        return date.getFullYear();
     },
     yMaxFormatter: function(data, precision) {
         if (!precision) {
@@ -357,7 +363,7 @@ oo_style.y5 = {
         return (prettyNumber(data, '', 'si') + '/s');
     },
     yMinFormatter: function() { return ""; }
-}
+};
 
 
 % #// 'end' for 'if oo_show is True:'

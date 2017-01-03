@@ -757,8 +757,7 @@
       context.fillText(minValueString, labelPos, dimensions.height - 2);
     }
 
-
-    console.log(chartOptions.grid.millisPerLine );
+    // console.log(chartOptions.grid.millisPerLine );
 
     // Display timestamps along x-axis at the bottom of the chart.
     if (chartOptions.timestampFormatter && chartOptions.grid.millisPerLine > 0) {

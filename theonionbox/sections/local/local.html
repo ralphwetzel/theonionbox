@@ -54,6 +54,14 @@
 
 %>
 
+<%
+    from tob.version_tester import TorVersionTester
+    tvt = TorVersionTester()
+
+    tvs = tor.get_version_short()
+%>
+
+
 {{!header_row('Tor', 'Local Status', 'stats')}}
 
 <div class = "row">
@@ -67,17 +75,15 @@
             % if tvc in VERSION_STATUS_COLORS:
                 <code style="color: {{VERSION_STATUS_COLORS[tvc]}};">{{tvc}}</code>
             % end
+            % if tvt.is_latest_stable(tvs) is True:
+                <code style="color: blue;">latest stable</code>
+            % end
         </p>
     </div>
 </div>
 
-<%
-    from tob.version_tester import TorVersionTester
-    tvt = TorVersionTester()
+% if tvt.is_latest_stable(tvs) is False:
 
-    tv = tor.get_version()
-    if tvt.is_latest_stable(tv) is False:
-%>
         <div class = "row">
             <div class="{{box_datum_grid}}">
                 <p>Latest Stable Version</p>
@@ -90,7 +96,7 @@
         </div>
 <%
     end
-    if tvt.is_latest_alpha(tv) is False:
+    if tvt.is_latest_alpha(tvs) is False:
 %>
         <div class = "row">
             <div class="{{box_datum_grid}}">

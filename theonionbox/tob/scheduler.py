@@ -87,3 +87,16 @@ class Scheduler(object):
 
     def shutdown(self):
         return self.schedulr.shutdown()
+
+    # https://github.com/ralphwetzel/theonionbox/issues/19#issuecomment-263110953
+    def check_tz(self):
+        from tzlocal import get_localzone
+        from apscheduler.util import astimezone
+        tz = get_localzone()
+        try:
+            res = astimezone(tz)
+        except ValueError as ve:
+            return False
+
+        return True
+

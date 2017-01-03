@@ -43,10 +43,8 @@ function disable_form()
 var expiration_timeout;
 
 $(document).ready(function() {
-
     expiration_timeout = setTimeout(function() {
         disable_form();
         $('#info_expired').show();
     }, {{login_params.get('timeout', 30000)}})
-
 })

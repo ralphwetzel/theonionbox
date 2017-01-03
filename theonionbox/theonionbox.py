@@ -1,11 +1,14 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 from __future__ import absolute_import
 from __future__ import print_function
 
 # __version__ = '3.0.1'      # stamp will be added later
-__version__ = '3.1-devel'      # stamp will be added later
+__version__ = '3.2RC1'      # stamp will be added later
 __description__ = 'The Onion Box: WebInterface to monitor Tor Relays and Bridges'
 
+# Testing purposes
+# __family_fp__ = 'A3DB4954F7534E26C8C9B7E9B6A2672F8676B31C'
+# __family_fp__ = 'DE14CB1310688E115115DAA1AA465FC4692152A7'
 
 # from tob.version_tester import Version
 # __version__ = Version(3, 0, 1)
@@ -80,10 +83,25 @@ if module_missing:
 
 
 #####
+# Check proper setting of Timezone
+# to compensate for a potential exception in the scheduler.
+# Thanks to Sergey (senovr) for detecting this:
+# https://github.com/ralphwetzel/theonionbox/issues/19#issuecomment-263110953
+
+from tob.scheduler import Scheduler
+
+# used to run all async activities within TOB
+box_cron = Scheduler()
+if box_cron.check_tz() is False:
+    warning(__description__)
+    warning("Unable to determine the name of the local timezone; please run 'tzinfo' to set it explicitely.")
+    sys.exit(0)
+
+#####
 # Python version detection
 py = sys.version_info
 py34 = py >= (3, 4, 0)
-
+py30 = py >= (3, 0, 0)
 
 #####
 # Host System detection
@@ -205,7 +223,7 @@ torLog.addHandler(logging.NullHandler())
 # it will be instantiated later as soon as we've a contact to the Tor process
 torLogMgr = None
 
-# This is the looger to handle the 'BOX' messages.
+# This is the logger to handle the 'BOX' messages.
 # All messages targeted for the host are handled here!
 boxLog = logging.getLogger('theonionbox')
 boxLog.setLevel('DEBUG')
@@ -226,7 +244,7 @@ if box_cmdline['mode'] not in box_cmdline_modes:
     box_cmdline['mode'] = None
 
 if box_cmdline['mode'] == 'service':
-    if boxHost['system'] == 'Linux':
+    if boxHost['system'] == 'Linux' or boxHost['system'] == 'FreeBSD':
         # I would prefer to write to /var/log/theonionbox ... yet someone with 'root' privileges has to create that
         # directory first and then set the proper rights. We test if this was done:
         boxLogPath = '/var/log/theonionbox'
@@ -253,6 +271,14 @@ if box_cmdline['mode'] == 'service':
         # we'll emit this message later!
         # boxLog.warning('Running as --mode=service currently not supported on Windows Operating System.')
         box_cmdline['mode'] = 'WrongOS'
+
+
+def log_encoder(string):
+    # Escape HTML special characters ``&<>``, slashes '\/' and quotes ``'"``
+    return string.replace('&','&amp;').replace("\\",'&#92;').replace("/",'&#47;')\
+        .replace('<','&lt;').replace('>','&gt;')\
+        .replace('"','&quot;').replace("'",'&#039;')
+
 
 if box_cmdline['mode'] != 'service':
     # Log to console
@@ -308,9 +334,14 @@ import configparser     # to read the config file
 box_config_path = 'config'
 box_config_file = 'theonionbox.cfg'
 
+# Tor SOCKS Proxy
+tor_proxy = None
+
 # Configuration of the connection to the TOR Relay
+tor_control = 'port'
 tor_host = 'localhost'
 tor_port = 9090
+tor_socket = '/var/run/tor/control'
 tor_timeout = -1 # will become 'None' later ...
 tor_ttl = 60
 tor_ERR = True
@@ -363,13 +394,23 @@ if 'TheOnionBox' in config:
 
 if 'TorRelay' in config:
     tor_config = config['TorRelay']
+    tor_control = tor_config.get('tor_control', tor_control)
     tor_host = tor_config.get('tor_host', tor_host)
     tor_port = int(tor_config.get('tor_control_port', tor_port))
+    tor_socket = tor_config.get('tor_control_socket', tor_socket)
     tor_timeout = int(tor_config.get('tor_control_timeout', tor_timeout))
     tor_ttl = int(tor_config.get('tor_ttl', tor_ttl))
     tor_ERR = tor_config.getboolean('tor_preserve_ERR', tor_ERR)
     tor_WARN = tor_config.getboolean('tor_preserve_WARN', tor_WARN)
     tor_NOTICE = tor_config.getboolean('tor_preserve_NOTICE', tor_NOTICE)
+
+if 'TorProxy' in config:
+    from stem.util.connection import is_valid_ipv4_address, is_valid_ipv6_address
+
+    tor_proxy = config['TorProxy'].get('tor_proxy', tor_proxy)
+    if tor_proxy is not None:
+        if not (is_valid_ipv4_address(tor_proxy) or is_valid_ipv6_address(tor_proxy, True)):
+            tor_proxy = None
 
 # TODO: Validate here that we've read reasonable data from the config file
 if tor_timeout < 0:
@@ -383,7 +424,7 @@ if box_message_level not in boxLogLevels:
     if box_cmdline['debug'] is False:
         msg += " Defaulting to 'NOTICE'."
 
-    boxLog.warn(msg)
+    boxLog.warning(msg)
     box_message_level = 'NOTICE'
 
 if box_session_ttl > 3600:
@@ -407,8 +448,17 @@ if box_server_to_use == 'cherrypy':
         boxLog.warning("Optional python module 'cherrypy' not found. Cannot use 'CherryPy' as webserver.")
         cherrypy_missing = True
 
+# Socket validation
+if tor_control != 'socket':
+    tor_control = 'port'
 
-#####
+if tor_control is 'socket':
+    # TODO: Check for PySocks if SOCKS support is demanded!
+    if find_loader('pysocks') is None:
+        boxLog.error("To access Tor via sockets you have to install python module 'pysocks': 'pip install pysocks'")
+        sys.exit()
+
+    #####
 # Set DEBUG mode and Message Level
 #
 # box_debug is used to
@@ -454,7 +504,19 @@ def update_time_deviation():
 # As long as this is the case Temperature display will not be supported on Windows!!
 
 import os
-boxHost['temp'] = os.path.exists('/sys/class/thermal/thermal_zone0/temp') if boxHost['system'] == 'Linux' else False
+
+boxHost['temp'] = False
+if boxHost['system'] == 'Linux':
+    boxHost['temp'] = os.path.exists('/sys/class/thermal/thermal_zone0/temp')
+
+elif boxHost['system'] == 'FreeBSD':
+    from subprocess import check_output
+    try:
+        temp = check_output('sysctl -a | grep hw.acpi.thermal.tz0.temperature', shell=True).decode('utf-8').split()
+    except:
+        pass
+    else:
+        boxHost['temp'] = (temp[0] == 'hw.acpi.thermal.tz0.temperature:')
 
 if boxHost['temp']:
     boxLog.notice('Temperature sensor information located in file system. Expect to get a chart!')
@@ -516,6 +578,32 @@ elif boxHost['system'] == 'Windows':
             boxLog.notice("Found 'uptime' tool yet version is not v1.1.0. "
                           "Check documentation for further instructions!")
 
+elif boxHost['system'] == 'FreeBSD':
+
+    import subprocess
+    from datetime import datetime
+
+    try:
+        uptimes = subprocess.check_output('/usr/bin/who -b', shell=True).decode('utf-8').split()
+    except:
+        pass
+    else:
+        # expected output format is now e.g. 'system boot   MMM dd hh:mm'
+        if len(uptimes) == 5 and uptimes[0] == 'system' and uptimes[1] == 'boot':
+
+            try:
+                # Currently there is no YEAR data in the returned string!
+                # Therefore this could crash around January 2017!!
+                upt = datetime.strptime(' '.join(uptimes[2:]), '%b %d %H:%M')
+            except Exception as exc:
+                boxLog.warning('Uptime information parsing error: {}'.format(exc))
+            else:
+                if upt.year == 1900:
+                    its_now = datetime.fromtimestamp(box_time.time())
+                    upt = upt.replace(year=its_now.year)
+
+                boxHost['up'] = upt
+
 if boxHost['up']:
     boxLog.notice('Uptime information located. Expect to get a readout!')
 else:
@@ -525,12 +613,7 @@ else:
 # READY to GO!
 
 #####
-# The Scheduler
-
-from tob.scheduler import Scheduler
-
-# used to run all async activities within TOB
-box_cron = Scheduler()
+# Run the Scheduler
 box_cron.start()
 
 #####
@@ -558,14 +641,47 @@ tor_bwdata = {'upload': 0, 'download': 0, 'limit': 0, 'burst': 0, 'measure': 0}
 
 
 #####
-# TOR interface
+# Tor interface
 from stem.control import EventType
 from tob.controller import tobController
 
-# The TOR interface
+# The Tor interface
 tor = None  # -> tobController
 tor_password = None
 
+
+def connect2tor(tor=None):
+
+    from stem import SocketError
+
+    if tor is not None:
+        return tor
+
+    try:
+        if tor_control == 'socket':
+            boxLog.notice("Trying to connect to Tor ControlSocket @ '{}'...".format(tor_socket))
+            tor = tobController.from_socket_file(tor_socket, tor_timeout)
+        else:
+            boxLog.notice('Trying to connect to Tor ControlPort {}:{}...'.format(tor_host, tor_port))
+            if tor_timeout:
+                boxLog.notice('Timeout set to {}s.'.format(tor_timeout))
+            tor = tobController.from_port_timeout(tor_host, tor_port, tor_timeout)
+    except SocketError as err:
+        boxLog.warning('Failed to connect: {}'.format(err))
+        raise err
+
+    boxLog.notice('Connected!')
+
+    # onionoo.add(tor.get_fingerprint())
+
+    # ensure that our tor related information is aways current
+    update_tor_info()
+    box_cron.add_job(update_tor_info, 'interval', minutes=1)
+
+    # start the event handler for the Bandwidth data
+    tor.add_event_listener(functools.partial(handle_livedata), EventType.BW)
+
+    return tor
 
 # this will be called by a cron job each minute once!
 def update_tor_info():
@@ -578,6 +694,9 @@ def update_tor_info():
 
 tor_conf = []
 def update_tor_conf():
+
+    if tor is None:
+        return
 
     # get all valid configuration names (only and drop attached information)
     config_names = tor.get_info('config/names')
@@ -653,21 +772,25 @@ def handle_conf_changed(event):
 #####
 # ONIONOO Protocol Interface
 
-from tob.onionoo import Details, Bandwidth, Weights
-onionoo_details = Details()
-onionoo_bw = Bandwidth()
-onionoo_weights = Weights()
+from tob.onionoo import OnionOOFactory, Details, Bandwidth, Weights, Mode
+
+onionoo_mode = Mode.OPEN
+# proxy = '192.168.178.28:9050'
+
+if tor_proxy is not None:
+    onionoo_mode = Mode.HIDDEN
+
+onionoo = OnionOOFactory(tor_proxy)
 
 def refresh_onionoo(relaunch_job=False):
 
     from random import randint
 
-    fp = tor.get_fingerprint() if tor else None
+    # fp = tor.get_fingerprint() if tor else None
 
-    if fp is not None:
-        onionoo_details.refresh(fp)
-        onionoo_bw.refresh(fp)
-        onionoo_weights.refresh(fp)
+    # if fp is not None:
+    #   onionoo.add(fp)
+    onionoo.refresh()
 
     if box_cron.get_job('onionoo') is not None:
         return
@@ -842,8 +965,8 @@ def tor_authenticate(password):
             tor.authenticate_password(password=password)
             tor_password = password
             retval = True
-        except:
-            pass
+        except Exception as exc:
+            log.debug('tor.authenticated() raised: {}'.format(exc))
         finally:
             log.debug('tor.is_authenticated() after authenticate_password(): {}'.format(tor.is_authenticated()))
 
@@ -852,7 +975,7 @@ def tor_authenticate(password):
 #####
 # WebServer implementation starts here
 
-# It would be by far better to use the TOR Standard icon! ;)
+# It would be by far better to use the Tor Standard icon! ;)
 
 theonionbox_icon = "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAALGPC/xhBQAAAAlwSFlzAAAOwQAADsEBu" \
                      "JFr7QAAABh0RVh0U29mdHdhcmUAcGFpbnQubmV0IDQuMC42/Ixj3wAAAXBJREFUOE+lk7tKA1EQhvcJfAKxFt9ErA" \
@@ -876,16 +999,24 @@ icon_marker = "iVBORw0KGgoAAAANSUhEUgAAAA4AAAAOCAYAAAAfSC3RAAAAAXNSR0IArs4c6QAAA
 # '!' as first character creates a named div
 # '-' as entry adds a <hr>
 
+#####
+# Template rendering based on type
+# html_template = functools.partial(template, template_adapter=MakoTemplate)
+js_template = functools.partial(template, template_settings={'syntax': '/* */ // {{ }}'})
+
+
 # The sections of the index page
 box_sections = ['!header', 'header',
                 '!content', 'general', 'config', 'local',
                 'network', 'network_bandwidth', 'network_weights', '-',
-                'accounting', 'monitor', 'messages',
+                'accounting', 'monitor', 'family', 'messages',
                 'license']
 
 # The sections of the login page
 login_sections = ['!header', 'header', '!content', 'login', 'license']
 
+# The sections of the error page
+error_sections = ['!header', 'header', '!content', 'error', 'license']
 
 # Additional DEBUG information
 if box_debug:
@@ -898,53 +1029,94 @@ if box_debug:
 @theonionbox.get('/')
 def get_start():
 
+    global tor
+
     session = box_sessions.create(request.remote_addr, 'login')
 
     if session is None:
         raise HTTPError(404)
 
-    session['auth'] = 'digest' if tor_password else 'basic'
+    try:
+        if tor is None:
+            tor = connect2tor(tor)
+            torLogMgr.connect2tor(tor)
 
-    boxLog.info("{}@{} is knocking for Login; '{}' procedure provided."
-                .format(session.id_short(), session.remote_addr(), session['auth']))
+    except Exception as err:
+        # We failed to connect to Tor and have to admit this now!
+        session['status'] = 'error'
 
-    session['stylesheets'] = ['bootstrap.css', 'fonts.css', 'box.css']
-    session['scripts'] = ['jquery.js', 'bootstrap.js', 'auth.js', 'box.js']
+        session['stylesheets'] = ['bootstrap.css', 'fonts.css', 'box.css']
+        session['scripts'] = ['jquery.js', 'bootstrap.js', 'box.js']
 
-    section_config = {}
-    section_config['header'] = {
-        'logout': False,
-        'title': 'The Onion Box',
-        'subtitle': "Version: {}<br>Your address: {}".format(stamped_version, request.get('REMOTE_ADDR'))
-    }
-    section_config['login'] = {
-        'timeout': box_session_ttl * 1000   # js!
-    }
+        section_config = {}
+        section_config['header'] = {
+            'logout': False,
+            'title': 'The Onion Box',
+            'subtitle': "Version: {}<br>Your address: {}".format(stamped_version, request.get('REMOTE_ADDR'))
+        }
 
-    params = {
-        'session': session
-        , 'tor': tor
-        , 'session_id': session.id()
-        , 'icon': theonionbox_icon
-        , 'box_version': stamped_version
-        , 'virtual_basepath': box_basepath
-        , 'sections': login_sections
-        , 'section_config': section_config
-        , 'box.js_login': True  # flag to manipulate the creation process of 'box.js'
-    }
+        params = {
+            'session': session
+            , 'tor': tor
+            , 'session_id': session.id()
+            , 'icon': theonionbox_icon
+            , 'box_version': stamped_version
+            , 'virtual_basepath': box_basepath
+            , 'sections': error_sections
+            , 'section_config': section_config
+            , 'error_msg': err
+            , 'box.js_login': True  # flag to manipulate the creation process of 'box.js'
+        }
 
-    # prepare the includes
-    session['box.js'] = template('scripts/box.js', **params)
-    session['box.css'] = template('css/box.css', **params)
-    session['fonts.css'] = template('css/latolatinfonts.css', **params)
+        # prepare the includes
+        session['box.js'] = template('scripts/box.js', **params)
+        session['box.css'] = template('css/box.css', **params)
+        session['fonts.css'] = template('css/latolatinfonts.css', **params)
 
-    if 'auth' in session:
-        if session['auth'] == 'basic':
-            session['auth.js'] = template('scripts/authrequest_basic.js', virtual_basepath=box_basepath)
-        else:  # e.g. if login['auth'] == 'digest'
-            session['auth.js'] = template('scripts/authrequest_digest.js'
-                            , md5_js_file='scripts/md5.js'
-                            , virtual_basepath=box_basepath)
+    else:
+        # Standard login Page delivery
+        session['auth'] = 'digest' if tor_password else 'basic'
+
+        boxLog.info("{}@{} is knocking for Login; '{}' procedure provided."
+                    .format(session.id_short(), session.remote_addr(), session['auth']))
+
+        session['stylesheets'] = ['bootstrap.css', 'fonts.css', 'box.css']
+        session['scripts'] = ['jquery.js', 'bootstrap.js', 'auth.js', 'box.js']
+
+        section_config = {}
+        section_config['header'] = {
+            'logout': False,
+            'title': 'The Onion Box',
+            'subtitle': "Version: {}<br>Your address: {}".format(stamped_version, request.get('REMOTE_ADDR'))
+        }
+        section_config['login'] = {
+            'timeout': box_session_ttl * 1000   # js!
+        }
+
+        params = {
+            'session': session
+            , 'tor': tor
+            , 'session_id': session.id()
+            , 'icon': theonionbox_icon
+            , 'box_version': stamped_version
+            , 'virtual_basepath': box_basepath
+            , 'sections': login_sections
+            , 'section_config': section_config
+            , 'box.js_login': True  # flag to manipulate the creation process of 'box.js'
+        }
+
+        # prepare the includes
+        session['box.js'] = template('scripts/box.js', **params)
+        session['box.css'] = template('css/box.css', **params)
+        session['fonts.css'] = template('css/latolatinfonts.css', **params)
+
+        if 'auth' in session:
+            if session['auth'] == 'basic':
+                session['auth.js'] = template('scripts/authrequest_basic.js', virtual_basepath=box_basepath)
+            else:  # e.g. if login['auth'] == 'digest'
+                session['auth.js'] = template('scripts/authrequest_digest.js'
+                                , md5_js_file='scripts/md5.js'
+                                , virtual_basepath=box_basepath)
 
     # deliver the login page
     return template("pages/index.html", **params)
@@ -987,6 +1159,8 @@ def perform_login(login_id):
 @theonionbox.get('/<session_id>/index.html')
 def get_index(session_id):
 
+    from stem import SocketError
+
     session = box_sessions.recall(session_id, request.remote_addr)
 
     # this is better than asserting!
@@ -1025,6 +1199,43 @@ def get_index(session_id):
         redirect(box_basepath + '/')
         return False
 
+    try:
+        ec = tor.get_info('bw-event-cache')
+        ecl = ec.split(' ')
+    except:
+        pass
+    boxLog.debug((len(ecl)))
+    boxLog.debug(print(ecl))
+
+    # get the onionoo data
+    fp = tor.get_fingerprint()
+    onionoo.add(fp)
+    onionoo.refresh(only_keys_with_none_data=True, async=False)
+
+    onionoo_details = onionoo.details(fp)
+    onionoo_bw = onionoo.bandwidth(fp)
+    onionoo_weights = onionoo.weights(fp)
+
+    # asyncronously refreshing the onionoo data
+    refresh_onionoo()
+
+    __family_fp__ = fp
+    # for testing purposes of the family performance
+    # onionoo.add(__family_fp__)
+    # onionoo.refresh(True, True)
+
+    family_details = onionoo.details(__family_fp__)
+    fams = ['effective_family', 'alleged_family', 'indirect_family']
+
+    for fam in fams:
+        fam_det = family_details(fam)
+        if fam_det is not None:
+            for fp in fam_det:
+                if fp[0] is '$':
+                    onionoo.add(fp[1:])
+
+    onionoo.refresh(True)
+
     # asyncronously refreshing the bandwidth data
     refresh_bw()
 
@@ -1035,19 +1246,18 @@ def get_index(session_id):
     del session['network']
     del session['network_bw']
     del session['network_weights']
+    del session['family']
 
     # update_tor_info()
 
     # show onionoo data ONLY if already available!!
     onionoo_show = onionoo_details.has_data() or onionoo_bw.has_data() or onionoo_weights.has_data()
-    # asyncronously refreshing the onionoo data
-    refresh_onionoo(True)
 
     # setup the MessageHandler for this session
     torLogMgr.add_client(session_id)
 
     # prepare the preserved events for hardcoded transfer
-    p_ev = torLogMgr.get_events(session_id)
+    p_ev = torLogMgr.get_events(session_id, encode=log_encoder)
 
     accounting_stats = {}
     try:
@@ -1059,7 +1269,7 @@ def get_index(session_id):
     # print(tor.get_info('config/names'))
 
     session['stylesheets'] = ['bootstrap.css', 'fonts.css', 'box.css']
-    session['scripts'] = ['jquery.js', 'bootstrap.js', 'smoothie.js', 'box_chart.js', 'box.js']
+    session['scripts'] = ['jquery.js', 'bootstrap.js', 'smoothie.js', 'chart.js', 'box.js']
 
     import socket
 
@@ -1094,10 +1304,18 @@ def get_index(session_id):
         , 'oo_bw': onionoo_bw
         , 'oo_weights': onionoo_weights
         , 'section_config': section_config
+        , 'oo_factory': onionoo
+        , 'family_fp': __family_fp__
     }
 
+    # Test
+#    from bottle import SimpleTemplate
+#    tpl = SimpleTemplate(name='scripts/box.js')
+#    tpl.prepare(syntax='/* */ // {{ }}')
+#    bjs = tpl.render(**params)
+
     # prepare the includes
-    session['box.js'] = template('scripts/box.js', **params)
+    session['box.js'] = js_template('scripts/box.js', **params)
     session['box.css'] = template('css/box.css', **params)
     session['fonts.css'] = template('css/latolatinfonts.css', **params)
 
@@ -1137,7 +1355,7 @@ def get_font(session_id, filename):
         raise HTTPError(404)
 
     status = session['status']
-    if status != 'login' and status != 'ok':
+    if status not in ['login', 'ok', 'error']:
         raise HTTPError(404)
 
     mime_type = {
@@ -1223,7 +1441,8 @@ def post_data(session_id):
             for key in rl_dict:
                 torLogMgr.switch(session_id, key, rl_dict[key])
 
-        log_list = torLogMgr.get_events(session_id)
+        log_list = torLogMgr.get_events(session_id, encode=log_encoder)
+
         if len(log_list) > 0:
             return_data_dict['msg'] = log_list
 
@@ -1248,6 +1467,12 @@ def post_data(session_id):
         # Once there was code here.
         # It's no more ;) !
         pass
+
+    # get the onionoo data
+    fp = tor.get_fingerprint()
+    onionoo_details = onionoo.details(fp)
+    onionoo_bw = onionoo.bandwidth(fp)
+    onionoo_weights = onionoo.weights(fp)
 
     if 'network_bandwidth' in box_sections:
         if ('network_bw' not in session) or (session['network_bw'] == 0):
@@ -1277,13 +1502,66 @@ def post_data(session_id):
                                               'data': details
                                               }
 
+            # print(return_data_dict['oo_weights'])
+
             # this little hack ensures, that we deliver data on the
             # first *two* calls after launch!
-            session['network_weights'] = onionoo_bw.published() if 'network_weights' in session else 0
-        elif session['network_weights'] != onionoo_bw.published():
+            session['network_weights'] = onionoo_weights.published() if 'network_weights' in session else 0
+        elif session['network_weights'] != onionoo_weights.published():
             del session['network_weights']
             # if there's new data act as if we've not had any before!
             # we'll therefore deliver the new data with the next run!
+
+    if 'family' in box_sections:
+
+        # get the family entries from the onionoo details of the node
+        fp = tor.get_fingerprint()
+        family_details = onionoo.details(fp)
+
+        if family_details is not None:
+
+            # there are several different categories of families
+            fams = ['effective_family', 'alleged_family', 'indirect_family']
+
+            family_data = {}    # the read / write data for one node; key = fingerprint of node [1:]
+            family_nodes = []   # list of fingerprints of the nodes [1:]
+
+            if 'family' not in session:
+                session['family'] = {}
+
+            session_family = session['family']
+
+            # iterate through the categories
+            for fam in fams:
+
+                # get the nodes per category
+                fam_det = family_details(fam)
+                if fam_det is not None:
+                    # iterate through the nodes
+                    for fp in fam_det:
+                        node_fp = fp[1:]
+                        node_key = 'family:{}'.format(node_fp)
+                        node_bw = onionoo.bandwidth(node_fp)
+
+                        if node_bw is not None:
+                            if (node_key not in session_family) or (session_family[node_key] == 0):
+                                family_nodes.append(node_fp)
+                                family_data[node_fp] = {'read': node_bw.read(), 'write': node_bw.write()}
+
+                                # this little hack ensures, that we deliver data on the
+                                # first *two* calls after launch!
+                                session_family[node_key] = node_bw.published() if node_key in session_family else 0
+
+                            elif session_family[node_key] != node_bw.published():
+                                del session_family[node_key]
+                                # if there's new data act as if we've not had any before!
+                                # we'll therefore deliver the new data with the next run!
+
+            # if we found some family entries
+            if len(family_nodes) > 0:
+                # prepare the data
+                family_data['keys'] = family_nodes
+                return_data_dict['oo_family'] = family_data
 
     # Now json everything... and return it!
     return json.JSONEncoder().encode(return_data_dict)
@@ -1305,9 +1583,14 @@ def send_css(session_id, filename):
     if filename in session['stylesheets']:
         if filename in session:
             file = session[filename]
-            del session[filename]
-            headers = {'Content-Type': 'text/css; charset=UTF-8'}
-            return HTTPResponse(file, **headers)
+            # 3.0.4
+            session[filename] = None
+            if file is None:
+                # This happens when the file is requested more than once!
+                raise HTTPError(404)
+            else:
+                headers = {'Content-Type': 'text/css; charset=UTF-8'}
+                return HTTPResponse(file, **headers)
 
         elif filename == 'bootstrap.css':
             return static_file(bootstrapCSS, root=bootstrapDir + '/css', mimetype='text/css')
@@ -1330,9 +1613,14 @@ def send_js(session_id, filename):
     if filename in session['scripts']:
         if filename in session:
             file = session[filename]
-            del session[filename]
-            headers = {'Content-Type': 'application/javascript; charset=UTF-8'}
-            return HTTPResponse(file, **headers)
+            # 3.0.4
+            session[filename] = None
+            if file is None:
+                # This happens when the file is requested more than once!
+                raise HTTPError(404)
+            else:
+                headers = {'Content-Type': 'application/javascript; charset=UTF-8'}
+                return HTTPResponse(file, **headers)
 
         elif filename == 'bootstrap.js':
             return static_file(bootstrapJS, root=bootstrapDir + '/js', mimetype='text/javascript')
@@ -1395,10 +1683,29 @@ def record_cpu_data(timestamp=None, compensate_deviation=True):
     cpu['mp'] = virtual_memory().percent
 
     if boxHost['temp']:
-        try:
-            cpu['t'] = float(open('/sys/class/thermal/thermal_zone0/temp').read()) / 1000.0
-        except:
-           pass
+        if boxHost['system'] == 'Linux':
+            try:
+                cpu['t'] = float(open('/sys/class/thermal/thermal_zone0/temp').read()) / 1000.0
+            except:
+               pass
+        elif boxHost['system'] == 'FreeBSD':
+            # This is EXTREMELY slow!
+            # => Disabled!!
+
+            # from subprocess import check_output
+            # try:
+            #     temp = check_output('sysctl -a | grep hw.acpi.thermal.tz0.temperature', shell=True)\
+            #         .decode('utf-8').split()
+            # except:
+            #     pass
+            # else:
+            #     if len(temp) == 2:
+            #         try:
+            #             cpu['t'] =  int(temp[1].strip().rstrip('C'))
+            #         except:
+            #             pass
+
+            pass
 
     # append the data to the list
     host_cpudata_lock.acquire()
@@ -1469,7 +1776,7 @@ class ShutDownAdapter(object):
 
 
 # Our WSGIRefServer - supporting SSL!
-class BoxWSGIRefServer(ServerAdapter):
+class BoxWSGIRefServer(ServerAdapter, ShutDownAdapter):
 
     # This one incorporates a proposal from Matt Murfitt, posted on
     # http://www.socouldanyone.com/2014_01_01_archive.html or
@@ -1525,11 +1832,10 @@ class BoxWSGIRefServer(ServerAdapter):
             self.srv.socket = ssl.wrap_socket(self.srv.socket,
                                               certfile=certfile,  # path to certificate
                                               server_side=True)
-        try:
-            self.srv.serve_forever()
-        except KeyboardInterrupt:
-            self.srv.server_close()  # Prevent ResourceWarning: unclosed socket
-            raise
+        self.srv.serve_forever()
+
+    def shutdown(self):
+        self.srv.server_close()  # Prevent ResourceWarning: unclosed socket
 
 
 # We're using a slightly modified CherryPy - Server implementation
@@ -1559,11 +1865,7 @@ class BoxCherryPyServer(ServerAdapter, ShutDownAdapter):
 
         # preparation for shutdown()
         self.server = server
-
-        try:
-            server.start()
-        finally:
-            server.stop()
+        self.server.start()
 
     def shutdown(self):
         self.server.stop()
@@ -1571,10 +1873,16 @@ class BoxCherryPyServer(ServerAdapter, ShutDownAdapter):
 # This is our new (v3) default server
 # https://fgallaire.github.io/wsgiserver/
 class WSGIserver(ServerAdapter):
+
+    server = None
+
     def run(self, handler):
         from tob.wsgiserver import WSGIServer
-        server = WSGIServer(handler, host=self.host, port=self.port)
-        server.start()
+        self.server = WSGIServer(handler, host=self.host, port=self.port)
+        self.server.start()
+
+    def shutdown(self):
+        self.server.stop()
 
 
 # This job runs at midnight to add a notification to the log
@@ -1614,13 +1922,14 @@ def session_housekeeping():
             box_sessions.delete(expired_session_id)
 
             # un-subscribe this session_id from the event handling
-            torLogMgr.remove_client(expired_session_id)
+            if torLogMgr:
+                torLogMgr.remove_client(expired_session_id)
 
     global tor_password
 
     # 4: closing connection to tor
     # if this is requested
-    if tor.is_authenticated() and tor_ttl > 0:   # <==0 => don't ever close the connection!
+    if tor and tor.is_authenticated() and tor_ttl > 0:   # <==0 => don't ever close the connection!
 
         current_time = int(box_time())
         lv = box_sessions.latest_visit()
@@ -1654,55 +1963,66 @@ box_cron.add_job(session_housekeeping, 'interval', seconds=housekeeping_interval
 
 def exit_procedure(quit=True):
 
-    if box_cron:
-        box_cron.shutdown()
-
     try:
-        if tob_server:
-            tob_server.shutdown()
-    except:
-        pass
+        # Python 3.x
+        from threading import active_count
+    except ImportError:
+        # Python 2.x
+        from threading import activeCount
+        active_count = activeCount
 
-    boxLog.notice("Shutting Down!")
+    from threading import enumerate
+
+    boxLog.debug('ShutDown Initiated...')
+
+    boxLog.debug('Shutting down webserver...')
+    try:
+        tob_server.shutdown()
+    except Exception as exc:
+        boxLog.warning("During ShutDown of WebServer: {}".format(exc))
+
+    if tor is not None:
+        boxLog.debug('Closing connection to Tor...')
+        tor.close()
+
+    boxLog.debug('Terminating cron jobs...')
+    try:
+        box_cron.shutdown()
+    except Exception as exc:
+        boxLog.warning("During ShutDown of Cron: {}".format(exc))
+
+    boxLog.debug('Terminating onionoo management...')
+    try:
+        onionoo.shutdown()
+    except Exception as exc:
+        boxLog.warning("During ShutDown of onionoo: {}".format(exc))
+
+    # List of running Threads
+    lort = ''
+    for th in enumerate():
+        if len(lort) > 0:
+            lort += ', '
+        lort += th.name
+
+    boxLog.debug("List of threads still running (should only be 'MainThread'): {}".format(lort))
 
     if quit:
         sys.exit(0)
 
 if __name__ == '__main__':
 
-    from stem import SocketError
-
-    boxLog.notice('Trying to connect to Tor Relay on {}:{}...'.format(tor_host, tor_port))
     try:
-        if tor_timeout:
-            boxLog.notice('Timeout set to {}s.'.format(tor_timeout))
-        tor = tobController.from_port_timeout(tor_host, tor_port, tor_timeout)
-    except SocketError as err:
-        boxLog.warning('Failed to connect; exiting.')
+        tor = connect2tor()
+    except:
+        boxLog.notice('Trying again later...')
 
-        # TODO: When this error occurs, there's still a socket error raised! Fix it!
-        exit_procedure()
-        # just to be sure .. ;)
-        sys.exit(0)
-
-    if not tor.is_alive():
-        sys.exit(0)
-
-    boxLog.notice('Connected!')
-
-    update_time_deviation()
-
-    # now we can establish the Handlers for Tor's messages
+    # Now we can establish the Handlers for Tor's messages
+    # ... even if we failed to connect to Tor!
     torLogMgr = LoggingManager(tor, notice=tor_NOTICE, warn=tor_WARN, err=tor_ERR)
     # and enable the Forwarder
     boxFwrd.setTarget(torLog)
 
-    # ensure that our tor related information is aways current
-    update_tor_info()
-    box_cron.add_job(update_tor_info, 'interval', minutes=1)
-
-    # start the event handler for the Bandwidth data
-    tor.add_event_listener(functools.partial(handle_livedata), EventType.BW)
+    update_time_deviation()
 
     # we're able to use several servers ... if available on the host system
     # Currently implemented:
@@ -1710,7 +2030,6 @@ if __name__ == '__main__':
     # WSGIserver (default!)
 
     tob_server = None
-
 
     if box_server_to_use == 'cherrypy' and not cherrypy_missing:
 
@@ -1724,8 +2043,8 @@ if __name__ == '__main__':
         else:
             tob_server = BoxCherryPyServer(host=box_host, port=box_port)
             boxLog.notice('Operating with CherryPy!')
+
     else:
-        # Be aware that WSGIRefServer has issues with IE, in the sense that *it doesnt work!!*
         if box_ssl is True:
             # SSL enabled
             tob_server = WSGIserver(host=box_host, port=box_port, certfile=box_ssl_certificate, keyfile=box_ssl_key)
@@ -1748,10 +2067,12 @@ if __name__ == '__main__':
             run(theonionbox, server=tob_server, host=box_host, port=box_port)
         else:
             run(theonionbox, server=tob_server, host=box_host, port=box_port, quiet=True)
+    except KeyboardInterrupt:
+        # print('Here we are!')
+        pass
     except Exception as exc:
         print(exc)
-        pass
     finally:
         exit_procedure(False)
-        boxLog.notice("Fine!")
+#        boxLog.notice("Fine!")
 

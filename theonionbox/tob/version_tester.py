@@ -2,6 +2,21 @@ import requests
 import re
 
 
+class Version(object):
+
+    version = ''
+
+    def __init__(self, *args):
+        if len(args) == 3:
+            self.version = '.'.join(str(i) for i in args)
+
+    def __get__(self):
+        return self.version
+
+    def __str__(self):
+        return self.version
+
+
 class TorVersionTester(object):
 
     stable_list = []
@@ -75,3 +90,39 @@ class TorVersionTester(object):
     def test_alpha(self, version):
         v = str(version)
         return v[-6:] == '-alpha'
+
+class tobVersionTester(object):
+
+    latest = (0, 0, 0)
+
+    def __init__(self):
+        self.update()
+
+    def update(self):
+
+        r = requests.get('https://api.github.com/repos/ralphwetzel/theonionbox/releases/latest')
+
+        if r.status_code == 200:
+            json = r.json()
+
+            tn = json.get('tag_name', None)
+            if tn:
+                if tn[0] == 'v':
+                    tn = tn[1:]
+
+                v = tn.split('.')
+                v = [int(y) for y in v]  # string to int
+                while len(v) < 3:
+                    v.append(0)
+
+                latest = tuple(v[:2])
+
+                return True
+
+        return False
+
+    def is_latest_release(self, version):
+        pass
+
+
+

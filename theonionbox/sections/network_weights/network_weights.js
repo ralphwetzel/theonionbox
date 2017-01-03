@@ -8,7 +8,7 @@
 
 var weights_series_options = {
     dontDropOldData: true
-}
+};
 
 var consensus_weight_data_history = [];
 var consensus_weight_fraction_history = [];
@@ -24,7 +24,7 @@ var weights_chart_keys = ['y5', 'y1', 'm3', 'm1', 'w1', 'd3'];
 var weights_chart_labels = ['5 Years', '1 Year', '3 Months', '1 Month', '1 Week', '3 Days'];
 
 
-for (len = weights_chart_keys.length, i=0; i<len; ++i) {
+for (var len = weights_chart_keys.length, i=0; i<len; ++i) {
     if (i in weights_chart_keys) {
         consensus_weight_data_history[weights_chart_keys[i]] = new boxTimeSeries(weights_series_options);
         consensus_weight_fraction_history[weights_chart_keys[i]] = new boxTimeSeries(weights_series_options);
@@ -42,12 +42,12 @@ var ooweights_style = {
     interpolation: 'step',
     yMaxFormatter: function(data, precision) {
         if (!precision) {
-            var precision = 2;
+            precision = 2;
         }
         return (prettyNumber(data, '', 'si') + '/s');
     },
     yMinFormatter: function() { return ""; },
-    enableDpiScaling: false,
+    enableDpiScaling: true,
     timeLabelLeftAlign: true,
     timeLabelSeparation: 2,
     grid:
@@ -72,32 +72,35 @@ var consensus_weight_fraction = new boxChart(ooweights_style);
 var oo_weights_shows = '';
 
 
-function cw_handler() {};
+function cw_handler() {}
 cw_handler.prototype = new DataHandler();
 cw_handler.prototype.process = function(data, timedelta) {
 
 % if oo_show and oo_details.has_data():
 
     var to_percent = function(value) {
-        if (value == 0) {
+        // float to int
+        if ((value | 0) == 0) {
             return 0;
         }
 
         value *= 100;
-        var retval = value.toFixed(-Math.floor(Math.log10(Math.abs(value))) + 1);
-        return retval;
-    }
+        var unfixed = -Math.floor(Math.log10(Math.abs(value)));
+        console.log(value, unfixed);
+        return value.toFixed(unfixed + 1);
+    };
 
-    txt = "Currently: <span style='color: #EDC240'>" + 'Middle ' + to_percent(data.data.mp) + '%</span>'
-    txt += " | <span style='color: #4CA74C'>" + 'Exit ' + to_percent(data.data.ep) + '%</span>'
-    txt += " | <span style='color: #CB4B4B'>" + 'Guard ' + to_percent(data.data.gp) + '%</span>'
-    txt += " | <span style='color: #AFD8F8'>" + 'Consensus Weight Fraction ' + to_percent(data.data.cwf) + '%</span>'
+    txt = "Currently: <span style='color: #EDC240'>" + 'Middle ' + to_percent(data.data.mp) + '%</span>';
+    txt += " | <span style='color: #4CA74C'>" + 'Exit ' + to_percent(data.data.ep) + '%</span>';
+    txt += " | <span style='color: #CB4B4B'>" + 'Guard ' + to_percent(data.data.gp) + '%</span>';
+    txt += " | <span style='color: #AFD8F8'>" + 'Consensus Weight Fraction ' + to_percent(data.data.cwf) + '%</span>';
     $('#network_probabilities').html(txt);
 
-    txt = "Currently: <span style='color: #000099'>" + 'Consensus Weight ' + data.data.cw + '</span>'
+    txt = "Currently: <span style='color: #000099'>" + 'Consensus Weight ' + data.data.cw + '</span>';
     $('#network_consensus_weight').html(txt);
 
     // console.log(data);
+% end
 
 % if oo_show and oo_weights.has_data():
 
@@ -121,13 +124,13 @@ cw_handler.prototype.process = function(data, timedelta) {
 
                 var result = [];
 
-                if (last_key_cw != '') {
+                if (last_key_cw !== '') {
                     var first_time = data.cw[key][0][0];
                     var check_time = consensus_weight_data_history[last_key_cw].data[0][0];
                     var check_index = 0;
 
                     while (check_time < first_time) {
-                        result.push(consensus_weight_data_history[last_key_cw].data[check_index])
+                        result.push(consensus_weight_data_history[last_key_cw].data[check_index]);
                         ++check_index;
                         check_time = consensus_weight_data_history[last_key_cw].data[check_index][0];
                     }
@@ -143,13 +146,13 @@ cw_handler.prototype.process = function(data, timedelta) {
 
                 var result = [];
 
-                if (last_key_cwf != '') {
+                if (last_key_cwf !== '') {
                     var first_time = data.cwf[key][0][0];
                     var check_time = consensus_weight_fraction_history[last_key_cwf].data[0][0];
                     var check_index = 0;
 
                     while (check_time < first_time) {
-                        result.push(consensus_weight_fraction_history[last_key_cwf].data[check_index])
+                        result.push(consensus_weight_fraction_history[last_key_cwf].data[check_index]);
                         ++check_index;
                         check_time = consensus_weight_fraction_history[last_key_cwf].data[check_index][0];
                     }
@@ -165,13 +168,13 @@ cw_handler.prototype.process = function(data, timedelta) {
 
                 var result = [];
 
-                if (last_key_ep != '') {
+                if (last_key_ep !== '') {
                     var first_time = data.ep[key][0][0];
                     var check_time = exit_probability_history[last_key_ep].data[0][0];
                     var check_index = 0;
 
                     while (check_time < first_time) {
-                        result.push(exit_probability_history[last_key_ep].data[check_index])
+                        result.push(exit_probability_history[last_key_ep].data[check_index]);
                         ++check_index;
                         check_time = exit_probability_history[last_key_ep].data[check_index][0];
                     }
@@ -187,13 +190,13 @@ cw_handler.prototype.process = function(data, timedelta) {
 
                 var result = [];
 
-                if (last_key_mp != '') {
+                if (last_key_mp !== '') {
                     var first_time = data.mp[key][0][0];
                     var check_time = middle_probability_history[last_key_mp].data[0][0];
                     var check_index = 0;
 
                     while (check_time < first_time) {
-                        result.push(middle_probability_history[last_key_mp].data[check_index])
+                        result.push(middle_probability_history[last_key_mp].data[check_index]);
                         ++check_index;
                         check_time = middle_probability_history[last_key_mp].data[check_index][0];
                     }
@@ -209,13 +212,13 @@ cw_handler.prototype.process = function(data, timedelta) {
 
                 var result = [];
 
-                if (last_key_gp != '') {
+                if (last_key_gp !== '') {
                     var first_time = data.gp[key][0][0];
                     var check_time = guard_probability_history[last_key_gp].data[0][0];
                     var check_index = 0;
 
                     while (check_time < first_time) {
-                        result.push(guard_probability_history[last_key_gp].data[check_index])
+                        result.push(guard_probability_history[last_key_gp].data[check_index]);
                         ++check_index;
                         check_time = guard_probability_history[last_key_gp].data[check_index][0];
                     }
@@ -286,16 +289,14 @@ $(document).ready(function() {
     var canvas;
     % if oo_show:
         canvas = document.getElementById('chart-cw');
-        consensus_weight.streamTo(canvas, 5000)
-        var ooCW = new boxCanvas($('#chart-cw'));
+        consensus_weight.streamTo(canvas, 5000);
 
         canvas = document.getElementById('chart-cwf');
-        consensus_weight_fraction.streamTo(canvas, 5000)
-        var ooCWF = new boxCanvas($('#chart-cwf'));
+        consensus_weight_fraction.streamTo(canvas, 5000);
     % end
 
 
-})
+});
 
 function set_consensus_display(selector)
 {
@@ -309,6 +310,7 @@ function set_consensus_display(selector)
 
     if (s == oo_weights_shows) { return; }
 
+
     var style_cw = {
         chartOptions: chart_style[s],
         timeseries: [ {
@@ -316,6 +318,7 @@ function set_consensus_display(selector)
             options: {
                 lineWidth:1,
                 strokeStyle:'rgb(0, 0, 153)',
+                nullTo0:false
                 // fillStyle:'rgba(0, 0, 153, 0.30)'
             }
         } ]
@@ -330,24 +333,28 @@ function set_consensus_display(selector)
             options: {
                 lineWidth:1,
                 strokeStyle:'rgb(203, 75, 75)',
+                nullTo0:false
                 // fillStyle:'rgba(0, 0, 153, 0.30)'
             } }, {
             serie: middle_probability_history[s],
             options: {
                 lineWidth:1,
                 strokeStyle:'rgb(237, 194, 64)',
+                nullTo0:false
                 // fillStyle:'rgba(0, 0, 153, 0.30)'
             } }, {
             serie: consensus_weight_fraction_history[s],
             options: {
                 lineWidth:1,
                 strokeStyle:'rgb(175, 216, 248)',
+                nullTo0:false
                 // fillStyle:'rgba(0, 0, 153, 0.30)'
             } }, {
             serie: exit_probability_history[s],
             options: {
                 lineWidth:1,
                 strokeStyle:'rgb(76, 167, 76)',
+                nullTo0:false
                 // fillStyle:'rgba(0, 0, 153, 0.30)'
             } }
         ]
@@ -358,13 +365,16 @@ function set_consensus_display(selector)
 
     consensus_weight_fraction.setDisplay(style_cwf);
     consensus_weight_fraction.options.yMaxFormatter = function(data, precision) {
-        if (data == 0) { return "0 %"; }
+        if (data === 0) { return "0 %"; }
         data *= 100;
         var retval = data.toFixed(-Math.floor(Math.log10(Math.abs(data))) + 1);
         return retval + " %";
     };
-    consensus_weight_fraction.options.grid.fillStyle = '#FFFFFF',
+    consensus_weight_fraction.options.grid.fillStyle = '#FFFFFF';
     oo_weights_shows = selector;
+
+    // console.log(consensus_weight);
+    // console.log(consensus_weight_fraction);
 
 }
 
