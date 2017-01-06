@@ -79,14 +79,13 @@ cw_handler.prototype.process = function(data, timedelta) {
 % if oo_show and oo_details.has_data():
 
     var to_percent = function(value) {
-        // float to int
-        if ((value | 0) == 0) {
+
+        if (value === 0.0) {
             return 0;
         }
 
         value *= 100;
         var unfixed = -Math.floor(Math.log10(Math.abs(value)));
-        console.log(value, unfixed);
         return value.toFixed(unfixed + 1);
     };
 
@@ -99,7 +98,6 @@ cw_handler.prototype.process = function(data, timedelta) {
     txt = "Currently: <span style='color: #000099'>" + 'Consensus Weight ' + data.data.cw + '</span>';
     $('#network_consensus_weight').html(txt);
 
-    // console.log(data);
 % end
 
 % if oo_show and oo_weights.has_data():
