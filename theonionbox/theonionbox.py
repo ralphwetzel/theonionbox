@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 
 # __version__ = '3.0.1'      # stamp will be added later
-__version__ = '3.2RC1'      # stamp will be added later
+__version__ = '3.2RC3'      # stamp will be added later
 __description__ = 'The Onion Box: WebInterface to monitor Tor Relays and Bridges'
 
 # Testing purposes
@@ -70,12 +70,6 @@ for module_name in required_modules:
         warning("Required python module '{0}' is missing. You have to install it via 'pip install {0}'."
                 .format(module_name))
         module_missing = True
-
-# We'll check this later!
-# cherrypy_missing = False
-# if find_loader('cherrypy') is None:
-#     boxLog.warning("Optional python module 'cherrypy' not found. Cannot use 'CherryPy' as webserver.")
-#     cherrypy_missing = True
 
 if module_missing:
     warning("Hint: You need to have root privileges to operate 'pip'.")
@@ -352,7 +346,7 @@ tor_NOTICE = True
 box_host = 'localhost'
 box_port = 8080
 box_session_ttl = 30
-box_server_to_use = 'default'
+box_server_to_use = None        # Deprecated since v3.2RC3
 box_ntp_server = 'pool.ntp.org'
 box_message_level = 'NOTICE'
 box_basepath = ''
@@ -416,6 +410,10 @@ if 'TorProxy' in config:
 if tor_timeout < 0:
     tor_timeout = None
 
+# v3.2RC3
+if box_server_to_use is not None:
+    boxLog.warn("Configuration: Parameter 'server' is deprecated and will be ignored.")
+
 if box_message_level not in boxLogLevels:
 
     msg = "Configuration: Wrong parameter '{}' declared for 'message_level'.".format(box_message_level)
@@ -441,12 +439,6 @@ if len(box_basepath):
         box_basepath = box_basepath[:-1]
 
     boxLog.notice("Virtual base path set to '{}'.".format(box_basepath))
-
-cherrypy_missing = False
-if box_server_to_use == 'cherrypy':
-    if find_loader('cherrypy') is None:
-        boxLog.warning("Optional python module 'cherrypy' not found. Cannot use 'CherryPy' as webserver.")
-        cherrypy_missing = True
 
 # Socket validation
 if tor_control != 'socket':
@@ -1741,140 +1733,9 @@ class ShutDownAdapter(object):
         pass
 
 
-# Patching the bottlepy - supported servers:
-# The concept of these patches was provided by 'blais' given on
-# http://stackoverflow.com/questions/11282218/bottle-web-framework-how-to-stop
-# Great idea!
-# That's how the code for a patched WSGIRefServer looks like!
-# We don't use it, yet keep it here for backup in case we want to support further servers.
-#
-# 20151226: patched CheeryPy below!
-
-# Patched WSGIRefServer
-# class box_WSGIRefServer(WSGIRefServer, ShutDownAdapter):
-#
-#     server = None
-#
-#     def __init__(self, host='127.0.0.1', port=8080, **options):
-#         WSGIRefServer.__init__(self, host, port, **options)
-#
-#         # Save the original function.
-#         from wsgiref.simple_server import make_server
-#
-#         # Create a decorator that will save the server upon start.
-#         def custom_make_server(*args, **kw):
-#             self.server = make_server(*args, **kw)
-#             return self.server
-#
-#         # Patch up wsgiref itself with the decorated function.
-#         import wsgiref.simple_server
-#         wsgiref.simple_server.make_server = custom_make_server
-#
-#     def shutdown(self):
-#         print("shutting down!")
-#         self.server.shutdown()
-
-
-# Our WSGIRefServer - supporting SSL!
-class BoxWSGIRefServer(ServerAdapter, ShutDownAdapter):
-
-    # This one incorporates a proposal from Matt Murfitt, posted on
-    # http://www.socouldanyone.com/2014_01_01_archive.html or
-    # https://github.com/mfm24/miscpython/blob/master/bottle_ssl.py
-
-    # Trying SSL with bottle
-    # ie combo of http://www.piware.de/2011/01/creating-an-https-server-in-python/
-    # and http://dgtool.blogspot.com/2011/12/ssl-encryption-in-python-bottle.html
-    # without cherrypy?
-    # requires ssl
-
-    # to create a server certificate, run eg
-    # openssl req -new -x509 -keyout server.pem -out server.pem -days 365 -nodes
-    # DON'T distribute this combined private/public key to clients!
-    # (see http://www.piware.de/2011/01/creating-an-https-server-in-python/#comment-11380)
-    # from bottle import Bottle, get, run, ServerAdapter
-
-    # 20160925: Basic code updated to represent latest changes in bottleby 0.13-dev
-
-    def run(self, app):  # pragma: no cover
-        from wsgiref.simple_server import make_server
-        from wsgiref.simple_server import WSGIRequestHandler, WSGIServer
-        import socket
-        import ssl
-
-        # we've 'misused' **options to transfer the certfile info
-        # ... so rearrange things again to ensure that the rest on the code works!
-        certfile = self.options.get('certificate')
-        if certfile:
-            del self.options['certificate']
-
-        class FixedHandler(WSGIRequestHandler):
-            def address_string(self):  # Prevent reverse DNS lookups please.
-                return self.client_address[0]
-
-            def log_request(*args, **kw):
-                if not self.quiet:
-                    return WSGIRequestHandler.log_request(*args, **kw)
-
-        handler_cls = self.options.get('handler_class', FixedHandler)
-        server_cls = self.options.get('server_class', WSGIServer)
-
-        if ':' in self.host:  # Fix wsgiref for IPv6 addresses.
-            if getattr(server_cls, 'address_family') == socket.AF_INET:
-                class server_cls(server_cls):
-                    address_family = socket.AF_INET6
-
-        self.srv = make_server(self.host, self.port, app, server_cls,
-                               handler_cls)
-        self.port = self.srv.server_port  # update port actual port (0 means random)
-
-        if certfile:
-            self.srv.socket = ssl.wrap_socket(self.srv.socket,
-                                              certfile=certfile,  # path to certificate
-                                              server_side=True)
-        self.srv.serve_forever()
-
-    def shutdown(self):
-        self.srv.server_close()  # Prevent ResourceWarning: unclosed socket
-
-
-# We're using a slightly modified CherryPy - Server implementation
-# to make it a bit more robust. Original code copy / paste from bottlepy;
-# therefore no need to hugely patch the code
-class BoxCherryPyServer(ServerAdapter, ShutDownAdapter):
-
-    def run(self, handler): # pragma: no cover
-        from cherrypy import wsgiserver
-        self.options['bind_addr'] = (self.host, self.port)
-        self.options['wsgi_app'] = handler
-
-        certfile = self.options.get('certfile')
-        # if certfile: <-- bottle.py code
-        if certfile is not None:
-            del self.options['certfile']
-        keyfile = self.options.get('keyfile')
-        # if keyfile: <-- bottle.py code
-        if keyfile is not None:
-            del self.options['keyfile']
-
-        server = wsgiserver.CherryPyWSGIServer(**self.options)
-        if certfile:
-            server.ssl_certificate = certfile
-        if keyfile:
-            server.ssl_private_key = keyfile
-
-        # preparation for shutdown()
-        self.server = server
-        self.server.start()
-
-    def shutdown(self):
-        self.server.stop()
-
 # This is our new (v3) default server
 # https://fgallaire.github.io/wsgiserver/
 class WSGIserver(ServerAdapter):
-
-    # server = None
 
     def run(self, handler):
         from tob.wsgiserver import WSGIServer
@@ -2025,37 +1886,17 @@ if __name__ == '__main__':
 
     update_time_deviation()
 
-    # we're able to use several servers ... if available on the host system
-    # Currently implemented:
-    # CherryPy
-    # WSGIserver (default!)
-
     tob_server = None
 
-    if box_server_to_use == 'cherrypy' and not cherrypy_missing:
-
-        if box_ssl is True:
-            tob_server_options = {'certfile': box_ssl_certificate, 'keyfile': box_ssl_key}
-            tob_server = BoxCherryPyServer(host=box_host
-                                            , port=box_port
-                                            , **tob_server_options)
-
-            boxLog.notice('Operating with CherryPy in SSL Mode!')
-        else:
-            tob_server = BoxCherryPyServer(host=box_host, port=box_port)
-            boxLog.notice('Operating with CherryPy!')
-
+    if box_ssl is True:
+        # SSL enabled
+        tob_server = WSGIserver(host=box_host, port=box_port, certfile=box_ssl_certificate, keyfile=box_ssl_key)
+        boxLog.notice("Operating with WSGIserver in SSL mode!")
     else:
-        if box_ssl is True:
-            # SSL enabled
-            tob_server = WSGIserver(host=box_host, port=box_port, certfile=box_ssl_certificate, keyfile=box_ssl_key)
-            boxLog.notice("Operating with WSGIserver in SSL mode!")
-        else:
-            # Standard
-            # tob_server_options = {'handler_class': box_FixedDebugHandler}
-            # tob_server = BoxWSGIRefServer(host=box_host, port=box_port, **tob_server_options)
-            tob_server = WSGIserver(host=box_host, port=box_port)
-            boxLog.notice('Operating with WSGIserver!')
+        # Standard
+        # tob_server_options = {'handler_class': box_FixedDebugHandler}
+        tob_server = WSGIserver(host=box_host, port=box_port)
+        boxLog.notice('Operating with WSGIserver!')
 
     # if we're here ... almost everything is setup and running
     # good time to launch the housekeeping for the first time!
