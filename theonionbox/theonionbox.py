@@ -1874,15 +1874,16 @@ class BoxCherryPyServer(ServerAdapter, ShutDownAdapter):
 # https://fgallaire.github.io/wsgiserver/
 class WSGIserver(ServerAdapter):
 
-    server = None
+    # server = None
 
     def run(self, handler):
         from tob.wsgiserver import WSGIServer
-        self.server = WSGIServer(handler, host=self.host, port=self.port)
+        self.server = WSGIServer(handler, self.host, self.port, **self.options)
         self.server.start()
 
     def shutdown(self):
-        self.server.stop()
+        if self.server is not None:
+            self.server.stop()
 
 
 # This job runs at midnight to add a notification to the log
@@ -2060,7 +2061,8 @@ if __name__ == '__main__':
     # good time to launch the housekeeping for the first time!
     session_housekeeping()
 
-    boxLog.notice('Ready to listen on http://{}:{}/'.format(tob_server.host, tob_server.port))
+    http_or_https = 'http' if box_ssl is False else 'https'
+    boxLog.notice('Ready to listen on {}://{}:{}/'.format(http_or_https, tob_server.host, tob_server.port))
 
     try:
         if box_debug is True:
@@ -2068,11 +2070,10 @@ if __name__ == '__main__':
         else:
             run(theonionbox, server=tob_server, host=box_host, port=box_port, quiet=True)
     except KeyboardInterrupt:
-        # print('Here we are!')
         pass
     except Exception as exc:
-        print(exc)
+        raise exc
     finally:
         exit_procedure(False)
-#        boxLog.notice("Fine!")
+
 

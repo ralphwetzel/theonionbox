@@ -1776,9 +1776,9 @@ class SSLAdapter(object):
         if hasattr(ssl, 'create_default_context'):
             self.context = ssl.create_default_context(
                 purpose=ssl.Purpose.CLIENT_AUTH,
-                cafile=certificate_chain
+                cafile=self.certificate_chain
             )
-            self.context.load_cert_chain(certificate, private_key)
+            self.context.load_cert_chain(self.certificate, self.private_key)
 
     def bind(self, sock):
         """Wrap and return the given socket."""
@@ -1804,10 +1804,10 @@ class SSLAdapter(object):
                 # the 'ping' isn't SSL.
                 return None, {}
             elif e.errno == ssl.SSL_ERROR_SSL:
-                if e.args[1].endswith('http request'):
+                if e.args[1].find('http request') > 0:
                     # The client is speaking HTTP to an HTTPS server.
                     raise NoSSLError
-                elif e.args[1].endswith('unknown protocol'):
+                elif e.args[1].find('unknown protocol') > 0:
                     # The client is speaking some non-HTTP protocol.
                     # Drop the conn.
                     return None, {}
