@@ -450,6 +450,11 @@ if tor_control is 'socket':
         boxLog.error("To access Tor via sockets you have to install python module 'pysocks': 'pip install pysocks'")
         sys.exit()
 
+if box_ssl is True:
+    if find_loader('ssl') is None:
+        boxLog.error("To operate via SSL you have to install python module 'ssl': 'pip install ssl'")
+        sys.exit()
+
     #####
 # Set DEBUG mode and Message Level
 #
@@ -1735,11 +1740,11 @@ class ShutDownAdapter(object):
 
 # This is our new (v3) default server
 # https://fgallaire.github.io/wsgiserver/
-class WSGIserver(ServerAdapter):
+class HTTPServer(ServerAdapter):
 
     def run(self, handler):
-        from tob.wsgiserver import WSGIServer
-        self.server = WSGIServer(handler, self.host, self.port, **self.options)
+        from tob.server import Server
+        self.server = Server(handler, self.host, self.port, **self.options)
         self.server.start()
 
     def shutdown(self):
@@ -1890,12 +1895,12 @@ if __name__ == '__main__':
 
     if box_ssl is True:
         # SSL enabled
-        tob_server = WSGIserver(host=box_host, port=box_port, certfile=box_ssl_certificate, keyfile=box_ssl_key)
+        tob_server = HTTPServer(host=box_host, port=box_port, certfile=box_ssl_certificate, keyfile=box_ssl_key)
         boxLog.notice("Operating with WSGIserver in SSL mode!")
     else:
         # Standard
         # tob_server_options = {'handler_class': box_FixedDebugHandler}
-        tob_server = WSGIserver(host=box_host, port=box_port)
+        tob_server = HTTPServer(host=box_host, port=box_port)
         boxLog.notice('Operating with WSGIserver!')
 
     # if we're here ... almost everything is setup and running
