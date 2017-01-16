@@ -81,6 +81,7 @@ var family_shows = '';
 
 $(document).ready(function() {
     addNavBarButton('Family Performance', 'family');
+    var fc_watchers = [];
 
     % if has_family is True:
 
@@ -93,10 +94,27 @@ $(document).ready(function() {
             // console.log(node);
 
             canvas = document.getElementById('FMLY' + node + '-read');
-            family_charts[node + '-read'].streamTo(canvas, 5000);
+            family_charts[node + '-read'].prepare(canvas, 5000);
 
+            fc_watchers[node + '-read'] = scrollMonitor.create(canvas, 100);
+            fc_watchers[node + '-read'].enterViewport(function () {
+                family_charts[node + '-read'].start();
+            });
+            fc_watchers[node + '-read'].exitViewport(function () {
+                family_charts[node + '-read'].stop();
+            });
+
+            
             canvas = document.getElementById('FMLY' + node + '-write');
-            family_charts[node + '-write'].streamTo(canvas, 5000);
+            family_charts[node + '-write'].prepare(canvas, 5000);
+
+            fc_watchers[node + '-write'] = scrollMonitor.create(canvas, 100);
+            fc_watchers[node + '-write'].enterViewport(function () {
+                family_charts[node + '-write'].start();
+            });
+            fc_watchers[node + '-write'].exitViewport(function () {
+                family_charts[node + '-write'].stop();
+            });
         }
     % end
 });

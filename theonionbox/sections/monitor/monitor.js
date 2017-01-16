@@ -250,15 +250,35 @@ $(document).ready(function() {
     written_data_ld.append(client_time - 5000, 0);
 
     var canvas = document.getElementById('monitor-bw-read');
-    bandwidth_read.streamTo(canvas, 5000);
+    bandwidth_read.prepare(canvas, 5000);
     bandwidth_read.setDisplay(bw_style.hd.r);
 
+    var bwr_watcher = scrollMonitor.create(canvas, 100);
+    bwr_watcher.enterViewport(function () {
+        bandwidth_read.start();
+    });
+    bwr_watcher.exitViewport(function () {
+        bandwidth_read.stop();
+    });
+
+
     canvas = document.getElementById('monitor-bw-written');
-    bandwidth_written.streamTo(canvas, 5000);
+    bandwidth_written.prepare(canvas, 5000);
     bandwidth_written.setDisplay(bw_style.hd.w);
+
+    var bww_watcher = scrollMonitor.create(canvas, 100);
+    bww_watcher.enterViewport(function () {
+        bandwidth_written.start();
+    });
+    bww_watcher.exitViewport(function () {
+        bandwidth_written.stop();
+    });
+    
 
     monitor_bandwidth_player = new boxDataPlayer(monitor_play_bandwidth, 5000, 's');
     monitor_bandwidth_player.start();
+
+
 
 });
 

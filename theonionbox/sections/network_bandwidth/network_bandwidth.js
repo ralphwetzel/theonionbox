@@ -198,11 +198,29 @@ $(document).ready(function() {
     var canvas;
     % if oo_read is not None:
         canvas = document.getElementById('oo-bw-read');
-        oobw_read.streamTo(canvas, 5000);
+        oobw_read.prepare(canvas, 5000);
+
+        var oobwr_watcher = scrollMonitor.create(canvas, 100);
+        oobwr_watcher.enterViewport(function () {
+            oobw_read.start();
+        });
+        oobwr_watcher.exitViewport(function () {
+            oobw_read.stop();
+        });
+
     % end
     % if oo_write is not None:
         canvas = document.getElementById('oo-bw-write');
-        oobw_write.streamTo(canvas, 5000);
+        oobw_write.prepare(canvas, 5000);
+
+        var oobww_watcher = scrollMonitor.create(canvas, 100);
+        oobww_watcher.enterViewport(function () {
+            oobw_write.start();
+        });
+        oobww_watcher.exitViewport(function () {
+            oobw_write.stop();
+        });
+
     % end
 
 });

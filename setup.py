@@ -23,6 +23,5 @@ setup(
             'configparser',
             'stem',
             'bottle>=0.12.8',
-            'cherrypy'
         ]
 )

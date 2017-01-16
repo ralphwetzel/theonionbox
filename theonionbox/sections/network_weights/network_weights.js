@@ -80,7 +80,7 @@ cw_handler.prototype.process = function(data, timedelta) {
 
     var to_percent = function(value) {
 
-        if (value === 0.0) {
+        if (value === null || value === 0.0) {
             return 0;
         }
 
@@ -136,6 +136,8 @@ cw_handler.prototype.process = function(data, timedelta) {
 
                 consensus_weight_data_history[key].data = result.concat(data.cw[key]);
                 consensus_weight_data_history[key].resetBounds();
+                consensus_weight_data_history[key].changed = true;
+
                 last_key_cw = key;
                 insert_button = true;
             }
@@ -158,6 +160,7 @@ cw_handler.prototype.process = function(data, timedelta) {
 
                 consensus_weight_fraction_history[key].data = result.concat(data.cwf[key]);
                 consensus_weight_fraction_history[key].resetBounds();
+                consensus_weight_fraction_history[key].changed = true;
                 last_key_cwf = key;
                 insert_button = true;
             }
@@ -202,6 +205,7 @@ cw_handler.prototype.process = function(data, timedelta) {
 
                 middle_probability_history[key].data = result.concat(data.mp[key]);
                 middle_probability_history[key].resetBounds();
+                middle_probability_history[key].changed = true;
                 last_key_mp = key;
                 insert_button = true;
             }
@@ -224,6 +228,7 @@ cw_handler.prototype.process = function(data, timedelta) {
 
                 guard_probability_history[key].data = result.concat(data.gp[key]);
                 guard_probability_history[key].resetBounds();
+                guard_probability_history[key].changed = true;
                 last_key_gp = key;
                 insert_button = true;
             }
@@ -287,10 +292,27 @@ $(document).ready(function() {
     var canvas;
     % if oo_show:
         canvas = document.getElementById('chart-cw');
-        consensus_weight.streamTo(canvas, 5000);
+        consensus_weight.prepare(canvas, 5000);
+
+        var cw_watcher = scrollMonitor.create(canvas, 100);
+        cw_watcher.enterViewport(function () {
+            consensus_weight.start();
+        });
+        cw_watcher.exitViewport(function () {
+            consensus_weight.stop();
+        });
 
         canvas = document.getElementById('chart-cwf');
-        consensus_weight_fraction.streamTo(canvas, 5000);
+        consensus_weight_fraction.prepare(canvas, 5000);
+
+        var cwf_watcher = scrollMonitor.create(canvas, 100);
+        cwf_watcher.enterViewport(function () {
+            consensus_weight_fraction.start();
+        });
+        cwf_watcher.exitViewport(function () {
+            consensus_weight_fraction.stop();
+        });
+
     % end
 
 

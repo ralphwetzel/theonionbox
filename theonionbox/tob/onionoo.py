@@ -28,8 +28,8 @@ class TorType(object):
     BRIDGE = 1
 
 ONIONOO_OPEN = 'https://onionoo.torproject.org'
-# ONIONOO_HIDDEN = 'http://onionoorcazzotwa.onion'
-ONIONOO_HIDDEN = 'http://tgel7v4rpcllsrk2.onion'
+ONIONOO_HIDDEN = 'http://onionoorcazzotwa.onion'
+# ONIONOO_HIDDEN = 'http://tgel7v4rpcllsrk2.onion'
 
 
 # class Query(object):
@@ -613,11 +613,15 @@ class OnionOOFactory(object):
                 'https': 'socks5://' + proxy
             }
 
-        #try:
-        r = requests.get(address, params=payload, headers=headers, proxies=proxies)
+        r = None
 
-        lgr.debug("Onionoo: Finished querying '{}' for ${} with status code {}."
-                  .format(address, fingerprint, r.status_code))
+        try:
+            r = requests.get(address, params=payload, headers=headers, proxies=proxies)
+        except Exception as exc:
+            lgr.warning("Onionoo: Failed querying '{}' -> {}".format(address, exc))
+        else:
+            lgr.debug("Onionoo: Finished querying '{}' for ${} with status code {}."
+                      .format(address, fingerprint, r.status_code))
 
         if r is None:
             return

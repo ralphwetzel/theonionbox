@@ -97,6 +97,12 @@ body {
     min-width: 200px;
 }
 
+.box_datum_modal {
+	font-family: "LatoLatinWebLight";
+    font-size: 19px;
+    text-align: right;
+}
+
 .box_value {
 	font-family: "LatoLatinWeb";
     font-size: 19px;

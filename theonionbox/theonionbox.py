@@ -399,12 +399,9 @@ if 'TorRelay' in config:
     tor_NOTICE = tor_config.getboolean('tor_preserve_NOTICE', tor_NOTICE)
 
 if 'TorProxy' in config:
-    from stem.util.connection import is_valid_ipv4_address, is_valid_ipv6_address
-
     tor_proxy = config['TorProxy'].get('tor_proxy', tor_proxy)
-    if tor_proxy is not None:
-        if not (is_valid_ipv4_address(tor_proxy) or is_valid_ipv6_address(tor_proxy, True)):
-            tor_proxy = None
+    boxLog.notice('Operating with Tor Proxy @ {}'.format(tor_proxy))
+
 
 # TODO: Validate here that we've read reasonable data from the config file
 if tor_timeout < 0:
@@ -1196,13 +1193,13 @@ def get_index(session_id):
         redirect(box_basepath + '/')
         return False
 
-    try:
-        ec = tor.get_info('bw-event-cache')
-        ecl = ec.split(' ')
-    except:
-        pass
-    boxLog.debug((len(ecl)))
-    boxLog.debug(print(ecl))
+    # try:
+    #     ec = tor.get_info('bw-event-cache')
+    #     ecl = ec.split(' ')
+    # except:
+    #     pass
+    # boxLog.debug((len(ecl)))
+    # boxLog.debug(print(ecl))
 
     # get the onionoo data
     fp = tor.get_fingerprint()
@@ -1266,7 +1263,7 @@ def get_index(session_id):
     # print(tor.get_info('config/names'))
 
     session['stylesheets'] = ['bootstrap.css', 'fonts.css', 'box.css']
-    session['scripts'] = ['jquery.js', 'bootstrap.js', 'smoothie.js', 'chart.js', 'box.js']
+    session['scripts'] = ['jquery.js', 'bootstrap.js', 'smoothie.js', 'chart.js', 'box.js', 'scrollMonitor.js']
 
     import socket
 

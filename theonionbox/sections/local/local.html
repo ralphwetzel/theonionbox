@@ -73,7 +73,9 @@
             {{tor.get_version()}}
             % tvc = tor.get_version_current()
             % if tvc in VERSION_STATUS_COLORS:
-                <code style="color: {{VERSION_STATUS_COLORS[tvc]}};">{{tvc}}</code>
+                <br><code style="color: {{VERSION_STATUS_COLORS[tvc]}};">{{tvc}}</code>
+            % else:
+                <br><code>{{tvc}}</code>
             % end
             % if tvt.is_latest_stable(tvs) is True:
                 <code style="color: blue;">latest stable</code>
