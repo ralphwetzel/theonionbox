@@ -15,7 +15,7 @@ from concurrent.futures import ThreadPoolExecutor
 py = sys.version_info
 py30 = py >= (3, 0, 0)
 
-__supported_protocol__ = '3.1'
+__supported_protocol__ = '3.2'
 
 
 class Mode(object):
