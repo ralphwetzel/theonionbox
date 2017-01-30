@@ -150,15 +150,21 @@ $(document).ready(function() {
         proc_data_{{count}}.append(client_time - 5000, 0);
         canvas = document.getElementById('processor_load_{{count}}');
         chart_processor_{{count}}.addTimeSeries(proc_data_{{count}}, {lineWidth:1,strokeStyle:'#64B22B',fillStyle:'rgba(100, 178, 43, 0.30)'});
-        chart_processor_{{count}}.prepare(canvas, 5000);
+        % if count > 0:
+            chart_processor_{{count}}.streamTo(canvas, 5000);
 
-        var cp_watcher_{{count}} = scrollMonitor.create(canvas, 100);
-        cp_watcher_{{count}}.enterViewport(function () {
-            chart_processor_{{count}}.start();
-        });
-        cp_watcher_{{count}}.exitViewport(function () {
-            chart_processor_{{count}}.stop();
-        });
+        % else:
+            chart_processor_{{count}}.prepare(canvas, 5000);
+
+            var cp_watcher_{{count}} = scrollMonitor.create(canvas, 100);
+            cp_watcher_{{count}}.enterViewport(function () {
+                chart_processor_{{count}}.start();
+            });
+            cp_watcher_{{count}}.exitViewport(function () {
+                chart_processor_{{count}}.stop();
+            });
+
+        % end
     % end
 
     mem_data.append(client_time - 5000, 0);

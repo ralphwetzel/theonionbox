@@ -47,4 +47,4 @@ $(document).ready(function() {
         disable_form();
         $('#info_expired').show();
     }, {{login_params.get('timeout', 30000)}})
-})
+});

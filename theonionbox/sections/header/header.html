@@ -21,6 +21,28 @@
     </form>
 %       end
 %   end
+
+
+    % if 'achtung' in header:
+    %   achtung_title = header['achtung']['title']
+    %   achtung_content = header['achtung']['content']
+    <a tabindex="0" class="btn btn-lg btn-default"
+        role="button"
+        style="position: absolute; left: 20px; top: 20px;"
+        data-container="body"
+        data-trigger="focus"
+        data-toggle="popover"
+        data-title="{{!achtung_title}}"
+        data-content="{{!achtung_content}}"
+        data-html="true"
+        data-template='<div class="popover popover_width" role="tooltip">
+            <div class="arrow"></div>
+            <h3 class="popover-title"></h3>
+            <div class="popover-content"></div>
+            </div>'
+        > !! </a>
+    % end
+
 </div>
 
 %   title = 'The Onion Box'

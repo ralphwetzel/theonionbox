@@ -3,12 +3,8 @@ from __future__ import absolute_import
 from __future__ import print_function
 
 # __version__ = '3.0.1'      # stamp will be added later
-__version__ = '3.2RC3'      # stamp will be added later
+__version__ = '3.2'      # stamp will be added later
 __description__ = 'The Onion Box: WebInterface to monitor Tor Relays and Bridges'
-
-# Testing purposes
-# __family_fp__ = 'A3DB4954F7534E26C8C9B7E9B6A2672F8676B31C'
-# __family_fp__ = 'DE14CB1310688E115115DAA1AA465FC4692152A7'
 
 # from tob.version_tester import Version
 # __version__ = Version(3, 0, 1)
@@ -268,6 +264,8 @@ if box_cmdline['mode'] == 'service':
 
 
 def log_encoder(string):
+    # removes all whitespace including new lines:
+    string = ' '.join(string.split())
     # Escape HTML special characters ``&<>``, slashes '\/' and quotes ``'"``
     return string.replace('&','&amp;').replace("\\",'&#92;').replace("/",'&#47;')\
         .replace('<','&lt;').replace('>','&gt;')\
@@ -336,7 +334,7 @@ tor_control = 'port'
 tor_host = 'localhost'
 tor_port = 9090
 tor_socket = '/var/run/tor/control'
-tor_timeout = -1 # will become 'None' later ...
+tor_timeout = 15    # seconds
 tor_ttl = 60
 tor_ERR = True
 tor_WARN = True
@@ -403,7 +401,7 @@ if 'TorProxy' in config:
     boxLog.notice('Operating with Tor Proxy @ {}'.format(tor_proxy))
 
 
-# TODO: Validate here that we've read reasonable data from the config file
+# Validate here that we've read reasonable data from the config file
 if tor_timeout < 0:
     tor_timeout = None
 
@@ -437,14 +435,18 @@ if len(box_basepath):
 
     boxLog.notice("Virtual base path set to '{}'.".format(box_basepath))
 
-# Socket validation
-if tor_control != 'socket':
+# tor_control validation
+if tor_control not in ['port', 'socket', 'proxy']:
+    boxLog.info("Configuration: Parameter 'tor_control' set to default value 'port'.")
     tor_control = 'port'
 
-if tor_control is 'socket':
-    # TODO: Check for PySocks if SOCKS support is demanded!
+if tor_control is 'proxy':
+    if tor_proxy is None:
+        boxLog.error("To access Tor via a proxy you have set parameter 'tor_proxy' in the configuration file as well!")
+        sys.exit()
+
     if find_loader('pysocks') is None:
-        boxLog.error("To access Tor via sockets you have to install python module 'pysocks': 'pip install pysocks'")
+        boxLog.error("To access Tor via a proxy you have to install python module 'pysocks': 'pip install pysocks'")
         sys.exit()
 
 if box_ssl is True:
@@ -452,7 +454,8 @@ if box_ssl is True:
         boxLog.error("To operate via SSL you have to install python module 'ssl': 'pip install ssl'")
         sys.exit()
 
-    #####
+
+#####
 # Set DEBUG mode and Message Level
 #
 # box_debug is used to
@@ -655,7 +658,10 @@ def connect2tor(tor=None):
         if tor_control == 'socket':
             boxLog.notice("Trying to connect to Tor ControlSocket @ '{}'...".format(tor_socket))
             tor = tobController.from_socket_file(tor_socket, tor_timeout)
-        else:
+#        elif tor_control == 'proxy':
+#            boxLog.notice("Trying to connect to Tor @ '{}:{}' via Proxy @ '{}'...".format(tor_host, tor_port, tor_proxy))
+#            tor = tobController.host_via_proxy(tor_host, tor_port, tor_proxy, tor_timeout)
+        else:   # tor_control == 'port'
             boxLog.notice('Trying to connect to Tor ControlPort {}:{}...'.format(tor_host, tor_port))
             if tor_timeout:
                 boxLog.notice('Timeout set to {}s.'.format(tor_timeout))
@@ -805,8 +811,8 @@ def refresh_onionoo(relaunch_job=False):
 def refresh_bw():
 
     try:
-        tr = int(tor.get_info('traffic/read'))
-        tw = int(tor.get_info('traffic/written'))
+        tr, tw = int(tor.get_info(['traffic/read', 'traffic/written']))
+        # tw = int(tor.get_info('traffic/written'))
     except:
         pass
     else:
@@ -822,7 +828,7 @@ def refresh_bw():
 # BOTTLE
 from bottle import Bottle, run, debug
 from bottle import redirect, template, static_file
-from bottle import request
+from bottle import request, response
 from bottle import HTTPError, HTTPResponse
 
 import bottle
@@ -1271,7 +1277,7 @@ def get_index(session_id):
     section_config['header'] = {
         'logout': True,
         'title': tor.get_nickname(),
-        'subtitle': "Tor {} @ {}<br>{}".format(version_short, socket.gethostname(), tor.get_fingerprint()),
+        'subtitle': "Tor {} @ {}<br>{}".format(tor.get_version_short(), socket.gethostname(), tor.get_fingerprint()),
         'powered': "monitored by <b>The Onion Box</b> v{}".format(stamped_version)
     }
 

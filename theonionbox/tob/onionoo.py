@@ -171,6 +171,8 @@ class Document(object):
         return
 
     def _get(self, datum):
+        if self.document_data is None:
+            return None
         return self.document_data[datum] if datum in self.document_data else None
 
     def version(self):

@@ -692,5 +692,8 @@
         boxData.start();
     });
 
+    $(function () {
+      $('[data-toggle="popover"]').popover()
+    });
 
 % end
