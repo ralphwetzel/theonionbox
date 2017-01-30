@@ -50,3 +50,4 @@ start_cmd="/usr/sbin/daemon -u ${theonionbox_user} -p ${pidfile} ${command}"
 
 # Let's go!
 run_rc_command "$1"
+

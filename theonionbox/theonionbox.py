@@ -2,8 +2,8 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-# __version__ = '3.0.1'      # stamp will be added later
 __version__ = '3.2'      # stamp will be added later
+
 __description__ = 'The Onion Box: WebInterface to monitor Tor Relays and Bridges'
 
 # from tob.version_tester import Version
