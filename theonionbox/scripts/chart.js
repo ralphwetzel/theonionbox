@@ -1,6 +1,4 @@
 
-// From smoothie.js
-
   var Util = {
     extend: function() {
       arguments[0] = arguments[0] || {};
@@ -26,11 +24,34 @@
     }
   };
 
+function isElementOutOfViewport(el) {
+
+    //special bonus for those using jQuery
+    if (typeof jQuery === "function" && el instanceof jQuery) {
+        el = el[0];
+    }
+
+    var rect = el.getBoundingClientRect();
+
+    // extending the screen size to trigger the chart rendering
+    // short prior entering into the viewport
+    var margin = 100;
+
+    outOfViewport =
+        rect.bottom <= -margin ||
+        rect.right <= -margin ||
+        rect.top >= (window.innerHeight + margin || document.documentElement.clientHeight + margin) ||
+        rect.left >= (window.innerWidth + margin|| document.documentElement.clientWidth + margin);
+
+    return outOfViewport;
+}
+
 function boxChart(options)
 {
     // to ensure that the new chartOptions (used for rendering) are handled correctly
     if (options.timeLabelLeftAlign === void 0) { options.timeLabelLeftAlign = false;}
     if (options.timeLabelSeparation === void 0) { options.timeLabelSeparation = 0;}
+    if (options.grid.strokeStyleHor === void 0) { options.grid.strokeStyleHor = '#d4d4d4';}
 
     SmoothieChart.call(this, options);
 
@@ -42,68 +63,86 @@ function boxChart(options)
         this.options.yMaxFormatter = null;
     }
 
+    // options.enableDpiScaling = true;
+
+    // Flag to size the chart to the dimensions of the parent element
+    this.options.sizeToParent = true;
 }
 
 boxChart.prototype = new SmoothieChart();
 
-// Alternative resizing method ... as the original code didn't work!
+
+/////
+// Customized resize function to respect the size of the parent container
+// as well as the DPI scaling of the screen
+
 boxChart.prototype.resize = function() {
 
-    // we're ignoring the "enableDpiScaling" option
+    // To ensure that this works as expected, canvas elements have to have
+    // the style="vertical-align: middle" assigned!
+
     if (!window)
-        return;
+        return false;
 
-    // access the true (= computed) style as rendered in the page
-    var cstyle = window.getComputedStyle(this.canvas, null);
+    var haveResized = false;
 
-    // check if both "width" values are the same
-    var width = parseInt(cstyle.width);
-    var att_width = parseInt(this.canvas.getAttribute('width'));    // this is the canvas internal width
-
-    if (att_width != width)
-    {
-        //if not, align them!
-        this.canvas.setAttribute('width', width.toString());
+    // Create the second canvas for double buffering
+    if (!this.backupCanvas) {
+        this.backupCanvas = document.createElement('canvas');
+        haveResized = true;
     }
 
-    // check if both "height" values are the same
-    var height = parseInt(cstyle.height);
-    var att_height = parseInt(this.canvas.getAttribute('height'));    // this is the canvas internal height
+    var width, height;
 
-    //console.log(att_height + " " + height);
-
-    if (att_height != height)
-    {
-        //if not, align them!
-        this.canvas.setAttribute('height', height.toString());
+    if (this.options.sizeToParent) {
+        if (!this.css_style_parent) {
+            this.css_style_parent = window.getComputedStyle(this.canvas.parentNode);
+        }
+        width = parseInt(this.css_style_parent.getPropertyValue('width'));
+        height = parseInt(this.css_style_parent.getPropertyValue('height'));
+    }
+    else {
+        if (!this.css_style) {
+            this.css_style = window.getComputedStyle(this.canvas);
+        }
+        width = parseInt(this.css_style.getPropertyValue('width'));
+        height = parseInt(this.css_style.getPropertyValue('height'));
     }
 
-    /*
-    // THIS is the original Code
-    // ... that doesn't work!!
-    if (!this.options.enableDpiScaling || !window || window.devicePixelRatio === 1)
-    { return; }
+    var dpr = this.options.enableDpiScaling ? window.devicePixelRatio : 1;
+    var dprWidth = parseInt(this.canvas.getAttribute('width'));
+    var dprHeight = parseInt(this.canvas.getAttribute('height'));
 
-    var dpr = window.devicePixelRatio;
-    var width = parseInt(this.canvas.getAttribute('width'));
-    var height = parseInt(this.canvas.getAttribute('height'));
+    if (!this.originalWidth || (Math.floor(this.originalWidth * dpr) !== dprWidth || this.originalWidth !== width)) {
+        this.originalWidth = width;
+        this.canvas.setAttribute('width', (Math.floor(width * dpr)).toString());
+        this.canvas.style.width = width + 'px';
+        this.canvas.getContext('2d').scale(dpr, dpr);
 
-    if (!this.originalWidth || (Math.floor(this.originalWidth * dpr) !== width)) {
-      this.originalWidth = width;
-      this.canvas.setAttribute('width', (Math.floor(width * dpr)).toString());
-      this.canvas.style.width = width + 'px';
-      this.canvas.getContext('2d').scale(dpr, dpr);
+        this.backupCanvas.setAttribute('width', (Math.floor(width * dpr)).toString());
+        this.backupCanvas.style.width = width + 'px';
+        this.backupCanvas.getContext('2d').scale(dpr, dpr);
+
+        haveResized = true;
     }
 
-
-    if (!this.originalHeight || (Math.floor(this.originalHeight * dpr) !== height)) {
+    if (!this.originalHeight || (Math.floor(this.originalHeight * dpr) !== dprHeight || this.originalHeight !== height)) {
       this.originalHeight = height;
       this.canvas.setAttribute('height', (Math.floor(height * dpr)).toString());
       this.canvas.style.height = height + 'px';
       this.canvas.getContext('2d').scale(dpr, dpr);
+
+      this.backupCanvas.setAttribute('height', (Math.floor(height * dpr)).toString());
+      this.backupCanvas.style.height = height + 'px';
+      this.backupCanvas.getContext('2d').scale(dpr, dpr);
+
+      haveResized = true;
     }
-    */
-};
+
+    return haveResized;
+
+  };
+
 
 /**
 *    Added for TOB
@@ -122,6 +161,13 @@ boxChart.prototype.updateValueRange = function() {
         chartMaxValue = Number.NaN,
         chartMinValue = Number.NaN;
 
+    var _valueRange = this.valueRange;
+    var _currentValueRange = this.currentValueRange;
+    var _isAnimatingScale = this.isAnimatingScale;
+    var _currentVisMinValue = this.currentVisMinValue;
+
+    var rangeUpdated = false;
+
     for (var d = 0; d < this.seriesSet.length; d++) {
         // TODO(ndunn): We could calculate / track these values as they stream in.
 
@@ -131,18 +177,16 @@ boxChart.prototype.updateValueRange = function() {
         var timeSeries = {maxValue: NaN, minValue: NaN};
 
         if (this.seriesSet[d].bounds && !isNaN(this.seriesSet[d].bounds.maxValue)) {
-            timeSeries.maxValue = this.seriesSet[d].bounds.maxValue
+            timeSeries.maxValue = this.seriesSet[d].bounds.maxValue;
         } else {
             timeSeries.maxValue = this.seriesSet[d].timeSeries.maxValue;
         }
 
         if (this.seriesSet[d].bounds && !isNaN(this.seriesSet[d].bounds.minValue)) {
-            timeSeries.minValue = this.seriesSet[d].bounds.minValue
+            timeSeries.minValue = this.seriesSet[d].bounds.minValue;
         } else {
             timeSeries.minValue = this.seriesSet[d].timeSeries.minValue;
         }
-
-        // no change further on!
 
         if (!isNaN(timeSeries.maxValue)) {
             chartMaxValue = !isNaN(chartMaxValue) ? Math.max(chartMaxValue, timeSeries.maxValue) : timeSeries.maxValue;
@@ -151,6 +195,15 @@ boxChart.prototype.updateValueRange = function() {
         if (!isNaN(timeSeries.minValue)) {
             chartMinValue = !isNaN(chartMinValue) ? Math.min(chartMinValue, timeSeries.minValue) : timeSeries.minValue;
         }
+
+        // The 'changed' flag is set whenever the data of a TimeSeries object is modified.
+        // It will be reset to 'false' only after completion of the rendering algorithm for this TimeSeries
+        // ... to ensure that the modifications have been rendered (at least once).
+        if (this.seriesSet[d].changed) {
+            rangeUpdated = true;
+        }
+
+
     }
 
     // Scale the chartMaxValue to add padding at the top if required
@@ -184,10 +237,67 @@ boxChart.prototype.updateValueRange = function() {
     }
 
     this.valueRange = { min: chartMinValue, max: chartMaxValue };
+
+    // The following calculations are necessary to compare the floats for equality.
+    // We regard a difference smaller than .001% as being equal.
+    var very_small = Math.pow(10, -5);
+
+    function is_not_equal(value, comparator) {
+        return (Math.abs(value - comparator) / Math.abs(value)) > very_small;
+    }
+
+    rangeUpdated =
+        typeof(_valueRange) !== 'undefined'
+            ? (is_not_equal(this.valueRange.min, _valueRange.min) ? true
+                : is_not_equal(this.valueRange.max, _valueRange.max) ? true
+                    : rangeUpdated)
+            : rangeUpdated;
+
+    rangeUpdated = this.isAnimatingScale ? true
+        : is_not_equal(this.currentValueRange, _currentValueRange) ? true
+            : is_not_equal(this.currentVisMinValue, _currentVisMinValue) ? true
+                : rangeUpdated;
+
+    return rangeUpdated;
+
   };
 
+// Prepare the chart for rendering
+// Call 'start' to launch!
+boxChart.prototype.prepare = function(canvas, delayMillis) {
+    this.canvas = canvas;
+    this.delay = delayMillis;
+    // this.start();
+  };
 
+  /**
+   * Starts the animation of this chart.
+   */
+  boxChart.prototype.start = function() {
+    if (this.frame) {
+      // We're already running, so just return
+      return;
+    }
 
+    // Renders a frame, and queues the next frame for later rendering
+    var animate = function() {
+      this.frame = SmoothieChart.AnimateCompatibility.requestAnimationFrame(function() {
+        this.render();
+        animate();
+      }.bind(this));
+    }.bind(this);
+
+/*
+    for (var sset in this.seriesSet)
+    {
+        if (sset.resetBoundsFunction) {
+            sset.resetBoundsFunction();
+        }
+    }
+*/
+
+    animate();
+  };
 
 // adaptation of the original smoothie code to allow for left-aligning the time labels
 // rather than right-aligning (as it's the smoothie standard)
@@ -198,7 +308,6 @@ boxChart.prototype.updateValueRange = function() {
 
 boxChart.prototype.render = function(canvas, time) {
 
-    // no change from here ...
     var nowMillis = new Date().getTime();
 
     if (!this.isAnimatingScale) {
@@ -214,9 +323,9 @@ boxChart.prototype.render = function(canvas, time) {
       }
     }
 
-    this.resize();
+    // Chart MUST be rendered if resized!
+    var mustRender = this.resize();
 
-    this.lastRenderTimeMillis = nowMillis;
 
     canvas = canvas || this.canvas;
     time = time || nowMillis - (this.delay || 0);
@@ -245,7 +354,34 @@ boxChart.prototype.render = function(canvas, time) {
     // to allow 'resetBounds' based on the visible timeframe
     this.oldestValidTime = oldestValidTime;
 
-    this.updateValueRange();
+    // Chart should be rendered, if there was a change of data
+    var rangeChanged = this.updateValueRange();
+
+    // Optimisation to prevent calculations if canvas is not visible in current viewport.
+/*    var nowOutOfView = isElementOutOfViewport(this.canvas);
+    if (typeof(this.outOfView) === 'undefined') {
+        this.outOfView = false;
+    }
+
+    // if chart MUST not be rendered and it is out of the viewport, we skip the rest.
+    if (!mustRender && this.outOfView === nowOutOfView  && nowOutOfView === true) {
+        return;
+    }
+    this.outOfView = nowOutOfView;
+
+    // if we're still within the millisPerPixel interval...
+    if (nowMillis - this.lastRenderTimeMillis < this.options.millisPerPixel) {
+        // check if anything has changed; if not: clip the image from the backup!
+        if (!rangeChanged && !mustRender && !this.isAnimatingScale) {
+            var width = parseInt(this.css_style.getPropertyValue('width'));
+            var height = parseInt(this.css_style.getPropertyValue('height'));
+            context.drawImage(this.backupCanvas, 0, 0, undefined, undefined, 0, 0, width, height);
+            return;
+        }
+    }
+*/
+    // Ok. There's no other choice rather then to render the chart. So let's do!
+    this.lastRenderTimeMillis = nowMillis;
 
     context.font = chartOptions.labels.fontSize + 'px ' + chartOptions.labels.fontFamily;
 
@@ -273,6 +409,22 @@ boxChart.prototype.render = function(canvas, time) {
     // Grid lines...
     context.save();
     context.lineWidth = chartOptions.grid.lineWidth;
+
+    context.strokeStyle = chartOptions.grid.strokeStyleHor;
+    // Horizontal (value) dividers.
+    for (var v = 1; v < chartOptions.grid.verticalSections; v++) {
+      var gy = Math.round(v * dimensions.height / chartOptions.grid.verticalSections);
+      if (chartOptions.grid.sharpLines) {
+        gy -= 0.5;
+      }
+      context.beginPath();
+      context.moveTo(0, gy);
+      context.lineTo(dimensions.width, gy);
+      context.stroke();
+      context.closePath();
+    }
+
+
     context.strokeStyle = chartOptions.grid.strokeStyle;
 
     var vertical_dividers = [];
@@ -301,7 +453,7 @@ boxChart.prototype.render = function(canvas, time) {
 
         var start_time = 0;
 
-        if (chartOptions.grid.timeDividers == 'weekly') {
+        if (chartOptions.grid.timeDividers === 'weekly') {
             // http://stackoverflow.com/questions/4156434/javascript-get-the-first-day-of-the-week-from-current-date
             function getMonday( date ) {
                 var day = date.getDay() || 7;
@@ -320,9 +472,9 @@ boxChart.prototype.render = function(canvas, time) {
 
             var next_time_div = function (t) {
                 return t - 1000 * 60 * 60 * 24 * 7;
-            }
+            };
         }
-        else if (chartOptions.grid.timeDividers == 'monthly') {
+        else if (chartOptions.grid.timeDividers === 'monthly') {
 
             this_month = new Date(time);
             this_month.setMinutes(0);
@@ -343,7 +495,7 @@ boxChart.prototype.render = function(canvas, time) {
                 }
 
                 return nm.getTime();
-            }
+            };
         }
         else if (chartOptions.grid.timeDividers == 'yearly') {
 
@@ -351,7 +503,7 @@ boxChart.prototype.render = function(canvas, time) {
             this_year.setMinutes(0);
             this_year.setHours(0);
             this_year.setDate(1);
-            this_year.setMonth(1);
+            this_year.setMonth(0);
 
             start_time = this_year.getTime();
 
@@ -359,7 +511,7 @@ boxChart.prototype.render = function(canvas, time) {
                 var ny = new Date(t);
                 ny.setFullYear(ny.getFullYear() - 1);
                 return ny.getTime();
-            }
+            };
         }
 
         if (start_time) {
@@ -386,19 +538,6 @@ boxChart.prototype.render = function(canvas, time) {
 
     }
 
-
-    // Horizontal (value) dividers.
-    for (var v = 1; v < chartOptions.grid.verticalSections; v++) {
-      var gy = Math.round(v * dimensions.height / chartOptions.grid.verticalSections);
-      if (chartOptions.grid.sharpLines) {
-        gy -= 0.5;
-      }
-      context.beginPath();
-      context.moveTo(0, gy);
-      context.lineTo(dimensions.width, gy);
-      context.stroke();
-      context.closePath();
-    }
     // Bounding rectangle.
     if (chartOptions.grid.borderVisible) {
       context.beginPath();
@@ -429,6 +568,11 @@ boxChart.prototype.render = function(canvas, time) {
           dataSet = timeSeries.data,
           seriesOptions = this.seriesSet[d].options;
 
+        // *****
+        // Indicate that we've drawn this at least once!
+        this.seriesSet[d].changed = false;
+        // *****
+
       // Delete old data that's moved off the left of the chart.
       timeSeries.dropOldData(oldestValidTime, chartOptions.maxDataSetLength);
 
@@ -442,8 +586,11 @@ boxChart.prototype.render = function(canvas, time) {
       for (var i = 0; i < dataSet.length && dataSet.length !== 1; i++) {
         var x = timeToXPixel(dataSet[i][0]), y = null;
         var y_data = dataSet[i][1];
+
         if (y_data != null) {
             y = valueToYPixel(y_data);
+        } else if (seriesOptions.nullTo0 === true) {
+            y = valueToYPixel(-10);  // better than just '0'
         } else {
             has_null = true;
         }
@@ -452,9 +599,9 @@ boxChart.prototype.render = function(canvas, time) {
 
         if (i === 0) {
           firstX = x;
-          y = (y == null ? 0 : y)
+          y = (y === null ? -10 : y)
           context.moveTo(x, y);
-        } else if (y != null) {
+        } else if (y !== null) {
 
           switch (chartOptions.interpolation) {
             case "linear":
@@ -546,6 +693,7 @@ boxChart.prototype.render = function(canvas, time) {
 
     // ... to here!
     // The code above (up to here) wasn't changed at all!
+    // 20170105 RDW: The statement above meanwhile might not be valid anymore!
 
     // Below is an adaptation to left-align the timestamps rather that right-align
     // (as the original implementation does)
@@ -601,6 +749,10 @@ boxChart.prototype.render = function(canvas, time) {
 
     context.restore(); // See .save() above.
 
+    // Save the rendered chart to backup to allow clipping for optimisation in the next rendering loop.
+    var backupContext = this.backupCanvas.getContext('2d');
+    backupContext.drawImage(this.canvas, 0, 0);
+
     return;
   };
 
@@ -612,7 +764,7 @@ boxChart.prototype.removeAllTimeSeries = function() {
 
     while (this.seriesSet.length > 0)
     {
-        this.removeTimeSeries(this.seriesSet[0].timeSeries)
+        this.removeTimeSeries(this.seriesSet[0].timeSeries);
     }
 
 };
@@ -636,19 +788,24 @@ boxChart.prototype.addTimeSeries = function(timeSeries, options) {
                     , bounds: {maxValue: NaN, minValue: NaN}
                     };
     this.seriesSet.push(new_series);
+
+    // set flag to indicate the change of data!
+    new_series.changed = true;
+
     if (timeSeries.options.resetBounds && timeSeries.options.resetBoundsInterval > 0) {
-        timeSeries.resetBoundsTimerId = setInterval(
-            function() {
-                if (timeSeries.checkBounds) {
-                    var frameBounds = timeSeries.checkBounds(this.oldestValidTime);
-                } else {
-                    timeSeries.resetBounds();
-                    var frameBounds = {maxValue: timeSeries.maxValue, minValue: timeSeries.minValue}
-                }
-                new_series.bounds = frameBounds;
-            }.bind(this),
-            timeSeries.options.resetBoundsInterval
-        );
+        timeSeries.resetBoundsFunction = function() {
+                                            if (timeSeries.checkBounds) {
+                                                var frameBounds = timeSeries.checkBounds(this.oldestValidTime);
+                                            } else {
+                                                timeSeries.resetBounds();
+                                                var frameBounds = {
+                                                    maxValue: timeSeries.maxValue,
+                                                    minValue: timeSeries.minValue
+                                                }
+                                            }
+                                            new_series.bounds = frameBounds;
+                                        }.bind(this);
+        timeSeries.resetBoundsTimerId = setInterval(timeSeries.resetBoundsFunction, timeSeries.options.resetBoundsInterval);
     }
 };
 
@@ -692,9 +849,13 @@ boxChart.prototype.setDisplay = function(options) {
         var ts = options.timeseries[i];
         if (ts.serie) {
             this.addTimeSeries(ts.serie, ts.options);
+            if (ts.options.resetBounds) {
+                ts.resetBoundsFunction();
+            }
         }
     }
-}
+
+};
 
 function boxTimeSeries(options)
 {
@@ -703,7 +864,8 @@ function boxTimeSeries(options)
 }
 
 boxTimeSeries.defaultOptions = {
-    dontDropOldData: false
+    dontDropOldData: false,
+    nullTo0: true
 };
 
 boxTimeSeries.prototype = new TimeSeries();
@@ -712,6 +874,9 @@ boxTimeSeries.prototype.dropOldData = function(oldestValidTime, maxDataSetLength
 
     if (this.options.dontDropOldData) { return; }
     TimeSeries.prototype.dropOldData.call(this, oldestValidTime, maxDataSetLength);
+
+    // set flag to indicate the change of data!
+    this.changed = true;
 };
 
 /**
@@ -794,31 +959,16 @@ box_display.prototype.toChart(chart_name) = function() {
 }
 */
 
-function boxCanvas(canvas_element) {
-    this._canvas = canvas_element;
+boxTimeSeries.prototype.clear = function() {
+    // set flag to indicate the change of data!
+    this.changed = true;
 
-    //Get the canvas & context
-    this._context = this._canvas.get(0).getContext('2d');
-    this._container = $(this._canvas).parent();
+    TimeSeries.prototype.clear.call(this);
+};
 
-    var respondCanvas = function(){
+boxTimeSeries.prototype.append = function(timestamp, value, sumRepeatedTimeStampValues) {
+    // set flag to indicate the change of data!
+    this.changed = true;
+    TimeSeries.prototype.append.call(this, timestamp, value, sumRepeatedTimeStampValues);
+};
 
-        // console.log(this._container);
-
-        var tempCanvas = document.createElement('canvas');
-        tempCanvas.width = this._context.canvas.width;
-        tempCanvas.height = this._context.canvas.height;
-        var tempContext = tempCanvas.getContext("2d");
-
-        tempContext.drawImage(this._context.canvas, 0, 0);
-        this._canvas.attr('width', $(this._container).width() ); //max width
-        this._context.drawImage(tempContext.canvas, 0, 0);
-    }.bind(this)
-
-    //Run function when browser resizes
-    $(window).resize(respondCanvas);
-
-    //Initial call
-    respondCanvas();
-
-}

@@ -1,0 +1,185 @@
+<%
+    # Note that this file is not a valid *.html file!
+    # It is intended to be a bottlepy - style template
+    # used for the scripting part of TheOnionBox!
+
+    # from tob_template_tools import *
+
+    import psutil
+    cpu_count = psutil.cpu_count()
+
+    host = get('host')
+    tor = get('tor')
+
+    oo_factory = get('oo_factory')
+    family_fp = get('family_fp')
+
+    fam_details = oo_factory.details(family_fp)
+
+    ef = fam_details('effective_family')
+    af = fam_details('alleged_family')
+    indf = fam_details('indirect_family')
+
+    fmatrix = {}
+    if ef or af or indf:
+%>
+
+{{!header_row('Tor', 'Family Performance', 'family')}}
+
+<%
+#        <div class="row">
+#           <div class="{{box_datum_grid}}"><p>Family Charts</p></div>
+#            <div class="{{box_value_grid}}">
+#                <div class="btn-toolbar pull-left" role="group">
+#                    <div class="btn-group" data-toggle="buttons" id="family-charts">
+#                        <!-- labels for oninoo charts will be inserted here -->
+#                        <code style="color: green;">
+#                            %# <!-- acc_stats.status -->
+#                            ... waiting for data ...
+#                        </code>
+#                    </div>
+#                </div>
+#            </div>
+#            <div class="col-xs-1"></div>
+#        </div>
+
+
+#        <div class="row">
+#            <div class="{{box_datum_grid}}"><p>Total</p></div>
+#            <div class="{{box_value_grid}}">
+#                <div class="row">
+#                    <div class="col-xs-12">
+#                        <p style="background-color: #9d9d9d; height: 150px">
+#                        </p>
+#                    </div>
+#                </div>
+#            </div>
+#            <div class="{{box_right_grid}}"></div>
+#        </div>
+%>
+
+<%
+        fmatrix = {'Effective': ef, 'Alleged': af, 'Indirect': indf}
+
+        for key, family_nodes in fmatrix.items():
+            if family_nodes is not None:
+
+                nodes = {}
+                unnamed_counter = 0
+                error_counter = 0
+                for fp in family_nodes:
+                    if fp[0] is '$':
+                        node_det = oo_factory.details(fp[1:])
+                        if node_det is not None:
+                            nn = node_det('nickname')
+                            if nn is '':
+                                nn = 'unnamed'
+                            end
+                            if nn.lower() == 'unnamed':
+                                nn = '_{}'.format(unnamed_counter)
+                                unnamed_counter += 1
+                            end
+                            nodes[nn] = fp
+                        end
+                    else:
+                        # This is not a fingerprint
+                        # but already a nickname!
+                        nn = '!{}'.format(error_counter)
+                        error_counter += 1
+                        nodes[nn] = fp
+                    end
+                end
+
+                # print(nodes)
+
+                for nn in sorted(nodes):
+                    group_nn = ''
+                    fp = ''
+                    no_data = False
+                    if nn[0] == '_':
+                        group_nn = 'Unnamed'
+                        fp = nodes[nn][1:]
+                    elif nn[0] == '!':
+                        group_nn = nodes[nn]
+                        fp = None
+                        not_found = True
+                    else:
+                        group_nn = nn
+                        fp = nodes[nn][1:]
+                    end
+%>
+                    {{!group(group_nn, color='black', bold=True, target='family_node_'+(fp if fp is not None else group_nn))}}
+                    % if fp is not None:
+                        {{!standard_row('Fingerprint', fp)}}
+                    % end
+                    % if fp and oo_factory.details(fp):
+                        {{!standard_row('Flags', ' | '.join(oo_factory.details(fp)('flags')))}}
+                    % end
+                    % if fp:
+                        <div class="row">
+                            <div class="{{box_datum_grid}}"><p>Performance</p></div>
+                            <div class="{{box_value_grid}}">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <canvas class="bw_chart box_canvas" id="FMLY{{nodes[nn][1:]}}-read" width="300" height="150" style="vertical-align: middle"></canvas>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <canvas class="bw_chart box_canvas" id="FMLY{{nodes[nn][1:]}}-write" width="300" height="150" style="vertical-align: middle"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="{{box_right_grid}}"></div>
+                        </div>
+                    % else:
+                        <div class="row">
+                            <div class="{{box_datum_grid}}"><p>No Data Found</p></div>
+                            <div class="{{box_value_grid}} alert alert-danger">
+                                <p>This node is only known by nickname. Onionoo has not provided a fingerprint or other data. Most probably this is a configuration error.
+                                    To overcome you should provide consistent fingerprint entries in your torrc for all the relays in your family.
+                                </p>
+                            </div>
+                            <div class="{{box_right_grid}}"></div>
+                        </div>
+                    % end
+                % end
+            % end
+        % end
+
+<!--
+<div class="row">
+    <div class="{{box_datum_grid}}"><p>Alleged Family</p></div>
+    <div class="{{box_value_grid}}">
+        <div class="row">
+            % for count in range(cpu_count):
+            <div class="col-md-6">
+                <div class="row">
+                    <div class="col-xs-12" style="height: 150px;" >
+                    <%
+                        _fngrprnt = 'failed'
+                        try:
+                            _fngrprnt = tor.get_fingerprint()
+                        except:
+                            pass
+                        end
+                    %>
+                    <p style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        {{!_fngrprnt}}<br>
+                    </p>
+                    <p style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        {{!tor.get_nickname()}}
+                    </p>
+                    </div>
+                </div>
+            </div>
+            % end
+        </div>
+    </div>
+    <div class="{{box_right_grid}}"></div>
+</div>
+
+-->
+
+
+<hr>
+
+%end

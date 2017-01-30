@@ -30,14 +30,14 @@
 
 .box_Log_runlevel
 {
-    // width: 10%;
+    %# // width: 10%;
     width: 5.5em;
 }
 
 .box_Log_stamp
 {
-    // width: 20%;
-    // width: 12em;
+    %# // width: 20%;
+    %# // width: 12em;
     width: 5.5em;
 }
 

@@ -1,4 +1,10 @@
 import math
+import sys
+
+#####
+# Python version detection
+py = sys.version_info
+py30 = py >= (3, 0, 0)
 
 # box_bold_grid = 'col-xs-3 col-md-2 box_bold'
 # box_section_grid = 'col-xs-8 col-md-9 box_section'
@@ -10,6 +16,7 @@ import math
 box_bold_grid = 'col-xs-3 box_bold'
 box_section_grid = 'col-xs-7 box_section truncate'
 box_datum_grid = 'col-xs-3 box_datum truncate'
+box_datum_grid_bold = 'col-xs-3 box_datum_bold truncate'
 box_value_grid = 'col-xs-7 box_value'
 box_title_grid = 'col-xs-7 box_title truncate'
 box_subtitle_grid = 'col-xs-7 box_subtitle'
@@ -24,6 +31,7 @@ def standard_row(datum='', value=''):
     out += "</div>"
     return out
 
+
 def header_row(bold='', section='', target=''):
     out = "<div class='row hash_target'"
     if target is not '':
@@ -34,18 +42,24 @@ def header_row(bold='', section='', target=''):
     out += "</div>"
     return out
 
-def group(title=''):
+
+def group(title='', color='lightgrey', bold=False, target=''):
     out = """
-        <div class = "row">
-            <div class="{}">
-                <p class='truncate' style='color: lightgrey; '>{}</p>
+        <div class = "row" {5}>
+            <div class="{0}">
+                <p class='truncate' style='color: {1}; '>{2}</p>
             </div>
-            <div class="{}">
-                <p class='config_group' style='color: lightgrey; '></p>
+            <div class="{3}">
+                <p class='config_group' style='color: {1}; '></p>
             </div>
-            <div class="{}"></div>
+            <div class="{4}"></div>
         </div>
-    """.format(box_datum_grid, title, box_value_grid, box_right_grid)
+    """.format(box_datum_grid if bold is False else box_datum_grid_bold
+               , color
+               , title
+               , box_value_grid
+               , box_right_grid
+               , ('id="' + target + '"') if target is not '' else '')
     return out
 
 

@@ -1,4 +1,4 @@
-function stats_handler() {};
+function stats_handler() {}
 stats_handler.prototype = new DataHandler();
 stats_handler.prototype.process = function(data, timedelta) {
 
@@ -13,6 +13,7 @@ stats_handler.prototype.nav = function() {
 };
 
 $(document).ready(function() {
-    addNavBarButton('Local Status', 'stats')
-    boxData.addHandler('stats', new stats_handler())
-})
+    addNavBarButton('Local Status', 'stats');
+    boxData.addHandler('stats', new stats_handler());
+});
+

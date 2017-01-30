@@ -5,31 +5,43 @@
 
 %>
 
-{{!header_row('Tor', 'Login Request')}}
+<div id="login_form">
+    {{!header_row('Tor', 'Login Request')}}
 
-<form role="login" onsubmit="return do_login();">
+    <form role="login" onsubmit="return do_login();">
 
+        <div class = "row">
+            <div class="{{box_datum_grid}}">
+                <p>Password</p>
+            </div>
+            <div class="col-xs-3 col-md-3 box_value">
+                    <div class="form-group">
+                        <input type="password" class="form-control" id='login_pwd' name='login_pwd' tabindex="1">
+                    </div>
+            </div>
+
+        </div>
+
+        <div class = "row">
+            <div class="{{box_datum_grid}}">
+                <p></p>
+            </div>
+            <div class="{{box_value_grid}}">
+                <div class="form-group">
+                    <button type="submit" id="button_login" class="btn btn-default">Login</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+<div id="info_expired" style="display: none">
     <div class = "row">
         <div class="{{box_datum_grid}}">
-            <p>Password</p>
+            <p></p>
         </div>
-        <div class="col-xs-3 col-md-3 box_value">
-                <div class="form-group">
-                    <input type="password" class="form-control" id='login_pwd' name='login_pwd' tabindex="1">
-                </div>
-        </div>
-
-    </div>
-
-    <div class = "row">
-    <div class="{{box_datum_grid}}">
-        <p></p>
-    </div>
-    <div class="{{box_value_grid}}">
-        <div class="form-group">
-            <button type="submit" id="button_login" class="btn btn-default">Login</button>
+        <div class="{{box_value_grid}} alert alert-danger">
+            Session expired. Please reload this page!
         </div>
     </div>
-    </div>
-</form>
+</div>
 <hr>

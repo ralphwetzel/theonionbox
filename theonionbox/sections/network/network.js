@@ -12,14 +12,14 @@
 % if oo_show is True:
 
     $(document).ready(function() {
-        addNavBarButton('Network Status', 'network')
+        addNavBarButton('Network Status', 'network');
 
         % if oo_map:
             var map_div = new equalHeight($('#location_map'), $('#location_data'));
             init_map();
         % end
 
-    })
+    });
 
     % if oo_map:
 
@@ -30,7 +30,7 @@
 
             var adjustHeight = function(){
                 this.element.height(this.reference.height());
-            }.bind(this)
+            }.bind(this);
 
             //Run function when browser resizes
             $(window).resize(adjustHeight);
@@ -40,6 +40,14 @@
         }
 
         function init_map() {
+
+            // http://dev.camptocamp.com/files/fredj/cluster_master/examples/wmts-hidpi.js
+
+            // HiDPI support:
+            // * Use 'bmaphidpi' layer (pixel ratio 2) for device pixel ratio > 1
+            // * Use 'geolandbasemap' layer (pixel ratio 1) for device pixel ratio == 1
+            //var hiDPI = ol.BrowserFeature.DEVICE_PIXEL_RATIO > 1;
+            var hiDPI = true;
 
             // This is very basic ... but it works ;)!
 
@@ -71,12 +79,18 @@
 
             var map = new ol.Map({
                 target: 'location_map',
-                layers: [new ol.layer.Tile({source: new ol.source.OSM()}), vectorLayer],
+                // pixelRatio: 2,
+                layers: [new ol.layer.Tile({source: new ol.source.OSM(/*{tilePixelRatio: 2}*/)}), vectorLayer],
+                // layers: [new ol.layer.Tile({source: new ol.source.WMTS({ layer: hiDPI ? 'bmaphidpi' : 'geolandbasemap',
+                //                                                         tilePixelRatio: hiDPI ? 2 : 1})})
+                //        , vectorLayer],
                 view: new ol.View({
                     center: ol.proj.fromLonLat([{{oo_details('longitude')}}, {{oo_details('latitude')}}]),
                     zoom: 12
                 })
             });
+
+            // map.getViewport().getElementsByTagName('canvas')[0].getContext("2d").scale(2,2);
         }
     % end
 

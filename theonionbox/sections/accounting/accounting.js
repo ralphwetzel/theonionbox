@@ -2,7 +2,7 @@
 %# // It is intended to be a bottlepy - style template
 %# // used for the scripting part of TheOnionBox!
 
-function acc_handler() {};
+function acc_handler() {}
 acc_handler.prototype = new DataHandler();
 acc_handler.prototype.process = function(data) {
     //console.log("section_accounting: process");
@@ -10,7 +10,7 @@ acc_handler.prototype.process = function(data) {
         return;
     }
 
-    if (data.enabled == true && data.stats) {
+    if (data.enabled === true && data.stats) {
         $(".acc_off").hide();
         $(".acc_on").show();
 
@@ -42,13 +42,13 @@ acc_handler.prototype.process = function(data) {
         $(".acc_on").hide();
     }
 };
+
 acc_handler.prototype.prepare = function() {
     // console.log("section_accounting: prepare");
     return;
 };
 
 $(document).ready(function() {
-    addNavBarButton('Accounting', 'accounting')
-
-    boxData.addHandler('acc', new acc_handler())
-})
+    addNavBarButton('Accounting', 'accounting');
+    boxData.addHandler('acc', new acc_handler());
+});

@@ -90,6 +90,19 @@ body {
     min-width: 200px;
 }
 
+.box_datum_bold {
+	font-family: "LatoLatinWebBlack";
+    font-size: 19px;
+    text-align: right;
+    min-width: 200px;
+}
+
+.box_datum_modal {
+	font-family: "LatoLatinWebLight";
+    font-size: 19px;
+    text-align: right;
+}
+
 .box_value {
 	font-family: "LatoLatinWeb";
     font-size: 19px;
@@ -128,7 +141,7 @@ body {
 
 
 .box_name {
-   // Animation
+   % #// Animation
    -webkit-transition: all 0.4s ease;
    transition: all 0.4s ease;
    opacity: 1

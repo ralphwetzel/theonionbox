@@ -1,0 +1,28 @@
+<%
+    # Note that this file is not a valid *.html file!
+    # It is intended to be a bottlepy - style template
+    # used for the scripting part of TheOnionBox!
+
+%>
+
+{{!header_row('Tor', 'Connection Error')}}
+
+<div class = "row">
+    <div class="{{box_datum_grid}}">
+        <p></p>
+    </div>
+    <div class="{{box_value_grid}} alert alert-danger">
+        {{error_msg}}
+    </div>
+</div>
+<div class = "row">
+    <div class="{{box_datum_grid}}">
+        <p></p>
+    </div>
+    <div class="{{box_value_grid}}">
+        This error cannot be recovered by The Onion Box.<br>
+        Please contact the operator for assistance.
+    </div>
+</div>
+
+<hr>

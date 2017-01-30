@@ -164,16 +164,20 @@ class LoggingManager(object):
             self.buffer.append(record)
             self.buffer_lock.release()
 
-        def flush(self, limit=None):
+        def flush(self, limit=None, encode=None):
 
             retval = []
             self.buffer_lock.acquire()
 
             for record in self.buffer:
                 try:
+                    msg = str(record.msg).strip()
+                    if encode is not None:
+                        msg = encode(msg)
+
                     evnt = {'s': record.source_time,
                             'l': record.levelname[0],
-                            'm': str(record.msg).strip(),
+                            'm': msg,
                             't': record.source[0]}
                     retval.append(evnt)
                 except:
@@ -242,6 +246,11 @@ class LoggingManager(object):
         if err != self.levels['ERROR']:
             self.switch(id, 'ERROR', err)
 
+    def connect2tor(self, tor):
+        if self.tor is not None:
+            raise AttributeError('You may connect this manager to Tor only once!')
+        self.tor = tor
+
     def add_client(self, session_id, capacity=400, clear_at_flush=True):
 
         # check if this session_id already has a handler
@@ -267,12 +276,20 @@ class LoggingManager(object):
 
     def remove_client(self, session_id):
 
-        # check if we know this id
-        if session_id not in self.clients:
-            return
-
-        # get the MessageHandler
-        mh = self.clients[session_id]
+        # I know, this is a hack...
+        # ... yet it's better than to duplicate the code!
+        if session_id == 'shutdown':
+            try:
+                session_id, mh = self.clients.popitem()
+                # print('Shutdown: Removing Client ID {}.'.format(session_id))
+            except Exception:
+                return False
+        else:
+            # check if we know this id
+            if session_id not in self.clients:
+                return False
+            # get the MessageHandler
+            mh = self.clients[session_id]
 
         # switch 'OFF' the event handling for this id
         for level in self.levels:
@@ -282,10 +299,16 @@ class LoggingManager(object):
         logging.getLogger(self.__tor_logger__).removeHandler(mh)
         mh.close()
 
-        # delete the entry for this id
-        del self.clients[session_id]
+        # safe-delete the entry for this id
+        if session_id in self.clients:
+            del self.clients[session_id]
+
+        return True
 
     def switch(self, session_id, level, status=True):
+
+        if self.tor is None:
+            return False
 
         lgr = logging.getLogger('theonionbox')
         lgr.debug('Switching {} | {} | {}'. format(session_id, level, status))
@@ -325,11 +348,11 @@ class LoggingManager(object):
                     self.tor.remove_event_listener(self.event_handlers[level])
 
     def shutdown(self):
+        loop = True
+        while loop:
+            loop = self.remove_client('shutdown')
 
-        for session_id in self.clients:
-            self.remove_client(session_id)
-
-    def get_events(self, session_id):
+    def get_events(self, session_id, encode=None):
 
         # check if we know this id
         if session_id not in self.clients:
@@ -338,7 +361,7 @@ class LoggingManager(object):
         # get the MessageHandler
         mh = self.clients[session_id]
         # and return the stored messages!
-        return mh.flush()
+        return mh.flush(encode=encode)
 
 
 # Thanks to 'Mad Physicist'

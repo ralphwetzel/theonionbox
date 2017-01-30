@@ -25,17 +25,15 @@
     <div class="{{box_datum_grid}}"><p>CPU Usage</p></div>
     <div class="{{box_value_grid}}">
         <div class="row">
-            % for count in range(cpu_count):
             <div class="col-xs-6">
                 <p>
-                    <canvas class="processor_chart" id="processor_load_{{count}}" width="100" height="50"
-                            style="vertical-align: middle;"
+                    <canvas class="processor_chart" id="processor_load_0" width="100" height="50"
+                            style="vertical-align: middle; {{'cursor: pointer;' if cpu_count > 1 else ''}}"
                             data-toggle="tooltip" data-placement="bottom"
-                            title="CPU#{{count}}: CPU Usage (%)">
+                            title="{{'Click for CPU Core Details!' if cpu_count > 1 else 'CPU Usage'}}">
                     </canvas>
                 </p>
             </div>
-            % end
         </div>
     </div>
     <div class="{{box_right_grid}}"></div>
@@ -108,4 +106,45 @@
     </div>
 
 % end
+
+% if cpu_count > 1:
+<!-- Modal -->
+<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <div class="modal-title box_section" id="myModalLabel">
+            CPU Core Usage
+        </div>
+      </div>
+      <div class="modal-body row">
+            % for count in range(cpu_count):
+          <div class="row">
+              <div class="col-xs-3 box_datum_modal truncate">
+                  <p>
+                      CPU Core #{{count}}
+                  </p>
+              </div>
+              <div class="col-xs-8">
+                  <p>
+                <canvas class="processor_chart" id="processor_load_{{count + 1}}" height="50"
+                        style="vertical-align: middle; height: 50px;"
+                        data-toggle="tooltip" data-placement="bottom"
+                        title="CPU#{{count}}: CPU Usage (%)">
+                </canvas>
+                  </p>
+
+            </div>
+          </div>
+            % end
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+% end
+
 <hr>

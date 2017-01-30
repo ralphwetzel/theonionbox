@@ -3,14 +3,15 @@
 %# // used for the scripting part of TheOnionBox!
 
 var msgStatus;
+var messages_player;
 
-function msg_handler() {};
+function msg_handler() {}
 msg_handler.prototype = new DataHandler();
 msg_handler.prototype.process = function(data, timedelta) {
 
-    console.log("section_message: process");
+    // console.log("section_message: process");
 
-    for (data_point in data)
+    for (var data_point in data)
     {
         var timestamp = data[data_point].s + timedelta;
         %# // to prepare for the playback!
@@ -22,15 +23,15 @@ msg_handler.prototype.process = function(data, timedelta) {
 
 msg_handler.prototype.prepare = function() {
 
-    retval = msgStatus.json(true);
-    if (retval != '') {
-        return 'runlevel=' + retval
+    var retval = msgStatus.json(true);
+    if (retval !== '') {
+        return 'runlevel=' + retval;
     }
     return;
 };
 
 $(document).ready(function() {
-    addNavBarButton('Messages', 'messages')
+    addNavBarButton('Messages', 'messages');
 
     messages_player = new boxDataPlayer(msg_play, 5000, 's');
     messages_player.start();
@@ -40,12 +41,12 @@ $(document).ready(function() {
     % preserved_events = get('preserved_events', None)
     % if preserved_events is not None:
     %   for event in preserved_events:
-            log("{{event['m']}}", {{event['s']}}, "{{event['l']}}", "{{event['t']}}");
+            log("{{!event['m']}}", {{event['s']}}, "{{event['l']}}", "{{event['t']}}");
     %   end
     % end
 
-    boxData.addHandler('msg', new msg_handler())
-})
+    boxData.addHandler('msg', new msg_handler());
+});
 
 function msg_play(data)
 {
@@ -56,7 +57,7 @@ $(".message_selector").on('click', function () {
     var key = $(this).data("severity");
 
     msgStatus.set(key, !msgStatus.get(key));
-})
+});
 
 function boxLogSelector(options) {
 
@@ -88,7 +89,7 @@ boxLogSelector.prototype.set = function(key, value) {
     var stat;
     for (stat in this.status)
     {
-        if ((key == stat) && (value == true || value == false)) {
+        if ((key == stat) && (value === true || value === false)) {
             if (this.status[key] != value) {
                 this.status[key] = value;
                 this.has_changed = true;
@@ -96,7 +97,7 @@ boxLogSelector.prototype.set = function(key, value) {
             break;
         }
     }
-}
+};
 
 boxLogSelector.prototype.get = function(key) {
     var stat;
@@ -107,7 +108,7 @@ boxLogSelector.prototype.get = function(key) {
             return this.status[key];
         }
     }
-}
+};
 
 boxLogSelector.prototype.json = function(if_changed) {
 
@@ -118,12 +119,10 @@ boxLogSelector.prototype.json = function(if_changed) {
     }
 
     this.has_changed = false;
-
     return retval;
-}
+};
 
-function log(message, timestamp, runlevel, tag)
-{
+function log(message, timestamp, runlevel, tag) {
     var cnsle = $('#msg');
     cnsle.trigger('msg:log', [message, timestamp, runlevel, tag]);
 }
@@ -136,7 +135,7 @@ $('#msg').on('msg:log', function (event, message, timestamp, runlevel, tag) {
         'N': 'NOTICE',
         'W': 'WARN',
         'E': 'ERROR'
-    }
+    };
 
     if (!message) {
         return;
@@ -158,14 +157,14 @@ $('#msg').on('msg:log', function (event, message, timestamp, runlevel, tag) {
 
     if (tag == 'b') {
         if (runlevel == 'NOTICE') {
-            runlevel = 'BOX'
+            runlevel = 'BOX';
         }
         else {
-            message = 'BOX | ' + message
+            message = 'BOX | ' + message;
         }
     }
 
-    runlevel_display = runlevel
+    var runlevel_display = runlevel;
 
     var log_msg = "<tr class='%s'><td class='box_Log_runlevel'>[%s]</td>".$(runlevel, runlevel_display);
     log_msg += "<td nowrap class='box_Log_stamp'>" + format_time(timestamp) + "</td>";

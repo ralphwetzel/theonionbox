@@ -1,4 +1,4 @@
-function config_handler() {};
+function config_handler() {}
 config_handler.prototype = new DataHandler();
 config_handler.prototype.process = function(data, timedelta) {
 
@@ -13,8 +13,9 @@ config_handler.prototype.nav = function() {
 };
 
 $(document).ready(function() {
-    addNavBarButton('Configuration', 'config')
+    addNavBarButton('Configuration', 'config');
 
     document.addEventListener("touchstart", function(){}, true);
-    boxData.addHandler('config', new config_handler())
-})
+    boxData.addHandler('config', new config_handler());
+});
+

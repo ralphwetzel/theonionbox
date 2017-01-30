@@ -2,6 +2,8 @@
 %# // It is intended to be a bottlepy - style template
 %# // used for the scripting part of TheOnionBox!
 
+    // # The Onion Box
+
 <%
     base_path = get('virtual_basepath', '') + '/'
     sections = get('sections', [])
@@ -14,7 +16,7 @@
 
     %# // DataHandler
     %# // Interface created by the sections to communicate with the DataManager
-    function DataHandler() {};
+    function DataHandler() {}
     DataHandler.prototype.process = function(data) {};
     DataHandler.prototype.prepare = function() {};
 
@@ -38,13 +40,13 @@
         else {
             console.log("Handler '" + name + "' already registered!");
         }
-    }
+    };
 
     DataManager.prototype.removeHandler = function(name) {
         if (name in this.handlers) {
             delete this.handlers[name];
         }
-    }
+    };
 
     var pull_error_counter = 0;
 
@@ -55,20 +57,21 @@
             pull_error_counter = 0;
             var data = JSON.parse(json_text);
 
-            timedelta = 0;
+            var timedelta = 0;
             if (data && data.tick)
             {
                 timedelta = new Date().getTime() - data.tick;
             }
 
             // console.log(data)
-
             for (var name in this.handlers) {
-                if (data && data[name]) {
-                    this.handlers[name].process(data[name], timedelta)
+                if (this.handlers.hasOwnProperty(name)) {
+                    if (data && data[name]) {
+                        this.handlers[name].process(data[name], timedelta);
+                    }
                 }
             }
-        }.bind(this)
+        }.bind(this);
 
         var pull_data = function () {
 
@@ -77,7 +80,7 @@
 
             for (var name in this.handlers) {
                 var param = this.handlers[name].prepare();
-                if (param != '') {
+                if (param !== '') {
                     if (action.length > 0) {
                         action += '&';
                     }
@@ -95,35 +98,35 @@
 
             jQuery.ajax('{{base_path}}{{session_id}}/data.html', ajax_settings);
 
-            if (this.stop_flag == false) {
+            if (this.stop_flag === false) {
                 this.timer = setTimeout(pull_data, 5000);
             }
 
-        }.bind(this)
+        }.bind(this);
 
         pull_data();
 
-    }
+    };
 
     DataManager.prototype.stop = function () {
         this.stop_flag = true;
         if (this.timer) {
             clearTimeout(this.timer);
         }
-    }
+    };
 
     function pull_error(jqXHR, textStatus, errorThrown) {
-        if (jqXHR.status == 404 | jqXHR.status == 500) {
+        if (jqXHR.status == 404 || jqXHR.status == 500) {
             window.location.href = "{{base_path}}{{session_id}}/logout.html";
         }
-        else if (textStatus == 'error' && jqXHR.status == 0 && jqXHR.readyState == 0) {
+        else if (textStatus == 'error' && jqXHR.status === 0 && jqXHR.readyState === 0) {
 
             pull_error_counter += 1;
 
             if (pull_error_counter > 2) {
                 $('#network_error_warning').collapse('show');
 
-                its_now = new Date().getTime();
+                var its_now = new Date().getTime();
 
                 var charts = $(".chart").trigger("tob:zero");
     <%
@@ -146,13 +149,13 @@
         }
     }
 
-    boxData = new DataManager(pull_error);
+    var boxData = new DataManager(pull_error);
 
     function boxDataPlayer(play_callback, delay, timestamp_index) {
         this.delay = (delay ? delay : 0);
         this.timer_running = false;
         this.timer = null;
-        this.frame_queue = []
+        this.frame_queue = [];
         this.frame_queue_length = Math.round(delay / 1000) + 10;
         this.last_pointer = -1;  // signals the cell for the latest data that was appended
         this.first_pointer = -1; // signals the cell keeping the last data being sliced; if == last_pointer: empty
@@ -164,7 +167,6 @@
         this.play_frame = null;
         this.play_data = null;
         this.play_data_index = 0;
-
     }
 
     boxDataPlayer.prototype.start = function() {
@@ -176,9 +178,9 @@
             var peek_pointer = this.first_pointer + 1;
             if (peek_pointer >= this.frame_queue_length) { peek_pointer = 0;}
 
-            return this.frame_queue[peek_pointer]
+            return this.frame_queue[peek_pointer];
 
-        }.bind(this)
+        }.bind(this);
 
         var slice_frame = function()
         {
@@ -189,7 +191,7 @@
 
             return this.frame_queue[this.first_pointer];
 
-        }.bind(this)
+        }.bind(this);
 
         var load_next_data = function() {
 
@@ -217,37 +219,34 @@
                     this.play_data = this.play_frame[this.play_data_index];
 
                 // no play_data?
-                if (this.play_data == null)
+                if (this.play_data === null)
                 {
                     // this play_frame ran out of play_data
                     this.play_frame = null;
                     this.play_data = null;
                 }
 
-            } while (!this.play_data)
+            } while (!this.play_data);
 
             // signal 'job done!'
             if (!this.play_frame) { return false; }
 
             return true;
 
-        }.bind(this)
+        }.bind(this);
 
-        var play_next_data = function()
-        {
+        var play_next_data = function() {
             this.timer_running = false;
-            if (!this.play_data) { return false };
+            if (!this.play_data) { return false; }
             this.play_callback(this.play_data);
             wait_next_data();
             return true;
-
-        }.bind(this)
+        }.bind(this);
 
         var wait_next_data = function () {
 
-            if (this.timer_running == true) { return true; }
-
-            if (load_next_data() == false) return;
+            if (this.timer_running === true) { return true; }
+            if (load_next_data() === false) { return; }
 
             var next_timestamp = this.play_data[this.timestamp_index];
 
@@ -264,24 +263,23 @@
             this.timer = setTimeout(play_next_data, timeout_value);
             return;
 
-        }.bind(this)
+        }.bind(this);
 
         wait_next_data();
-    }
+    };
 
     boxDataPlayer.prototype.stop = function() {
         clearTimeout(this.timer);
         this.timer_running = false;
         this.timer = null;
-        }
+    };
 
-
-    boxDataPlayer.prototype.append = function(frame){
+    boxDataPlayer.prototype.append = function(frame) {
 
         var test_pointer = this.last_pointer + 1;
 
         // check if overfloating => circle
-        if (test_pointer >= this.frame_queue_length) { test_pointer = 0;}
+        if (test_pointer >= this.frame_queue_length) { test_pointer = 0; }
 
         // no operation if we hit the first_pointer!
         if (test_pointer == this.first_pointer) { return false; }
@@ -291,10 +289,7 @@
 
         this.start();
         return true;
-    }
-
-
-
+    };
 
     %# // helper functions
 
@@ -309,29 +304,27 @@
         }
 
         // Handle some special cases
-        if(pBytes == 0) return '0 Bytes';
+        if(pBytes === 0) return '0 Bytes';
         if(pBytes == 1) return '1 Byte';
         if(pBytes == -1) return '-1 Byte';
 
-        var bytes = Math.abs(pBytes)
+        var bytes = Math.abs(pBytes);
 
         // Attention: arm calculates according IEC, yet displays 'si' - Abbreviations
         // Therefore we have to enable this wrong behaviour here!
 
+        // IEC units use 2^10 as an order of magnitude
+        var orderOfMagnitude = Math.pow(2, 10);
         if(pCalc && pCalc.toLowerCase() && pCalc.toLowerCase() == 'si') {
             // SI units use the Metric representation based on 10^3 as a order of magnitude
-            var orderOfMagnitude = Math.pow(10, 3);
-        } else {
-            // IEC units use 2^10 as an order of magnitude
-            var orderOfMagnitude = Math.pow(2, 10);
+            orderOfMagnitude = Math.pow(10, 3);
         }
 
+        // IEC units use 2^10 as an order of magnitude
+        var abbreviations = ['Bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
         if(pUnits && pUnits.toLowerCase() && pUnits.toLowerCase() == 'si') {
             // SI units use the Metric representation based on 10^3 as a order of magnitude
-            var abbreviations = ['Bytes', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-        } else {
-            // IEC units use 2^10 as an order of magnitude
-            var abbreviations = ['Bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
+            abbreviations = ['Bytes', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
         }
 
         var i = Math.floor(Math.log(bytes) / Math.log(orderOfMagnitude));
@@ -344,7 +337,7 @@
 
         // This bit here is purely for show. it drops the precision on numbers greater than 100 before the units.
         // it also always shows the full number of bytes if bytes is the unit.
-        if(result >= 99.995 || i==0) {
+        if(result >= 99.995 || i===0) {
             return result.toFixed(0) + separator + abbreviations[i];
         } else {
             return result.toFixed(2) + separator + abbreviations[i];
@@ -359,7 +352,7 @@
         function callback(exp, p0, p1, p2, p3, p4) {
             if (exp=='%%') return '%';
             if (arr[++i]===undefined) return undefined;
-            var exp  = p2 ? parseInt(p2.substr(1)) : undefined;
+            exp  = p2 ? parseInt(p2.substr(1)) : undefined;
             var base = p3 ? parseInt(p3.substr(1)) : undefined;
             var val;
             switch (p4) {
@@ -379,14 +372,13 @@
         }
         var regex = /%(-)?(0?[0-9]+)?([.][0-9]+)?([#][0-9]+)?([scfpexd])/g;
         return str.replace(regex, callback);
-    }
+    };
 
     String.prototype.$ = function() {
         return String.form(this, Array.prototype.slice.call(arguments));
-    }
+    };
 
-    function format_date(date_value)
-    {
+    function format_date(date_value) {
         date_value = new Date(date_value);
 
         var out = "%04d".$(date_value.getFullYear());
@@ -399,8 +391,7 @@
         return out;
     }
 
-    function format_time(date_value)
-    {
+    function format_time(date_value) {
         date_value = new Date(date_value);
 
         var out = "%02d".$(date_value.getHours());
@@ -412,8 +403,8 @@
 
     var navBarButtonCount = 0;
     var navBarButtonTargets = ['top'];
-    function addNavBarButton(text, target){
-        btn = '<li style="font-size: 25px;"';
+    function addNavBarButton(text, target) {
+        var btn = '<li style="font-size: 25px;"';
         if (navBarButtonCount < 1) {
             // btn += ' class="active"';
         }
@@ -425,6 +416,9 @@
     }
 
     $(document).on('keydown', function() {
+
+        var current_href;
+        var current_btn;
 
         if (event.which == 37 || event.which == 39) {
             try {
@@ -456,23 +450,22 @@
 
             location.href = '#' + navBarButtonTargets[i];
         }
-
-    })
+    });
 
     // Bootstrap NavBar 'Fold on Selection or Click'
     // maniqui @ https://github.com/twbs/bootstrap/issues/9497
-    $(document).on('click', function(event){
-      var $clickedOn = $(event.target),
-          $collapsableItems = $('.collapse'),
-          isToggleButton = ($clickedOn.closest('.navbar-toggle').length == 1),
-          isLink = ($clickedOn.closest('a').length == 1),
-          isOutsideNavbar = ($clickedOn.parents('.navbar').length == 0);
+    $(document).on('click', function(event) {
+        var $clickedOn = $(event.target),
+        $collapsableItems = $('.collapse'),
+        isToggleButton = ($clickedOn.closest('.navbar-toggle').length == 1),
+        isLink = ($clickedOn.closest('a').length == 1),
+        isOutsideNavbar = ($clickedOn.parents('.navbar').length === 0);
 
-      if( (!isToggleButton && isLink) || isOutsideNavbar ) {
-        $collapsableItems.each(function(){
-          $(this).collapse('hide');
-        });
-      }
+        if( (!isToggleButton && isLink) || isOutsideNavbar ) {
+            $collapsableItems.each(function() {
+                $(this).collapse('hide');
+            });
+        }
     });
 
     // Filo @ http://stackoverflow.com/questions/24765155/shrinking-navigation-bar-when-scrolling-down-bootstrap3
@@ -484,7 +477,7 @@
                 $('#TOBNavBar').removeClass('noline');
             }
         } else {
-            if ($('.box_name').hasClass('hide_name') == false) {
+            if ($('.box_name').hasClass('hide_name') === false) {
                 $('.box_name').addClass('hide_name');
                 $('#TOBNavBar').addClass('noline');
             }
@@ -492,168 +485,164 @@
     });
 
     // AJFarmar @ http://stackoverflow.com/questions/9255279/callback-when-css3-transition-finishes
-    $(".box_name")
-    .on("transitionend webkitTransitionEnd oTransitionEnd MSTransitionEnd",
-     function(e){
-            if ($('.box_name').hasClass('hide_name')) {
-                $('.box_name').hide();
-            }
-    //    $(this).off(e);
+    $(".box_name").on("transitionend webkitTransitionEnd oTransitionEnd MSTransitionEnd", function(e){
+        if ($('.box_name').hasClass('hide_name')) {
+            $('.box_name').hide();
+        }
+        //    $(this).off(e);
      });
 
-// Display Styles setzen
-function pad2(number) { return (number < 10 ? '0' : '') + number }
-var chart_style = {};
+    // Display Styles setzen
+    function pad2(number) { return (number < 10 ? '0' : '') + number; }
+    var chart_style = {};
 
-chart_style.hd = {
-    millisPerPixel: 500,
-    grid: {
-        millisPerLine: 60000,
-    },
-    timestampFormatter: function(date) {
-        return pad2(date.getHours()) + ':' + pad2(date.getMinutes());
-    },
-    yMaxFormatter: function(data, precision) {
-        if (!precision) {
-            var precision = 2;
-        }
-        return (prettyNumber(data, '', 'si') + '/s');
-    },
-    yMinFormatter: function() { return ""; }
-};
+    chart_style.hd = {
+        millisPerPixel: 500,
+        grid: {
+            millisPerLine: 60000,
+        },
+        timestampFormatter: function(date) {
+            return pad2(date.getHours()) + ':' + pad2(date.getMinutes());
+        },
+        yMaxFormatter: function(data, precision) {
+            if (!precision) {
+                precision = 2;
+            }
+            return (prettyNumber(data, '', 'si') + '/s');
+        },
+        yMinFormatter: function() { return ""; }
+    };
 
-chart_style.ld = {
-    millisPerPixel: 30000,
-    grid: {
-        millisPerLine: 3600000,
-    },
-    timestampFormatter: function(date) {
-        return pad2(date.getHours()) + ':' + pad2(date.getMinutes());
-    },
-    yMaxFormatter: function(data, precision) {
-        if (!precision) {
-            var precision = 2;
-        }
-        return (prettyNumber(data, '', 'si') + '/s');
-    },
-    yMinFormatter: function() { return ""; }
-};
+    chart_style.ld = {
+        millisPerPixel: 30000,
+        grid: {
+            millisPerLine: 3600000,
+        },
+        timestampFormatter: function(date) {
+            return pad2(date.getHours()) + ':' + pad2(date.getMinutes());
+        },
+        yMaxFormatter: function(data, precision) {
+            if (!precision) {
+                precision = 2;
+            }
+            return (prettyNumber(data, '', 'si') + '/s');
+        },
+        yMinFormatter: function() { return ""; }
+    };
 
-chart_style.d3 = {
-    millisPerPixel: 1000 * 900 / 4,
-    grid: {
-        millisPerLine: 1000 * 60 * 60 * 24, // daily
-        timeDividers: ''
-    },
-    timestampFormatter: function(date) {
-        return pad2(date.getDate()) + "." + pad2(date.getMonth() + 1) + "." ;
-    },
-    yMaxFormatter: function(data, precision) {
-        if (!precision) {
-            var precision = 2;
-        }
-        return (prettyNumber(data, '', 'si') + '/s');
-    },
-    yMinFormatter: function() { return ""; }
-};
+    chart_style.d3 = {
+        millisPerPixel: 1000 * 900 / 4,
+        grid: {
+            millisPerLine: 1000 * 60 * 60 * 24, // daily
+            timeDividers: ''
+        },
+        timestampFormatter: function(date) {
+            return pad2(date.getDate()) + "." + pad2(date.getMonth() + 1) + "." ;
+        },
+        yMaxFormatter: function(data, precision) {
+            if (!precision) {
+                precision = 2;
+            }
+            return (prettyNumber(data, '', 'si') + '/s');
+        },
+        yMinFormatter: function() { return ""; }
+    };
 
-chart_style.w1 = {
-    millisPerPixel: 1000 * 3600 / 4,
-    grid: {
-        millisPerLine: 1000 * 60 * 60 * 24, // daily
-        timeDividers: ''
-    },
-    timestampFormatter: function(date) {
-        return pad2(date.getDate()) + "." + pad2(date.getMonth() + 1) + "." ;
-    },
-    yMaxFormatter: function(data, precision) {
-        if (!precision) {
-            var precision = 2;
-        }
-        return (prettyNumber(data, '', 'si') + '/s');
-    },
-    yMinFormatter: function() { return ""; }
-};
+    chart_style.w1 = {
+        millisPerPixel: 1000 * 3600 / 4,
+        grid: {
+            millisPerLine: 1000 * 60 * 60 * 24, // daily
+            timeDividers: ''
+        },
+        timestampFormatter: function(date) {
+            return pad2(date.getDate()) + "." + pad2(date.getMonth() + 1) + "." ;
+        },
+        yMaxFormatter: function(data, precision) {
+            if (!precision) {
+                precision = 2;
+            }
+            return (prettyNumber(data, '', 'si') + '/s');
+        },
+        yMinFormatter: function() { return ""; }
+    };
 
-chart_style.m1 = {
-    millisPerPixel: 1000 * 14400 / 4,
-    grid: {
-        millisPerLine: 0,
-        timeDividers: 'weekly'
-    },
-    timestampFormatter: function(date) {
-        return pad2(date.getDate()) + "." + pad2(date.getMonth() + 1) + "." ;
-    },
-    yMaxFormatter: function(data, precision) {
-        if (!precision) {
-            var precision = 2;
-        }
-        return (prettyNumber(data, '', 'si') + '/s');
-    },
-    yMinFormatter: function() { return ""; }
-};
+    chart_style.m1 = {
+        millisPerPixel: 1000 * 14400 / 4,
+        grid: {
+            millisPerLine: 0,
+            timeDividers: 'weekly'
+        },
+        timestampFormatter: function(date) {
+            return pad2(date.getDate()) + "." + pad2(date.getMonth() + 1) + "." ;
+        },
+        yMaxFormatter: function(data, precision) {
+            if (!precision) {
+                precision = 2;
+            }
+            return (prettyNumber(data, '', 'si') + '/s');
+        },
+        yMinFormatter: function() { return ""; }
+    };
 
-chart_style.m3 = {
-    millisPerPixel: 1000 * 43200 / 4,
-    grid: {
-        millisPerLine: 0,
-        timeDividers: 'monthly'
-    },
-    timestampFormatter: function(date) {
-        return pad2(date.getDate()) + "." + pad2(date.getMonth() + 1) + "." ;
-    },
-    yMaxFormatter: function(data, precision) {
-        if (!precision) {
-            var precision = 2;
-        }
-        return (prettyNumber(data, '', 'si') + '/s');
-    },
-    yMinFormatter: function() { return ""; }
-};
+    chart_style.m3 = {
+        millisPerPixel: 1000 * 43200 / 4,
+        grid: {
+            millisPerLine: 0,
+            timeDividers: 'monthly'
+        },
+        timestampFormatter: function(date) {
+            return pad2(date.getDate()) + "." + pad2(date.getMonth() + 1) + "." ;
+        },
+        yMaxFormatter: function(data, precision) {
+            if (!precision) {
+                precision = 2;
+            }
+            return (prettyNumber(data, '', 'si') + '/s');
+        },
+        yMinFormatter: function() { return ""; }
+    };
 
-// y1: This one is untested! Please provide feedback if it is ugly!!
-chart_style.y1 = {
-    millisPerPixel: 1000 * 172800 / 4,
-    grid: {
-        millisPerLine: 0,
-        timeDividers: 'monthly'
-    },
-    timestampFormatter: function(date) {
-        return pad2(date.getDate()) + "." + pad2(date.getMonth() + 1) + "." ;
-    },
-    yMaxFormatter: function(data, precision) {
-        if (!precision) {
-            var precision = 2;
-        }
-        return (prettyNumber(data, '', 'si') + '/s');
-    },
-    yMinFormatter: function() { return ""; }
-};
+    // y1: This one is untested! Please provide feedback if it is ugly!!
+    chart_style.y1 = {
+        millisPerPixel: 1000 * 172800 / 4,
+        grid: {
+            millisPerLine: 0,
+            timeDividers: 'monthly'
+        },
+        timestampFormatter: function(date) {
+            return pad2(date.getDate()) + "." + pad2(date.getMonth() + 1) + "." ;
+        },
+        yMaxFormatter: function(data, precision) {
+            if (!precision) {
+                precision = 2;
+            }
+            return (prettyNumber(data, '', 'si') + '/s');
+        },
+        yMinFormatter: function() { return ""; }
+    };
 
-// y5: This one is untested! Please provide feedback if it is ugly!!
-chart_style.y5 = {
-    millisPerPixel: 1000 * 864000 / 4,
-    grid: {
-        millisPerLine: 0,
-        timeDividers: 'yearly'
-    },
-    timestampFormatter: function(date) {
-        return pad2(date.getDate()) + "." + pad2(date.getMonth() + 1) + "." ;
-    },
-    yMaxFormatter: function(data, precision) {
-        if (!precision) {
-            var precision = 2;
-        }
-        return (prettyNumber(data, '', 'si') + '/s');
-    },
-    yMinFormatter: function() { return ""; }
-}
-
+    // y5: This one is untested! Please provide feedback if it is ugly!!
+    chart_style.y5 = {
+        millisPerPixel: 1000 * 864000 / 4,
+        grid: {
+            millisPerLine: 0,
+            timeDividers: 'yearly'
+        },
+        timestampFormatter: function(date) {
+            return date.getFullYear();
+        },
+        yMaxFormatter: function(data, precision) {
+            if (!precision) {
+                precision = 2;
+            }
+            return (prettyNumber(data, '', 'si') + '/s');
+        },
+        yMinFormatter: function() { return ""; }
+    };
 % end
 
-
 <%
-    # Compensaring the missing 'FileNotFoundError' in Python2.x
+    # Compensating the missing 'FileNotFoundError' in Python2.x
     # try:
     #     FileNotFoundError
     # except NameError:
@@ -679,29 +668,32 @@ chart_style.y5 = {
     end
 %>
 
-// Bootstrap NavBar 'Fold on Selection or Click'
-// maniqui @ https://github.com/twbs/bootstrap/issues/9497
-$(document).on('click', function(event){
-  var $clickedOn = $(event.target),
-      $collapsableItems = $('.collapse'),
-      isToggleButton = ($clickedOn.closest('.navbar-toggle').length == 1),
-      isLink = ($clickedOn.closest('a').length == 1),
-      isOutsideNavbar = ($clickedOn.parents('.navbar').length == 0);
+    // Bootstrap NavBar 'Fold on Selection or Click'
+    // maniqui @ https://github.com/twbs/bootstrap/issues/9497
+    $(document).on('click', function(event) {
+        var $clickedOn = $(event.target),
+            $collapsableItems = $('.collapse'),
+            isToggleButton = ($clickedOn.closest('.navbar-toggle').length == 1),
+            isLink = ($clickedOn.closest('a').length == 1),
+            isOutsideNavbar = ($clickedOn.parents('.navbar').length === 0);
 
-  if( (!isToggleButton && isLink) || isOutsideNavbar ) {
-    $collapsableItems.each(function(){
-      $(this).collapse('hide');
+        if( (!isToggleButton && isLink) || isOutsideNavbar ) {
+            $collapsableItems.each(function() {
+                $(this).collapse('hide');
+            });
+        }
     });
-  }
-});
 
 % if login is False:
-
     // Final step of the script ... to launch the site logic!
     //$(window).on('load', function() {
-$   (document).ready(function() {
+    $(document).ready(function() {
         log("Client Script Operation launched.");
         boxData.start();
-    })
+    });
+
+    $(function () {
+      $('[data-toggle="popover"]').popover()
+    });
 
 % end

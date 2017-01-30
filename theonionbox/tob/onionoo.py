@@ -15,75 +15,99 @@ from concurrent.futures import ThreadPoolExecutor
 py = sys.version_info
 py30 = py >= (3, 0, 0)
 
-__supported_protocol__ = '3.1'
+__supported_protocol__ = '3.2'
 
 
-class Query(object):
+class Mode(object):
+    OPEN = 0
+    TOR = 1
+    HIDDEN = 2
 
-    def __init__(self, fingerprint):
-        self.ifModSince = ''
-        self.data = None
-        self.fingerprint = fingerprint
-        self.address = None
-        self.query_callback = None
+class TorType(object):
+    RELAY = 0
+    BRIDGE = 1
 
-        # https://trac.torproject.org/projects/tor/ticket/6320
-        self.hash = sha1(a2b_hex(fingerprint)).hexdigest()
+ONIONOO_OPEN = 'https://onionoo.torproject.org'
+ONIONOO_HIDDEN = 'http://onionoorcazzotwa.onion'
+# ONIONOO_HIDDEN = 'http://tgel7v4rpcllsrk2.onion'
 
-    def query(self, address, callback=None):
 
-        self.address = address
-        if callback is None:
-            callback = self._noop
-        self.query_callback = callback
-
-        payload = {'lookup': self.hash}
-        headers = {'accept-encoding': 'gzip'}
-        if len(self.ifModSince) > 0:
-            headers['if-modified-since'] = self.ifModSince
-
-        executor = ThreadPoolExecutor(max_workers=5)
-
-        lgr = logging.getLogger('theonionbox')
-        lgr.debug("Onionoo: Launching query of '{}'.".format(address))
-
-        future = executor.submit(requests.get, address, params=payload)
-        future.add_done_callback(self._process)
-
-    def _noop(self, success):
-        return
-
-    def _process(self, future):
-
-        lgr = logging.getLogger('theonionbox')
-
-        r = None
-        try:
-            r = future.result()
-        except Exception as exc:
-            lgr.info("Onionoo: Failed to query '{}': {}".format(self.address, exc))
-            return self.query_callback(False)
-        else:
-            lgr.debug("Onionoo: Finished querying '{}' with status code {}.".format(self.address, r.status_code))
-
-        if r is None:
-            return self.query_callback(False)
-
-        if r.status_code != requests.codes.ok:
-            return self.query_callback(False)
-
-        self.ifModSince = r.headers['last-modified']
-        if r.status_code == requests.codes.not_modified:
-            return self.query_callback(True)
-
-        try:
-            data = r.json()
-        except Exception as exc:
-            lgr.debug("Onionoo: Failed to un-json network data; error code says '{}'.".format(exc))
-            return self.query_callback(False)
-
-        self.data = data
-        return self.query_callback(True)
+# class Query(object):
+#
+#     def __init__(self, fingerprint, mode=Mode.OPEN, proxy=None):
+#         self.ifModSince = ''
+#         self.data = None
+#         self.fingerprint = fingerprint
+#         self.address = None
+#         self.query_callback = None
+#         self.mode = mode
+#         self.proxy = proxy
+#
+#         # https://trac.torproject.org/projects/tor/ticket/6320
+#         self.hash = sha1(a2b_hex(fingerprint)).hexdigest()
+#
+#     def query(self, address, callback=None):
+#
+#         self.address = address
+#         if callback is None:
+#             callback = self._noop
+#         self.query_callback = callback
+#
+#         payload = {'lookup': self.hash}
+#         headers = {'accept-encoding': 'gzip'}
+#         if len(self.ifModSince) > 0:
+#             headers['if-modified-since'] = self.ifModSince
+#
+#         proxies = {}
+#         if self.proxy is not None:
+#             if self.mode == Mode.TOR or self.mode == Mode.HIDDEN:
+#                 proxies = {
+#                     'http': 'socks5://' + self.proxy,
+#                     'https': 'socks5://' + self.proxy
+#                 }
+#
+#         executor = ThreadPoolExecutor(max_workers=5)
+#
+#         lgr = logging.getLogger('theonionbox')
+#         lgr.debug("Onionoo: Launching query of '{}'.".format(address))
+#
+#         future = executor.submit(requests.get, address, params=payload, headers=headers, proxies=proxies)
+#         future.add_done_callback(self._process)
+#
+#     def _noop(self, success):
+#         return
+#
+#     def _process(self, future):
+#
+#         lgr = logging.getLogger('theonionbox')
+#
+#         r = None
+#         try:
+#             r = future.result()
+#         except Exception as exc:
+#             lgr.info("Onionoo: Failed to query '{}': {}".format(self.address, exc))
+#             return self.query_callback(False)
+#         else:
+#             lgr.debug("Onionoo: Finished querying '{}' with status code {}.".format(self.address, r.status_code))
+#
+#         if r is None:
+#             return self.query_callback(False)
+#
+#         if r.status_code != requests.codes.ok:
+#             return self.query_callback(False)
+#
+#         self.ifModSince = r.headers['last-modified']
+#         if r.status_code == requests.codes.not_modified:
+#             return self.query_callback(True)
+#
+#         try:
+#             data = r.json()
+#         except Exception as exc:
+#             lgr.debug("Onionoo: Failed to un-json network data; error code says '{}'.".format(exc))
+#             return self.query_callback(False)
+#
+#         self.data = data
+#         return self.query_callback(True)
 
 
 class Document(object):
@@ -98,57 +122,58 @@ class Document(object):
                           '1_week': 'w1',
                           '3_days': 'd3'}
 
-    _query_callback = None
-    oo_query = None
-
     none_value = -10    # '-10' to distinguish None from 0 (zero)
+
+    cache = {}
+    ifModSince = ''
 
     def __init__(self):
         # self.oo_query = Query(fingerprint)
         self._is_relay = None
         self._is_bridge = None
-        self.data = None
+        self.document_data = None
+        self.object_data = None
+        self.cache = {}
+        self.ifModSince = ''
+        self.log = logging.getLogger('theonionbox')
 
-    def hash(self, fingerprint):
-        # https://trac.torproject.org/projects/tor/ticket/6320
-        return sha1(a2b_hex(fingerprint)).hexdigest()
+    def update(self, data):
 
-    def query(self, fingerprint, address, callback=None):
+        self.document_data = data
+        self.object_data = None
+        self.cache = {}
 
-        if self.oo_query is not None:
-            if self.oo_query.fingerprint != fingerprint:
-                self.oo_query = None
-
-        if self.oo_query is None:
-            self.oo_query = Query(fingerprint)
-
-        self._query_callback = callback
-        return self.oo_query.query(address, self._done)
-
-    def _done(self, success):
-
-        if success is False:
-            return self._query_callback(success)
-
-        lgr = logging.getLogger('theonionbox')
-
-        self.data = self.oo_query.data
-        self._is_relay = None
-        self._is_bridge = None
+        if data is None:
+            return
 
         v = self.version()
         if v != __supported_protocol__:
-            lgr.warn("Onionoo protocol version mismatch! Supported: {} | Received: {}."
-                     .format(__supported_protocol__, v))
+            # lgr.warn("Onionoo protocol version mismatch! Supported: {} | Received: {}."
+            #         .format(__supported_protocol__, v))
+            self.update(None)
+            return
 
-        if self.is_relay() == self.is_bridge() is True:
-            lgr.warn("Onionoo protocol error! Fingerprint '{}' returns data for 'Relay' AND for 'Bridge'!"
-                     .format(self.oo_query.fingerprint))
+        rlys = self.relays()
+        brdgs = self.bridges()
 
-        return self._query_callback(True)
+        if rlys is not None and brdgs is not None:
+            # lgr.warn("Onionoo protocol error! Fingerprint '{}' returns data for 'Relay' AND for 'Bridge'!"
+            #          .format(self.oo_query.fingerprint))
+            self.update(None)
+            return
+        elif rlys is not None:
+            self._is_relay = True
+            self.object_data = rlys
+        elif brdgs is not None:
+            self._is_bridge = True
+            self.object_data = brdgs
+
+        return
 
     def _get(self, datum):
-        return self.data[datum] if datum in self.data else None
+        if self.document_data is None:
+            return None
+        return self.document_data[datum] if datum in self.document_data else None
 
     def version(self):
         return self._get('version')
@@ -179,25 +204,9 @@ class Document(object):
         return None
 
     def is_relay(self):
-        if self.data is None:
-            return None
-        if self._is_relay is None:
-            rlys = self.relays()
-            if rlys is not None:
-                self._is_relay = True
-            else:
-                self._is_relay = False
         return self._is_relay
 
     def is_bridge(self):
-        if self.data is None:
-            return None
-        if self._is_bridge is None:
-            brdg = self.bridges()
-            if brdg is not None:
-                self._is_bridge = True
-            else:
-                self._is_bridge = False
         return self._is_bridge
 
     def published(self):
@@ -208,19 +217,22 @@ class Document(object):
         else:
             return None
 
-    def _decode_history_object(self, data, name, key):
+    def _decode_history_object(self, name, key):
 
-        if data is None:
+        self.log.debug('({}, {})'.format(name, key))
+
+        if self.object_data is None:
             return None
 
-        lgr = logging.getLogger('theonionbox')
+        # lgr = logging.getLogger('theonionbox')
 
         try:
-            hist_obj = data[name]
+            hist_obj = self.object_data[name]
         except Exception:
             # This Exception will be raised if a wrong 'name' was provided while programming
             # OR if the relay is so young that there are no historical infos in the onionoo data!
-            lgr.warn("While decoding Onionoo history data: Key '{}' not found.".format(name))
+            self.log.warn("While decoding Onionoo history data: Key '{}' not found.".format(name))
+
             return None
 
         try:
@@ -243,8 +255,8 @@ class Document(object):
         while data_index < data_count:
             value = data[data_index]
             if value is None:
-                # result.append([data_timestamp * 1000, None])
-                result.append([data_timestamp * 1000, self.none_value])
+                result.append([data_timestamp * 1000, None])
+                # result.append([data_timestamp * 1000, self.none_value])
             else:
                 result.append([data_timestamp * 1000, value * data_factor])
 
@@ -254,7 +266,15 @@ class Document(object):
         result.append([data_timestamp * 1000, 0])
         return result
 
-    def get_chart(self, data, chart, period=None, cache=None):
+    def get_chart(self, chart, period=None):
+
+        self.log.debug('({}, {})'.format(chart, period))
+
+        if chart in self.cache:
+            cache = self.cache[chart]
+            self.log.debug("Cache hit for chart '{}': {}.".format(chart, hex(id(cache))))
+        else:
+            cache = {}
 
         keys = self.history_object_keys
         if period is not None:
@@ -267,24 +287,52 @@ class Document(object):
         for key in keys:
             k = self.result_object_keys[key]
 
-            if cache is not None and k in cache:
-                hist_obj = cache[k]
+            if key in cache:
+                hist_obj = cache[key]
+                self.log.debug("Cache hit for key '{}': {}.".format(key, hex(id(hist_obj))))
             else:
-                hist_obj = self._decode_history_object(data, chart, key)
+                hist_obj = self._decode_history_object(chart, key)
 
-                if cache and hist_obj:
-                    cache[k] = hist_obj
+                if hist_obj is not None:
+                    cache[key] = hist_obj
 
-            if hist_obj:
+            if hist_obj is not None:
                 result[k] = hist_obj
+
+        self.cache[chart] = cache
 
         return result if len(result) > 0 else None
 
+    def has_document(self):
+        # raise NotImplementedError("Please provide a custom 'has_data' function when overwriting 'Document'.")
+        return self.document_data is not None
+
+    def has_object(self):
+        # raise NotImplementedError("Please provide a custom 'has_data' function when overwriting 'Document'.")
+        return self.object_data is not None
+
+
+class DocumentInterface(object):
+
+    _document = None
+
+    def __init__(self, document):
+        self._document = document
+
     def has_data(self):
-        raise NotImplementedError("Please provide a custom 'has_data' function when overwriting 'Document'.")
+        return self._document.has_object()
+
+    def published(self):
+        return self._document.published()
+
+    def is_relay(self):
+        return self._document.is_relay()
+
+    def is_bridge(self):
+        return self._document.is_bridge()
 
 
-class Details(Document):
+class Details(DocumentInterface):
 
     # onionoo protocol v3.1
     relay_detail = {
@@ -373,172 +421,251 @@ class Details(Document):
         'transports': None
     }
 
-    def __init__(self):
-        self.detail_data = None
-        Document.__init__(self)
-
-    def refresh(self, fingerprint):
-
-        self.query(fingerprint, 'https://onionoo.torproject.org/details', self._refresh_callback)
-
-    def _refresh_callback(self, success):
-
-        if success is False:
-            # self.detail_data = None
-            return
-
-        if self.is_relay():
-            self.detail_data = self.relays()
-        elif self.is_bridge():
-            self.detail_data = self.bridges()
-        else:
-            self.detail_data = None
+    def __init__(self, document):
+        DocumentInterface.__init__(self, document)
 
     def __call__(self, detail):
 
         if self.has_data() is False:
-            if detail in self.relay_detail:
-                return self.relay_detail[detail]
-            else:
-                return None
+            return None
 
-        if self.is_relay():
-            if detail in self.detail_data:
-                return self.detail_data[detail]
+        if self._document.is_relay():
+            if detail in self._document.object_data:
+                retval = self._document.object_data[detail]
             elif detail in self.relay_detail:
-                return self.relay_detail[detail]
+                retval = self.relay_detail[detail]
             else:
                 return None
 
-        if self.is_bridge():
-            if detail in self.detail_data:
-                return self.detail_data[detail]
+            # print(detail, retval, type(retval))
+            return retval
+
+        elif self._document.is_bridge():
+            if detail in self._document.object_data:
+                return self._document.object_data[detail]
             elif detail in self.bridge_detail:
                 return self.bridge_detail[detail]
-            else:
-                return None
 
         return None
 
-    def has_data(self):
-        return self.detail_data is not None
 
+class Bandwidth(DocumentInterface):
 
-class Bandwidth(Document):
-
-    bw_data = None
-    read_cache = {}
-    write_cache = {}
-
-    def __init__(self):
-        self.read_cache = {}
-        self.write_cache = {}
-        self.bw_data = None
-        Document.__init__(self)
-
-    def refresh(self, fingerprint):
-
-        self.query(fingerprint, 'https://onionoo.torproject.org/bandwidth', self._refresh_callback)
-
-    def _refresh_callback(self, success):
-
-        if success is False:
-            # self.bw_data = {}
-            return
-
-        self.read_cache = {}
-        self.write_cache = {}
-
-        if self.is_relay():
-            self.bw_data = self.relays()
-        elif self.is_bridge():
-            self.bw_data = self.bridges()
-        else:
-            self.bw_data = None
+    def __init__(self, document):
+        DocumentInterface.__init__(self, document)
 
     def read(self, period=None):
 
         if self.has_data() is False:
             return None
-
-        return self.get_chart(self.bw_data, 'read_history', period, self.read_cache)
+        return self._document.get_chart('read_history', period)
 
     def write(self, period=None):
 
         if self.has_data() is False:
             return None
-
-        return self.get_chart(self.bw_data, 'write_history', period, self.write_cache)
-
-    def has_data(self):
-        return self.bw_data is not None
+        return self._document.get_chart('write_history', period)
 
 
-class Weights(Document):
+class Weights(DocumentInterface):
 
-    weights_data = None
-    cwf_cache = {}      # consensus_weight_fraction
-    guard_cache = {}    # guard_probability
-    middle_cache = {}   # middle_probability
-    exit_cache = {}     # exit_probability
-    cw_cache = {}       # consensus_weight
-
-    def __init__(self):
-        self.cwf_cache = {}  # consensus_weight_fraction
-        self.guard_cache = {}  # guard_probability
-        self.middle_cache = {}  # middle_probability
-        self.exit_cache = {}  # exit_probability
-        self.cw_cache = {}  # consensus_weight
-        Document.__init__(self)
-        self.none_value = None
-
-    def refresh(self, fingerprint):
-
-        self.query(fingerprint, 'https://onionoo.torproject.org/weights', self._refresh_callback)
-
-    def _refresh_callback(self, success):
-
-        if success is False:
-            # self.bw_data = {}
-            return
-
-        self.cwf_cache = {}  # consensus_weight_fraction
-        self.guard_cache = {}  # guard_probability
-        self.middle_cache = {}  # middle_probability
-        self.exit_cache = {}  # exit_probability
-        self.cw_cache = {}  # consensus_weight
-
-        if self.is_relay():
-            self.weights_data = self.relays()
-        elif self.is_bridge():
-            self.weights_data = self.bridges()
-        else:
-            self.weights_data = None
+    def __init__(self, document):
+        DocumentInterface.__init__(self, document)
 
     def consensus_weight_fraction(self, period=None):
         if self.has_data() is False:
             return None
-        return self.get_chart(self.weights_data, 'consensus_weight_fraction', period, self.cwf_cache)
+        return self._document.get_chart('consensus_weight_fraction', period)
 
     def guard_probability(self, period=None):
         if self.has_data() is False:
             return None
-        return self.get_chart(self.weights_data, 'guard_probability', period, self.guard_cache)
+        return self._document.get_chart('guard_probability', period)
 
     def middle_probability(self, period=None):
         if self.has_data() is False:
             return None
-        return self.get_chart(self.weights_data, 'middle_probability', period, self.middle_cache)
+        return self._document.get_chart('middle_probability', period)
 
     def exit_probability(self, period=None):
         if self.has_data() is False:
             return None
-        return self.get_chart(self.weights_data, 'exit_probability', period, self.exit_cache)
+        return self._document.get_chart('exit_probability', period)
 
     def consensus_weight(self, period=None):
         if self.has_data() is False:
             return None
-        return self.get_chart(self.weights_data, 'consensus_weight', period, self.cw_cache)
+        return self._document.get_chart('consensus_weight', period)
 
-    def has_data(self):
-        return self.weights_data is not None
+
+class OnionOOFactory(object):
+
+    # onionoo holds a dict of key:data pairs, with
+    # key = 'details' or 'bandwidth' or 'weights' + ':' + fingerprint
+    # data = onionoo.Document object holding the onionoo network response or None
+    onionoo = {}
+    executor = None
+
+    def __init__(self, proxy=None):
+
+        self.onionoo = {}
+        self.query_address = {}
+        self.proxy_address = None   # to be formally compliant
+
+        self.proxy(proxy, False)
+        self.executor = ThreadPoolExecutor(max_workers=100)     # enough to query > 30 Tors at once...
+
+    def proxy(self, proxy, reconnect=True):
+
+        from stem.util.connection import is_valid_ipv4_address
+        from stem.util.connection import is_valid_port
+
+        if proxy is None:
+            self.proxy_address = None
+            self.query_address = {
+                'details': ONIONOO_OPEN + '/details',
+                'bandwidth': ONIONOO_OPEN + '/bandwidth',
+                'weights': ONIONOO_OPEN + '/weights'
+            }
+            return
+
+        try:
+            address, port = proxy.split(':')
+        except ValueError:
+            # if 'not enough values to unpack', e.g. no port given
+            raise ValueError("Failed to separate address '{}' into address:port.".format(proxy))
+
+        if not is_valid_ipv4_address(address):
+            raise ValueError('Invalid IP address: %s' % address)
+        elif not is_valid_port(port):
+            raise ValueError('Invalid port: %s' % port)
+
+        self.proxy_address = proxy
+        self.query_address = {
+            'details': ONIONOO_HIDDEN + '/details',
+            'bandwidth': ONIONOO_HIDDEN + '/bandwidth',
+            'weights': ONIONOO_HIDDEN + '/weights'
+        }
+
+    def add(self, fingerprint):
+
+        # there are currently three different documents we query from the onionoo db:
+        # Details, Bandwidth & Weights
+        # the key identifies the fingerprint as well as the document to allow storage in a flat dict.
+        check_key = ['details:' + fingerprint, 'bandwidth:' + fingerprint, 'weights:' + fingerprint]
+
+        # if the key in question isn't in the dict
+        for key in check_key:
+            if key not in self.onionoo:
+                lgr = logging.getLogger('theonionbox')
+                lgr.debug('Adding fingerprint {} to onionoo query queue.'.format((fingerprint)))
+
+                # ... add it (yet without document! This indicates that we have no data so far.)
+                self.onionoo[key] = Document()
+
+    def remove(self, fingerprint):
+
+        # to remove keys if demanded (which probably will happen rarely!)
+        check_key = [ 'details:' + fingerprint, 'bandwidth:' + fingerprint, 'weights:' + fingerprint]
+
+        for key in check_key:
+            if key in self.onionoo:
+                del self.onionoo[key]
+
+    def refresh(self, only_keys_with_none_data=False, async=True):
+
+        lgr = logging.getLogger('theonionbox')
+        lgr.info('Refreshing onionoo data => Only New: {} | Async: {}'.format(only_keys_with_none_data, async))
+
+        # run through the dict of keys and query onionoo for updated documents
+        for key in self.onionoo:
+            item = self.onionoo[key]
+
+            if only_keys_with_none_data is True:
+                if item.has_document() is True:
+                    continue
+
+            try:
+                data_type, fp = key.split(':')
+            except ValueError:
+                # This definitely is weird!
+                continue
+
+            if async is True:
+                self.executor.submit(self.query, item, self.query_address[data_type], fp, self.proxy_address)
+            else:
+                self.query(item, self.query_address[data_type], fp, self.proxy_address)
+
+    def query(self, for_document, address, fingerprint, proxy):
+
+        lgr = logging.getLogger('theonionbox')
+        lgr.debug("Onionoo: Launching query of '{}' for ${}.".format(address, fingerprint))
+
+        # https://trac.torproject.org/projects/tor/ticket/6320
+        hash = sha1(a2b_hex(fingerprint)).hexdigest()
+
+        payload = {'lookup': hash}
+        headers = {'accept-encoding': 'gzip'}
+        if len(for_document.ifModSince) > 0:
+            headers['if-modified-since'] = for_document.ifModSince
+
+        proxies = {}
+        if proxy is not None:
+            proxies = {
+                'http': 'socks5://' + proxy,
+                'https': 'socks5://' + proxy
+            }
+
+        r = None
+
+        try:
+            r = requests.get(address, params=payload, headers=headers, proxies=proxies)
+        except Exception as exc:
+            lgr.warning("Onionoo: Failed querying '{}' -> {}".format(address, exc))
+        else:
+            lgr.debug("Onionoo: Finished querying '{}' for ${} with status code {}."
+                      .format(address, fingerprint, r.status_code))
+
+        if r is None:
+            return
+
+        if r.status_code != requests.codes.ok:
+            return
+
+        for_document.ifModSince = r.headers['last-modified']
+        if r.status_code == requests.codes.not_modified:
+            return
+
+        try:
+            data = r.json()
+        except Exception as exc:
+            lgr.debug("Onionoo: Failed to un-json network data; error code says '{}'.".format(exc))
+            return
+
+        # print(data)
+
+        for_document.update(data)
+        return
+        # except Exception as exc:
+        #     lgr.info("Onionoo: Failed to query '{}': {}".format(address, exc))
+        #    pass
+
+        #return
+
+    def details(self, fingerprint):
+        key = 'details:' + fingerprint
+        if key in self.onionoo:
+            return Details(self.onionoo[key])
+
+    def bandwidth(self, fingerprint):
+        key = 'bandwidth:' + fingerprint
+        if key in self.onionoo:
+            return Bandwidth(self.onionoo[key])
+
+    def weights(self, fingerprint):
+        key = 'weights:' + fingerprint
+        if key in self.onionoo:
+            return Weights(self.onionoo[key])
+
+    def shutdown(self):
+        self.executor.shutdown(True)
