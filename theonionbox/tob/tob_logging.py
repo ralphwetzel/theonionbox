@@ -74,10 +74,19 @@ def handle_tor_event(event, logger):
         # yet the workaround to make this work in 3.4.0 <= version < 3.4.2
         # is ridiculous! => https://docs.python.org/3/library/logging.html#logging.getLevelName
         logger.log(level_box_to_tor[level], msg=event.message, extra=extra)
+
+        if 'connection_edge_process_relay_cell (at origin) failed' in event.message:
+            extra['source'] = 'box'
+            logger.log(level_box_to_tor['NOTICE'],
+                       msg="If you're running a hidden service this could "
+                           "indicate a failed attempt to establish a connection!",
+                       extra=extra)
+
     except Exception as exc:
         boxLog = logging.getLogger('theonionbox')
         boxLog.exception('Error while logging Tor event: level={} | msg={} | extra={}'
                          .format(level, event.message, extra), exc_info=True)
+
 
 class LoggingManager(object):
 
