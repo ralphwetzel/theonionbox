@@ -232,6 +232,7 @@ class Document(object):
             # This Exception will be raised if a wrong 'name' was provided while programming
             # OR if the relay is so young that there are no historical infos in the onionoo data!
             self.log.warn("While decoding Onionoo history data: Key '{}' not found.".format(name))
+
             return None
 
         try:
