@@ -98,15 +98,15 @@
         </div>
 <%
     end
-    if tvt.is_latest_alpha(tvs) is False:
+    if tvt.is_latest_unstable(tvs) is False:
 %>
         <div class = "row">
             <div class="{{box_datum_grid}}">
-                <p>Latest Alpha Version</p>
+                <p>Latest Unstable Version</p>
             </div>
             <div class="{{box_value_grid}}">
                 <p>
-                    <a href="https://dist.torproject.org/" target="_blank">{{tvt.latest_alpha()}}</a>
+                    <a href="https://dist.torproject.org/" target="_blank">{{tvt.latest_unstable()}}</a>
                 </p>
             </div>
         </div>
