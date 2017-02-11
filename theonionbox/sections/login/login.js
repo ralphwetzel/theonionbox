@@ -13,6 +13,7 @@ function do_login(event)
     }
 
     disable_form();
+    $('.spnnr').css('display', 'inline-block');
     document.body.style.cursor = 'wait';
 
     var login_input = document.getElementById('login_pwd');
