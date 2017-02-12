@@ -479,6 +479,9 @@ if box_ssl is True:
         boxLog.error("To operate via SSL you have to install python module 'ssl': 'pip install ssl'")
         sys.exit()
 
+if box_check_updates is False:
+    boxLog.notice('The Onion Box Update Service will not be used.')
+
 #####
 # GeoIP2 interface
 
@@ -2014,6 +2017,7 @@ def exit_procedure(quit=True):
     from threading import enumerate
 
     boxLog.debug('ShutDown Initiated...')
+    tor_geoip.close()
 
     boxLog.debug('Shutting down webserver...')
     try:

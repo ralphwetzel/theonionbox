@@ -1,5 +1,32 @@
+# Default class used if no geoip db present
+class GeoIPOO(object):
 
-class GeoIP2(object):
+    def country(self, ip, default=None):
+        return default
+
+    def country_name(self, ip, default=None):
+        return default
+
+    def region_name(self, ip, default=None):
+        return default
+
+    def city_name(self, ip, default=None):
+        return default
+
+    def postal_code(self, ip, default=None):
+        return default
+
+    def latitude(self, ip, default=None):
+        return default
+
+    def longitude(self, ip, default=None):
+        return default
+
+    def close(self):
+        return
+
+
+class GeoIP2(GeoIPOO):
 
     reader = None
     cache = {}
@@ -14,9 +41,6 @@ class GeoIP2(object):
             pass
 
         self.cache = {}
-
-    def __del__(self, exc_type, exc_val, exc_tb):
-        self.reader.close()
 
     def data(self, ip):
         try:
@@ -93,27 +117,7 @@ class GeoIP2(object):
         except:
             return default
 
+    def close(self):
+        self.reader.close()
 
-# Default class used if no geoip db present
-class GeoIPOO(object):
 
-    def country(self, ip, default=None):
-        return default
-
-    def country_name(self, ip, default=None):
-        return default
-
-    def region_name(self, ip, default=None):
-        return default
-
-    def city_name(self, ip, default=None):
-        return default
-
-    def postal_code(self, ip, default=None):
-        return default
-
-    def latitude(self, ip, default=None):
-        return default
-
-    def longitude(self, ip, default=None):
-        return default
