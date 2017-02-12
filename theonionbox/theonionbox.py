@@ -2,8 +2,8 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-__version__ = '3.2'      # stamp will be added later
-
+# __version__ = '3.0.1'      # stamp will be added later
+__version__ = '3.3dev'      # stamp will be added later
 __description__ = 'The Onion Box: WebInterface to monitor Tor Relays and Bridges'
 
 # from tob.version_tester import Version
@@ -198,10 +198,12 @@ from tob.tob_logging import addLoggingLevel, LoggingManager, ForwardHandler
 from tob.tob_logging import ConsoleFormatter, FileFormatter
 
 # Add Level to be inline with the Tor levels (DEBUG - INFO - NOTICE - WARN(ing) - ERROR)
-addLoggingLevel('NOTICE', 25)
+addLoggingLevel('NOTICE', logging.INFO + 5)
+# This one is to be inline with STEM's logging levels:
+addLoggingLevel('TRACE', logging.DEBUG - 5)
 
 # valid level descriptors
-boxLogLevels = ['DEBUG', 'INFO', 'NOTICE', 'WARNING', 'ERROR']
+boxLogLevels = ['TRACE', 'DEBUG', 'INFO', 'NOTICE', 'WARNING', 'ERROR']
 
 # This is the logger for Tor related messages.
 # The clients will get their messages from this logger.
@@ -227,6 +229,13 @@ boxLog.addHandler(boxFwrd)
 # we keep the reference to this to allow changing of the Level at runtime
 # ... when we've implemented this ;)!
 box_handler = None
+
+# This is the Handler to connect stem with boxLog
+from stem.util.log import get_logger as get_stem_logger,logging_level, Runlevel
+stemFwrd = ForwardHandler(level=logging_level(Runlevel.TRACE), tag='stem')
+stemLog = get_stem_logger()
+stemLog.addHandler(stemFwrd)
+stemFwrd.setTarget(boxLog)
 
 box_cmdline_modes = [None, 'service']
 
@@ -344,14 +353,18 @@ tor_NOTICE = True
 box_host = 'localhost'
 box_port = 8080
 box_session_ttl = 30
-box_server_to_use = None        # Deprecated since v3.2RC3
+
 box_ntp_server = 'pool.ntp.org'
 box_message_level = 'NOTICE'
 box_basepath = ''
+box_check_updates = True
 
 box_ssl = False
 box_ssl_certificate = ''
 box_ssl_key = ''
+
+box_geoip_db = ''
+
 
 # Read the config file(s)
 config_found = False
@@ -375,7 +388,7 @@ if 'TheOnionBox' in config:
     box_config = config['TheOnionBox']
     box_host = box_config.get('host', box_host)
     box_port = int(box_config.get('port', box_port))
-    box_server_to_use = box_config.get('server', box_server_to_use)
+#    box_server_to_use = box_config.get('server', box_server_to_use)
     box_session_ttl = int(box_config.get('session_ttl', box_session_ttl))
     box_ssl = box_config.getboolean('ssl', box_ssl)
     box_ssl_certificate = box_config.get('ssl_certificate', box_ssl_certificate)
@@ -383,6 +396,22 @@ if 'TheOnionBox' in config:
     box_ntp_server = box_config.get('ntp_server', box_ntp_server)
     box_message_level = box_config.get('message_level', box_message_level).upper()
     box_basepath = box_config.get('proxy_path', box_basepath)
+    box_check_updates = not box_config.get('disable_new_version_check', box_check_updates)
+    box_geoip_db = box_config.get('geoip2_city', box_geoip_db)
+
+    box_config_deprecated = [
+        'login_ttl',    # 20161008
+        'server'        # v3.2RC3
+    ]
+
+    for option in box_config_deprecated:
+        try:
+            test = box_config[option]
+        except:
+            pass
+        else:
+            boxLog.warn("Configuration: Parameter '{}' is deprecated and will be ignored.".format(option))
+
 
 if 'TorRelay' in config:
     tor_config = config['TorRelay']
@@ -404,10 +433,6 @@ if 'TorProxy' in config:
 # Validate here that we've read reasonable data from the config file
 if tor_timeout < 0:
     tor_timeout = None
-
-# v3.2RC3
-if box_server_to_use is not None:
-    boxLog.warn("Configuration: Parameter 'server' is deprecated and will be ignored.")
 
 if box_message_level not in boxLogLevels:
 
@@ -454,6 +479,27 @@ if box_ssl is True:
         boxLog.error("To operate via SSL you have to install python module 'ssl': 'pip install ssl'")
         sys.exit()
 
+#####
+# GeoIP2 interface
+
+tor_geoip = None
+
+if box_geoip_db != '':
+    if find_loader('geoip2') is None:
+        boxLog.warning("To use a GeoIP database, you have to install python module 'geoip2': 'pip install geoip2'")
+        box_geoip_db = ''
+    else:
+        if os.path.exists(box_geoip_db):
+            from tob.geoip import GeoIP2
+            tor_geoip = GeoIP2(box_geoip_db)
+            boxLog.notice("Operating with GeoIP Database '{}'.".format(box_geoip_db))
+        else:
+            box_geoip_db = ''
+
+if box_geoip_db == '':
+    from tob.geoip import GeoIPOO
+    tor_geoip = GeoIPOO()
+
 
 #####
 # Set DEBUG mode and Message Level
@@ -467,6 +513,12 @@ if box_cmdline['debug'] is True:
     box_debug = True
     boxLog.setLevel('DEBUG')
     box_handler.setLevel('DEBUG')
+
+    # from stem.util.log import get_logger as get_stem_logger, Runlevel
+    #
+    # log_to_stdout(Runlevel.DEBUG)
+
+
 else:
     box_debug = False
     boxLog.info("Switching to Message Level '{}'.".format(box_message_level))
@@ -641,10 +693,34 @@ tor_bwdata = {'upload': 0, 'download': 0, 'limit': 0, 'burst': 0, 'measure': 0}
 # Tor interface
 from stem.control import EventType
 from tob.controller import tobController
+import stem.control
 
 # The Tor interface
 tor = None  # -> tobController
 tor_password = None
+
+# stem.control.CACHEABLE_GETINFO_PARAMS = (
+#     'config-text',
+#     'version',
+#     'net/listeners/or',
+#     'traffic/read',
+#     'status/version/current',
+#     'config/names',
+#     'accounting/bytes-left',
+#     'process/pid',
+#     'fingerprint',
+#     'accounting/interval-end',
+#     'traffic/written',
+#     'accounting/bytes',
+#     'config-file',
+#     'accounting/enabled',
+#     'net/listeners/control',
+#     'process/user',
+#     'net/listeners/dir',
+#     'net/listeners/socks',
+#     'accounting/hibernating',
+#     'config-defaults-file'
+# )
 
 
 def connect2tor(tor=None):
@@ -658,9 +734,9 @@ def connect2tor(tor=None):
         if tor_control == 'socket':
             boxLog.notice("Trying to connect to Tor ControlSocket @ '{}'...".format(tor_socket))
             tor = tobController.from_socket_file(tor_socket, tor_timeout)
-#        elif tor_control == 'proxy':
-#            boxLog.notice("Trying to connect to Tor @ '{}:{}' via Proxy @ '{}'...".format(tor_host, tor_port, tor_proxy))
-#            tor = tobController.host_via_proxy(tor_host, tor_port, tor_proxy, tor_timeout)
+        elif tor_control == 'proxy':
+            boxLog.notice("Trying to connect to Tor @ '{}:{}' via Proxy @ '{}'...".format(tor_host, tor_port, tor_proxy))
+            tor = tobController.host_via_proxy(tor_host, tor_port, tor_proxy, tor_timeout)
         else:   # tor_control == 'port'
             boxLog.notice('Trying to connect to Tor ControlPort {}:{}...'.format(tor_host, tor_port))
             if tor_timeout:
@@ -671,11 +747,6 @@ def connect2tor(tor=None):
         raise err
 
     boxLog.notice('Connected!')
-
-    # onionoo.add(tor.get_fingerprint())
-
-    # ensure that our tor related information is aways current
-    update_tor_info()
     box_cron.add_job(update_tor_info, 'interval', minutes=1)
 
     # start the event handler for the Bandwidth data
@@ -684,10 +755,13 @@ def connect2tor(tor=None):
     return tor
 
 # this will be called by a cron job each minute once!
-def update_tor_info():
+def update_tor_info(params=None):
+
+    if tor.is_authenticated() is False:
+        return
 
     try:
-        tor.refresh()
+        tor.refresh(params)
 
     except:
         pass
@@ -803,6 +877,32 @@ def refresh_onionoo(relaunch_job=False):
         box_cron.add_job(refresh_onionoo, 'date', id='onionoo', run_date=run_date, args=[True])
 
     return
+
+
+#####
+# The Onion Box Update Service
+from tob.update_service import updateChecker
+box_update_checker = None
+
+
+def check_box_update_service(use_this_checker, relaunch_job=False):
+    from random import randint
+
+    if use_this_checker is None:
+        return
+
+    use_this_checker.update()
+    boxLog.info('Latest version of The Onion Box: {}'.format(use_this_checker.get_latest()))
+
+    if relaunch_job is True:
+        next_run = int(box_time()) + randint(30*60, 60*60)
+        run_date = datetime.fromtimestamp(next_run)
+        box_cron.add_job(check_box_update_service, 'date', id='updates',
+                         run_date=run_date, args=[use_this_checker, True])
+
+if (tor_proxy is not None) and (box_check_updates is True):
+    box_update_checker = updateChecker(tor_proxy)
+    check_box_update_service(box_update_checker, True)
 
 
 #####
@@ -958,6 +1058,9 @@ def tor_authenticate(password):
 
     log.debug('tor.is_authenticated(): {}'.format(tor.is_authenticated()))
     if tor.is_authenticated():
+
+        # update_tor_info(GETINFO_ITEMS_USED_BY_THE_BOX)
+
         return password == tor_password
     else:
         retval = False
@@ -965,6 +1068,9 @@ def tor_authenticate(password):
             tor.authenticate_password(password=password)
             tor_password = password
             retval = True
+
+            # update_tor_info(GETINFO_ITEMS_USED_BY_THE_BOX)
+
         except Exception as exc:
             log.debug('tor.authenticated() raised: {}'.format(exc))
         finally:
@@ -1189,9 +1295,29 @@ def get_index(session_id):
         redirect(box_basepath + '/')
         return False
 
-    #This should create an exception if the socket was closed unexpectedly
+
     try:
-        version_short = tor.get_version_short()
+        # We use this first request
+        # a) to load the cache
+        # b) to ensure that our connection is up...
+
+        # adapt this list as required to mass-request these data upfront
+        # to prevent single requests later demanding exhaustive time
+        getinfo_params = [
+            'accounting/enabled'
+            , 'config-file'
+            , 'config/names'
+            , 'fingerprint'
+            , 'net/listeners/control'
+            , 'net/listeners/dir'
+            , 'net/listeners/or'
+            , 'net/listeners/socks'
+            , 'status/version/current'
+            , 'version'
+        ]
+
+        # tor.get_info(getinfo_params)
+
     except SocketError:
         boxLog.warning('SocketError while initiating index.html creation process.')
         # we lost the authentication. Therefore: Redirect!
@@ -1281,6 +1407,47 @@ def get_index(session_id):
         'powered': "monitored by <b>The Onion Box</b> v{}".format(stamped_version)
     }
 
+    # print(box_update_checker.get_latest(), box_update_checker)
+
+    if box_update_checker is not None:
+        if box_update_checker.is_latest_tag(__version__) is False:
+            update_title = 'Update available!'
+            update_content = """
+                <div class='container-fluid' style='width: 250px'>
+                    <div class='row'>
+                        <div class='col-xs-7'>Your version:</div>
+                        <div class='col-xs-5'>{}</div>
+                    </div>
+                    <div class='row'>
+                        <div class='col-xs-7'>Latest version:</div>
+                        <div class='col-xs-5'>{}</div>
+                    </div>
+                    <div class='row'>
+                        <p class='config_group' color='lightgrey'></p>
+                    </div>""".format(__version__, box_update_checker.get_latest())
+            update_msg = box_update_checker.get_message()
+            if len(update_msg) > 0:
+                update_content += """
+                    <div class='row'>
+                        <div class='col-xs-12'>
+                            {}
+                        </div>
+                    </div>
+                    <div class='row'>
+                        <p class='config_group' color='lightgrey'></p>
+                    </div>""".format(update_msg)
+            update_content += """
+                    <div class='row'>
+                        <div class='col-xs-12 text-center'>
+                            <a href='https://github.com/ralphwetzel/theonionbox/releases/latest' target='_blank'>
+                                Check release notes on GitHub!
+                            </a>
+                        </div>
+                    </div>
+                </div>"""
+
+            section_config['header']['achtung'] = {'title': update_title, 'content': update_content}
+
     params = {
         'session': session
         , 'read_bytes': tor_bwdata['download']
@@ -1305,6 +1472,7 @@ def get_index(session_id):
         , 'oo_weights': onionoo_weights
         , 'section_config': section_config
         , 'oo_factory': onionoo
+        , 'geoip': tor_geoip
         , 'family_fp': __family_fp__
     }
 
@@ -1375,6 +1543,8 @@ def get_font(session_id, filename):
 
 @theonionbox.post('/<session_id>/data.html')
 def post_data(session_id):
+
+    tor.get_getinfo_keys()
 
     session = box_sessions.recall(session_id, request.remote_addr)
 
@@ -1899,12 +2069,13 @@ if __name__ == '__main__':
     if box_ssl is True:
         # SSL enabled
         tob_server = HTTPServer(host=box_host, port=box_port, certfile=box_ssl_certificate, keyfile=box_ssl_key)
-        boxLog.notice("Operating with WSGIserver in SSL mode!")
+        # boxLog.notice("Operating with WSGIserver in SSL mode!")
+        boxLog.notice('Operating in SSL mode!')
     else:
         # Standard
         # tob_server_options = {'handler_class': box_FixedDebugHandler}
         tob_server = HTTPServer(host=box_host, port=box_port)
-        boxLog.notice('Operating with WSGIserver!')
+        # boxLog.notice('Operating with WSGIserver!')
 
     # if we're here ... almost everything is setup and running
     # good time to launch the housekeeping for the first time!

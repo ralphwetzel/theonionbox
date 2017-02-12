@@ -75,6 +75,7 @@ def handle_tor_event(event, logger):
         # is ridiculous! => https://docs.python.org/3/library/logging.html#logging.getLevelName
         logger.log(level_box_to_tor[level], msg=event.message, extra=extra)
 
+        # This might indicate an attempt to scan the ports of a hidden service!!
         if 'connection_edge_process_relay_cell (at origin) failed' in event.message:
             extra['source'] = 'box'
             logger.log(level_box_to_tor['NOTICE'],
@@ -476,11 +477,14 @@ class ConsoleFormatter(logging.Formatter):
             out_lvlname = ''
 
         # https://en.wikipedia.org/wiki/ANSI_escape_code
-        colorcodes = {'DEBUG': '\033[37m',      # light gray
-                      'INFO': '\033[94m',       # light blue
-                      'NOTICE': '',             # default
-                      'WARNING': '\033[91m',    # light red
-                      'ERROR': '\033[93;1m'}      # yellow (bold)
+        colorcodes = {
+            'TRACE': '\033[95m',      # magenta
+            'DEBUG': '\033[37m',      # light gray
+            'INFO': '\033[94m',       # light blue
+            'NOTICE': '',             # default
+            'WARNING': '\033[91m',    # light red
+            'ERROR': '\033[93;1m'     # yellow (bold)
+        }
 
         out = ' ' * 8
         if out_lvlname != '':
@@ -488,6 +492,12 @@ class ConsoleFormatter(logging.Formatter):
 
         if msg != '':
             out += strftime('%H:%M:%S', gmtime(record.created)) + '.{:0=3d} '.format(int(record.msecs))
+
+            try:
+                if record.source != 'box':
+                    out += '{} | '.format(record.source)
+            except:
+                pass
 
             if lvlname == 'DEBUG':
                 out += '{}[{}'.format(record.filename, record.lineno)
@@ -515,11 +525,14 @@ class ClientFormatter(logging.Formatter):
             out_lvlname = ''
 
         # https://en.wikipedia.org/wiki/ANSI_escape_code
-        colorcodes = {'DEBUG': '\033[37m',      # gray
-                      'INFO': '\033[34m',       # blue
-                      'NOTICE': '',             # default
-                      'WARNING': '\033[31m',    # red
-                      'ERROR': '\033[31;1m'}    # red (bold)
+        colorcodes = {
+            'TRACE': '\033[95m',      # magenta
+            'DEBUG': '\033[37m',      # light gray
+            'INFO': '\033[94m',       # light blue
+            'NOTICE': '',             # default
+            'WARNING': '\033[91m',    # light red
+            'ERROR': '\033[93;1m'     # yellow (bold)
+        }
 
         out = ' ' * 8
         if out_lvlname != '':

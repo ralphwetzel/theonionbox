@@ -1,10 +1,14 @@
 <%
     oo_details = get('oo_details') if oo_details is None else oo_details
 
-    oo_map = False
-    if oo_details.is_relay():
-        oo_map = oo_details('latitude') is not None and oo_details('longitude') is not None
-    end
+    tor = get('tor') if tor is None else tor
+    geoip = get('geoip') if geoip is None else geoip
+    ip = tor.get_address()
+
+    geoip_lat = geoip.latitude(ip, oo_details('latitude'))
+    geoip_long = geoip.longitude(ip, oo_details('longitude'))
+        
+    oo_map = geoip_lat is not None and geoip_long is not None
 
     oo_show = get('oo_show')
 %>
@@ -56,7 +60,7 @@
             });
 
             var iconFeature = new ol.Feature({
-                geometry: new ol.geom.Point(ol.proj.fromLonLat([{{oo_details('longitude')}}, {{oo_details('latitude')}}])),
+                geometry: new ol.geom.Point(ol.proj.fromLonLat([{{geoip_long}}, {{geoip_lat}}])),
             });
             vectorSource.addFeature(iconFeature);
 
@@ -85,7 +89,7 @@
                 //                                                         tilePixelRatio: hiDPI ? 2 : 1})})
                 //        , vectorLayer],
                 view: new ol.View({
-                    center: ol.proj.fromLonLat([{{oo_details('longitude')}}, {{oo_details('latitude')}}]),
+                    center: ol.proj.fromLonLat([{{geoip_long}}, {{geoip_lat}}]),
                     zoom: 12
                 })
             });

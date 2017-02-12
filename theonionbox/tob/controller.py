@@ -1,5 +1,6 @@
 from __future__ import absolute_import
-from stem.control import Controller
+from stem.control import Controller, with_default, UNDEFINED, LOG_CACHE_FETCHES, _case_insensitive_lookup
+from stem.util import str_type, log
 from tob.tob_time import getTimer
 
 from stem.socket import ControlPort, ControlSocketFile
@@ -9,6 +10,9 @@ import socket
 import logging
 import datetime
 import sys
+import time
+
+import logging
 
 #####
 # Python version detection
@@ -104,6 +108,55 @@ class tobControlSocketFile(ControlSocketFile):
             self.control_socket = None
 
 
+import socks
+
+class tobControlProxy(ControlPort):
+
+    timeout = None
+    control_socket = None
+    proxy = None
+
+    def __init__(self, address, port=9051, proxy=None, connect=True, timeout=None):
+
+        self.timeout = timeout
+        self.proxy = proxy
+        ControlPort.__init__(self, address, port, connect)
+
+    # this is basically stem.socket.ControlPort._make_socket adapted to set a custom timeout value
+    def _make_socket(self):
+
+        if self.control_socket:
+            self.close_socket()
+
+        try:
+            self.control_socket = socks.socksocket(socket.AF_INET, socket.SOCK_STREAM)
+        except socket.error as exc:
+            raise stem.SocketError(exc)
+
+        if self.proxy is not None:
+            prxy = self.proxy.split(':')
+            if len(prxy) == 2:
+                self.control_socket.set_proxy(socks.SOCKS5, prxy[0], int(prxy[1]))
+
+        try:
+            # timeout management
+            if self.timeout:
+                self.control_socket.settimeout(self.timeout)
+                pass
+
+            self.control_socket.connect((self._control_addr, self._control_port))
+            return self.control_socket
+        except socket.error as exc:
+
+            # to compensate for a ResourceWarning 'unclosed socket'
+            self.close_socket()
+            raise stem.SocketError(exc)
+
+    def close_socket(self):
+        if self.control_socket:
+            self.control_socket.close()
+            self.control_socket = None
+
 class tobController(Controller):
 
     timestamp = 0   # Timestamp when the cache was refreshed the last time
@@ -136,6 +189,11 @@ class tobController(Controller):
         control_socket = tobControlSocketFile(path)
         return tobController(control_socket)
 
+    @staticmethod
+    def host_via_proxy(address='127.0.0.1', port=951, proxy=None, timeout=None):
+        control_socket = tobControlProxy(address=address, port=port, proxy=proxy, timeout=timeout)
+        return tobController(control_socket)
+
     def __init__(self, control_socket, is_authenticated=False):
         Controller.__init__(self, control_socket, is_authenticated)
         self.set_caching(True)  # this might be redundant yet ensures that we don't rely on a setting made in stem
@@ -160,47 +218,203 @@ class tobController(Controller):
         import stem.connection
         stem.connection.authenticate_password(self, *args, **kwargs)
 
-    def refresh(self):
+    def refresh(self, params=None):
         boxLog = logging.getLogger('theonionbox')
         boxLog.debug('Controller: Refreshing GET_INFO cache...')
 
-        self.set_caching(False)
-        if self.info_keys:
-            self.get_info(self.info_keys)
+        keys = []
+        if params is None:
+            for k in self._request_cache:
+                if len(k) > 8 and k[:8] == 'getinfo.':
+                    keys.append(k[8:])
+        else:
+            keys = params
+
+        # print(keys)
+
+        # This is only partially nice
+        # ... as we're clearing the whole cache
+        # ... and not only the 'getinfo' namespace portion!!
+        self.clear_cache()
+        if len(keys) > 0:
+            self.get_info(keys, cache_miss_warning=False)
         # If get_info raises an exception the next lines will not be executed.
         # This is intended!
-        self.set_caching(True)
         self.timestamp = getTimer().time()
+
+    def get_getinfo_keys(self):
+
+        keys = []
+        for k in self._request_cache:
+            if len(k) > 8 and k[:8] == 'getinfo.':
+                keys.append(k[8:])
+        # print(keys)
+
 
     def get_timestamp(self):
         return self.timestamp
 
-    def _get_cache_map(self, params, namespace=None):
+    # def _get_cache_map(self, params, namespace=None):
+    #     """
+    #     Queries our request cache for multiple entries.
+    #
+    #     :param list params: keys to be queried
+    #     :param str namespace: namespace in which to check for the keys
+    #
+    #     :returns: **dict** of 'param => cached value' pairs of keys present in cache
+    #     """
+    #
+    #     if namespace is 'getinfo':
+    #         for param in params
+    #
+    #     retval = Controller._get_cache_map(self, params, namespace)
+    #
+    #     if namespace == 'getinfo':
+    #         if len(params) != len(retval):
+    #             boxLog = logging.getLogger('theonionbox')
+    #
+    #             for key in retval:
+    #                 params.remove(key)
+    #
+    #             for key in params:
+    #                 # boxLog.debug("Controller: Cache miss for GETINFO parameter '{}'.".format(key))
+    #                 if key not in self.info_keys:
+    #                     boxLog.debug("Controller: Parameter '{}' added to Refresh procedure.".format(key))
+    #                     self.info_keys.append(key)
+    #
+    #     return retval
+
+    @with_default()
+    def get_info(self, params, default=UNDEFINED, get_bytes=False, cache_miss_warning=True):
         """
-        Queries our request cache for multiple entries.
+        get_info(params, default = UNDEFINED, get_bytes = False)
 
-        :param list params: keys to be queried
-        :param str namespace: namespace in which to check for the keys
+        Queries the control socket for the given GETINFO option. If provided a
+        default then that's returned if the GETINFO option is undefined or the
+        call fails for any reason (error response, control port closed, initiated,
+        etc).
 
-        :returns: **dict** of 'param => cached value' pairs of keys present in cache
+        .. versionchanged:: 1.1.0
+           Added the get_bytes argument.
+
+        :param str,list params: GETINFO option or options to be queried
+        :param object default: response if the query fails
+        :param bool get_bytes: provides **bytes** values rather than a **str** under python 3.x
+        :param bool cache_miss_warning: Emit a warning if a cache miss happens
+
+        :returns:
+          Response depends upon how we were called as follows...
+
+          * **str** with the response if our param was a **str**
+          * **dict** with the 'param => response' mapping if our param was a **list**
+          * default if one was provided and our call failed
+
+        :raises:
+          * :class:`stem.ControllerError` if the call fails and we weren't
+            provided a default response
+          * :class:`stem.InvalidArguments` if the 'params' requested was
+            invalid
+          * :class:`stem.ProtocolError` if the geoip database is known to be
+            unavailable
         """
 
-        retval = Controller._get_cache_map(self, params, namespace)
+        start_time = time.time()
+        reply = {}
 
-        if namespace == 'getinfo':
-            if len(params) != len(retval):
-                boxLog = logging.getLogger('theonionbox')
+        if isinstance(params, (bytes, str_type)):
+            is_multiple = False
+            params = set([params])
+        else:
+            if not params:
+                return {}
 
-                for key in retval:
-                    params.remove(key)
+            is_multiple = True
+            params = set(params)
 
-                for key in params:
-                    # boxLog.notice("Controller: Cache miss for GETINFO parameter '{}'.".format(key))
-                    if key not in self.info_keys:
-                        boxLog.debug("Controller: Parameter '{}' added to Refresh procedure.".format(key))
-                        self.info_keys.append(key)
+        # check for cached results
 
-        return retval
+        from_cache = [param.lower() for param in params]
+        cached_results = self._get_cache_map(from_cache, 'getinfo')
+
+        for key in cached_results:
+            user_expected_key = _case_insensitive_lookup(params, key)
+            reply[user_expected_key] = cached_results[key]
+            params.remove(user_expected_key)
+
+        for param in params:
+            if param.startswith('ip-to-country/') and self.is_geoip_unavailable():
+                # the geoip database already looks to be unavailable - abort the request
+
+                raise stem.ProtocolError('Tor geoip database is unavailable')
+
+        # if everything was cached then short circuit making the query
+        if not params:
+            if LOG_CACHE_FETCHES:
+                log.trace('GETINFO %s (cache fetch)' % ' '.join(reply.keys()))
+
+            if is_multiple:
+                return reply
+            else:
+                return list(reply.values())[0]
+
+        if cache_miss_warning is True:
+            # As this should only happen when we intentionally refresh the cache (when the warning should be disabled)
+            # we warn rather than debug to ensure we get the issue!
+            lgr = logging.getLogger('theonionbox')
+            lgr.info('Cache miss for the following parameter(s): {}'.format(params))
+
+        try:
+            response = self.msg('GETINFO %s' % ' '.join(params))
+            stem.response.convert('GETINFO', response)
+            response._assert_matches(params)
+
+            # usually we want unicode values under python 3.x
+
+            if stem.prereq.is_python_3() and not get_bytes:
+                response.entries = dict((k, stem.util.str_tools._to_unicode(v)) for (k, v) in response.entries.items())
+
+            reply.update(response.entries)
+
+            if self.is_caching_enabled():
+                to_cache = {}
+
+                for key, value in response.entries.items():
+                    key = key.lower()  # make case insensitive
+
+                    # To allow The Onion Box smooth response cycles even when connecting to a relay / bridge
+                    # via Tor socks proxy / hidden service, we cache *all* parameters and 'manually' update them with a
+                    # single call every once in a while.
+
+                    to_cache[key] = value
+                    if key.startswith('ip-to-country/'):
+                        # both cache-able and means that we should reset the geoip failure count
+                        self._geoip_failure_count = -1
+
+                self._set_cache(to_cache, 'getinfo')
+
+            log.debug('GETINFO %s (runtime: %0.4f)' % (' '.join(params), time.time() - start_time))
+
+            if is_multiple:
+                return reply
+            else:
+                return list(reply.values())[0]
+        except stem.ControllerError as exc:
+            # bump geoip failure count if...
+            # * we're caching results
+            # * this was soley a geoip lookup
+            # * we've never had a successful geoip lookup (failure count isn't -1)
+
+            is_geoip_request = len(params) == 1 and list(params)[0].startswith('ip-to-country/')
+
+            if is_geoip_request and self.is_caching_enabled() and self._geoip_failure_count != -1:
+                self._geoip_failure_count += 1
+
+                if self.is_geoip_unavailable():
+                    log.warn("Tor's geoip database is unavailable.")
+
+            log.debug('GETINFO %s (failed: %s)' % (' '.join(params), exc))
+
+            raise
 
     def get_version_short(self):
         """
@@ -318,6 +532,10 @@ class tobController(Controller):
         return iae
 
     def get_accountingStats(self):
+
+        params = ['accounting/enabled', 'accounting/hibernating', 'accounting/interval-end',
+                  'accounting/bytes', 'accounting/bytes-left']
+
         acc_stats = self._get_cache('accounting|stats')
         if acc_stats is None:
             asts = None
