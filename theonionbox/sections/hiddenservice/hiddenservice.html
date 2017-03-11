@@ -1,0 +1,92 @@
+<%
+
+# Note that this file is not a valid *.html file!
+# It is intended to be a bottlepy - style template
+# used for the scripting part of TheOnionBox!
+
+tor = get('tor') if tor is None else tor
+
+hs_configs = tor.get_hidden_service_conf(None)
+# print(hs_configs)
+# print(tor.get_info('config/names'))
+
+hs_conf_params = [
+    'HiddenServiceDir',
+    'HiddenServicePort',
+    'HiddenServiceVersion',
+    'HiddenServiceAuthorizeClient',
+    'HiddenServiceAllowUnknownPorts',
+    'HiddenServiceMaxStreams',
+    'HiddenServiceMaxStreamsCloseCircuit',
+    'HiddenServiceDirGroupReadable',
+    'HiddenServiceNumIntroductionPoints'
+]
+
+%>
+
+% if hs_configs is not None and len(hs_configs) > 0:
+
+    {{!header_row('Hidden Services', 'Configuration', 'hiddenservice')}}
+
+    % for hs_dir in hs_configs:
+        % hs_conf = hs_configs[hs_dir]
+
+        <div class = "row">
+            <div class="{{box_datum_grid}}">
+                <p class='truncate' style='color: lightgrey; '>Hidden Service Options</p>
+            </div>
+            <div class="{{box_value_grid}}">
+                <p class='config_group' style='color: lightgrey; '></p>
+            </div>
+            <div class="col-xs-1"></div>
+        </div>
+
+        <div class = "row">
+            <div class="{{box_datum_grid}}">
+                <p class="option_hover truncate ">
+                    <a href="manpage.html#HiddenServiceDir" target="manpage_window">#</a> HiddenServiceDir
+                </p>
+            </div>
+            <div class="{{box_value_grid}}">
+                <p>
+                    {{hs_dir}}
+                </p>
+            </div>
+            <div class="col-xs-1"></div>
+        </div>
+
+        % for param in hs_conf_params:
+            % if param in hs_conf:
+                % out = hs_conf[param]
+                % if param == 'HiddenServicePort':
+                    % lines = out
+                    % out = ''
+                    % for line in lines:
+                        % if len(out) > 0:
+                            % out += '<br>'
+                        % end
+                        % out += '{} {}:{}'.format(line[0], line[1], line[2])
+                    % end
+                % end
+
+                <div class = "row">
+                    <div class="{{box_datum_grid}}">
+                        <p class="option_hover truncate ">
+                            <a href="manpage.html#{{param}}" target="manpage_window">#</a> {{param}}
+                        </p>
+                    </div>
+                    <div class="{{box_value_grid}}">
+                        <p>
+                            {{out}}
+                        </p>
+                    </div>
+                    <div class="col-xs-1"></div>
+                </div>
+            % end
+        % end
+    % end
+
+    <hr>
+
+% end
+
