@@ -108,7 +108,7 @@
                         fp = nodes[nn][1:]
                     end
 %>
-                    {{!group(group_nn, color='black', bold=True, target='family_node_'+(fp if fp is not None else group_nn))}}
+                    {{!group_row(group_nn, color='black', bold=True, target='family_node_'+(fp if fp is not None else group_nn))}}
                     % if fp is not None:
                         {{!standard_row('Fingerprint', fp)}}
                     % end
