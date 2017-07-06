@@ -45,13 +45,16 @@ If you intend to use the advanced GeoIP2 functionality, you have to install as w
 If you intend to operate The Box in SSL mode, you have to install as well the module [ssl](https://pypi.python.org/pypi/ssl).
 
 
-Those modules are usually installed using pip, e.g.:
+Those modules are usually installed using `pip`, e.g.:
 
 ```
 pip install psutil
 ```
 
-Please use always the latest version available for your Python release. Remember that you (usually) need to have root privileges to operate pip, e.g.: sudo -u pip install psutil`.
+Please use always the latest version available for your Python release. Remember that you (usually) need to have root privileges to operate pip, e.g.: `sudo -u pip install psutil`.
+
+> Check this [Q&A](README_v4.md:#i-receive-a-socks5h-not-supported-warning-what-shall-i-do) if your `pip` installation is broken or if you receive a `socks5h proxy not supported` warning.
+
 
 ## Basic Operation
 The Box of course provides numerous setting to customize its operational behaviours. Yet it as well has great default settings and is able to detect the usual Tor setups without further configuration. Therefore, if you are operating your node at `ControlPort 9051` (which is the default for a relay) or `ControlPort 9151` (the default for TorBrowser) just open a console, change to the directory where you installed your Box and launch it:
@@ -124,7 +127,7 @@ If the curser hovers over the name of a configuration parameter, a hashtag is di
 
 There are some parameters that can be defined (e.g. via the command line), despite Tor doesn't report that those are set. The following table lists those parameters:
 
-|
+| |
 |---|
 | __OwningControllerProcess |
 
@@ -136,7 +139,8 @@ The section _Hidden Services | Configuration_ displays the configuration paramet
 ![image](docs/images/hidden.png)
 
 This section is only available if at least one hidden service is configured on this Tor node.
- ---
+
+---
 
 ### Tor | Local Status
 The section _Tor | Local Status_ displays information that the Tor node monitored knows about itself and its hosting environment.
@@ -152,7 +156,7 @@ The section _Tor | Network Status_ displays information provided by [Onionoo](ht
 
 Those information are fetched regularly from Onionoo. If not available (which could happen when you connect to a node for the first time or when operating via slow connections), you will be asked to reload the page.
 
-Only parts of this section are available if the Tor node monitored is operated as a bridge.
+Only portions of this section are available if the Tor node monitored is operated as a bridge.
 
 _Location_ by default provides the information Onionoo knows about the location of the Tor node & shows the location on a map.
 
@@ -175,9 +179,7 @@ The number of available charts depends on the age of the Tor node monitored. You
 ---
 
 ### Tor | Control Center
-Do you intend to monitor more than one Tor node?  
-Are you interested in the Oninooo data of other Tor nodes?  
-The section _Tor | Control Center_ provides that functionality.
+Do you intend to monitor more than one Tor node? Are you interested in the Oninooo data of other Tor nodes? The section _Tor | Control Center_ provides that functionality.
 
 ![image](docs/images/control.png)
 
@@ -186,6 +188,7 @@ If you provided access control information for additional Tor nodes in the confi
 Enter a search phrase - which should be a (part of a) nickname of a Tor node or a (portion of a) fingerprint - into the _Search_ field and press enter. This search phrase will be used to query Onionoo - and the result presented in a popup bubble. If the search was successful, you may click on the links provided to display the Tor network status protocol data of that Tor node.
 
 ---
+
 ### Tor | Messages
 The section _Tor | Message_ displays the messages received from the Tor node(s) monitored and from your Box.
 
@@ -208,7 +211,7 @@ If you do not provide a dedicated `path_to_the_configuration_file` via the comma
 * in a directory named `config` below the directory of `theonionbox.py`: `./config/theonionbox.cfg`
 
 ### Configuration file structure
-The configuration file of _The Onion Box_ is a simple text file "ini-style" with some mandatory and some optional sections. A template of that file is available as `./config/theonionbox.example`.
+The configuration file of _The Onion Box_ is a simple text file "ini-style" with some mandatory and some optional sections. A template of that file is available as [`./config/theonionbox.example`](theonionbox/config/theonionbox.example) in the directory of `theonionbox.py`.
 
 #### Section `[config]`
 ```
@@ -282,6 +285,7 @@ _The Onion Box_ as of version 4 only supports configuration file protocol `2`.
 ```
 
 #### Section `[Tor]`
+These are the parameters to connect and authenticate to your "primary" (or first or main) Tor node to be monitored.
 
 ```
 [Tor]
@@ -473,7 +477,45 @@ For each Tor node you intend to monitor - in addition to the "primary" node conf
 ## Note: There is no default setting.
 ```
 
-## Command line parameters
+## Commandline parameters
+
+_The Onion Box_ may be configured by a small number of commandline parameters:
+
+```
+-c <path> | --config=<path>: Provide path & name of configuration file.
+                             Note: This is only necessary when NOT using
+                             './theonionbox.cfg' or './config/theonionbox.cfg'.
+-d | --debug: Switch on DEBUG mode.
+-t | --trace: Switch on TRACE mode (which is more verbose than DEBUG mode).
+-h | --help: Prints this information.
+-m <mode> | --mode=<mode>: Configure The Box to run as 'service'.
+
+```
+
+`DEBUG` mode only affects the Box' core code. It forwards the debug messages of _The Onion Box_ to the console or the log file. If you encounter any problems, you may enable `DEBUG` mode to check what's happing.
+
+`TRACE` additionally forwards debug level messages of `bottle` (the WSGI micro web-framework used by the Box) and trace level messages of `stem` (Tor controller library). This mode is really noisy ... and the ultimate lever to follow the operation of _The Onion Box_ in case of problems.
 
 ## Advanced Operation
 This chapter explains how to configure or set up _The Onion Box_ for dedicated use cases.
+
+## Q&A
+### I receive a 'socks5h not supported' warning. What shall I do?
+If you receive this message, your `requests` module installation most probably is outdated - and not supporting `socks5h` proxy operations.
+
+If you do the obvious thing and try to `pip install requests --upgrade`, you risk to destroy your `pip` functionality.
+
+Therefore you should first
+
+`sudo easy_install -U pip` (Python 2.x)  
+or  
+`sudo easy_install3 -U pip` (Python 3.x)  
+
+to install the latest pip version **together with the a very recent version of `requests`**.
+
+> This works even if your `pip` installation is already broken and issuing e.g. an ´IncompleteRead´ error.
+
+After that, you could `pip install requests --upgrade` if you like, yet usually it shouldn't be necessary any more.
+
+
+
