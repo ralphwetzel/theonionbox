@@ -1,6 +1,8 @@
 # Draft
 Please be advised that this documentation covers _The Onion Box_ v4.0 which hasn't been released so far.
 
+---
+
 # The Onion Box
 _The Onion Box_ provides a web interface to monitor the operation of
 a [Tor](https://www.torproject.org) node. It is able to monitor any Tor node operated as relay, as bridge and even as client - as long as it can establish a connection to the node and authenticate successfully.
@@ -14,6 +16,37 @@ A single instance of _The Onion Box_ is able to provide monitoring functionality
 Above that, _The Onion Box_ is able to display Tor network status protocol data for any Tor node known by [Onionoo](http://onionoo.torproject.org).
 
 
+[TOC]: # "## Table of Contents"
+## Table of Contents
+- [Supported environment](#supported-environment)
+- [Installation](#installation)
+- [Basic Operation](#basic-operation)
+- [The Web Interface](#the-web-interface)
+    - [Header](#header)
+    - [General Information](#general-information)
+    - [Configuration](#configuration)
+    - [Hidden Services](#hidden-services)
+    - [Local Status](#local-status)
+    - [Network Status](#network-status)
+    - [Control Center](#control-center)
+    - [Messages](#messages)
+- [Configuration file](#configuration-file)
+    - [Location](#location)
+    - [Structure](#structure)
+- [Command line parameters](#command-line-parameters)
+- [Advanced Operation](#advanced-operation)
+    - [Monitoring a remote Tor node](#monitoring-a-remote-tor-node)
+    - [Monitoring a remote Tor node via the Tor network](#monitoring-a-remote-tor-node-via-the-tor-network)
+- [_The Onion Box_ as system service (aka daemon)](#the-onion-box-as-system-service-aka-daemon)
+    - [... on FreeBSD](#-on-freebsd)
+    - [... using init.d](#-using-initd)
+    - [... using systemd](#-using-systemd)
+- [Q&A](#qa)
+    - [I receive a 'socks5h not supported' warning. What shall I do?](#i-receive-a-socks5h-not-supported-warning-what-shall-i-do)
+- [Acknowledgments](#acknowledgments)
+
+---
+
 ## Supported environment
 _The Onion Box_ is a Python application, developed with v2.7.13 and v3.6.0.
 
@@ -22,6 +55,7 @@ By default, it should operate successfully on every platform providing Python su
 - FreeBSD
 - macOS | Darwin
 - Raspbian | Jessie
+- Unbutu 16.04
 - Windows 10
 
 ## Installation
@@ -53,8 +87,9 @@ pip install psutil
 
 Please use always the latest version available for your Python release. Remember that you (usually) need to have root privileges to operate pip, e.g.: `sudo -u pip install psutil`.
 
-> Check this [Q&A](README_v4.md:#i-receive-a-socks5h-not-supported-warning-what-shall-i-do) if your `pip` installation is broken or if you receive a `socks5h proxy not supported` warning.
+> Check this [Q&A](#i-receive-a-socks5h-not-supported-warning-what-shall-i-do) if your `pip` installation is broken or if you receive a `socks5h proxy not supported` warning.
 
+---
 
 ## Basic Operation
 The Box of course provides numerous setting to customize its operational behaviours. Yet it as well has great default settings and is able to detect the usual Tor setups without further configuration. Therefore, if you are operating your node at `ControlPort 9051` (which is the default for a relay) or `ControlPort 9151` (the default for TorBrowser) just open a console, change to the directory where you installed your Box and launch it:
@@ -79,6 +114,8 @@ Your Box will perform some steps to initialize and then wait for connections at 
 
 At that stage, just open your favourite web browser and connect to your Box. Enjoy monitoring!
 
+---
+
 ## The Web Interface
 The web interface of _The Onion Box_ consists of a number of sections. If a section is displayed and how the section looks like, depends on the data your Box received from the Tor node monitored or knows about it from the Tor network status protocol. The web interface is generated on demand based on the latest data available.
 
@@ -99,7 +136,7 @@ If your Box discovers that there is an update of it's code available, a button i
 
 ---
 
-### Host | General Information
+### General Information
 The section _Host | General Information_ displays information regarding the host system.
 
 ![image](docs/images/generalinfo.png)
@@ -112,7 +149,7 @@ If the host provides several CPU cores, you may click on the _CPU Usage_ chart t
 
 ---
 
-### Tor | Configuration
+### Configuration
 The section _Tor | Configuration_ displays the configuration parameters of the Tor node monitored:
 
 ![image](docs/images/configuration.png)
@@ -125,7 +162,7 @@ The rest of this section displays all parameters that differ from the Tor intern
 
 If the curser hovers over the name of a configuration parameter, a hashtag is displayed providing a link to the Tor documentation. On mobile devices, you have to click on the name to make the hashtag appear.
 
-There are some parameters that can be defined (e.g. via the command line), despite Tor doesn't report that those are set. The following table lists those parameters:
+There are some parameters that can be defined (e.g. via the command line), despite Tor doesn't signal back that those are set. The following table lists those parameters:
 
 | |
 |---|
@@ -133,7 +170,7 @@ There are some parameters that can be defined (e.g. via the command line), despi
 
 ---
 
-### Hidden Services | Configuration
+### Hidden Services
 The section _Hidden Services | Configuration_ displays the configuration parameters for the hidden service(s) of the Tor node monitored:
 
 ![image](docs/images/hidden.png)
@@ -142,14 +179,14 @@ This section is only available if at least one hidden service is configured on t
 
 ---
 
-### Tor | Local Status
+### Local Status
 The section _Tor | Local Status_ displays information that the Tor node monitored knows about itself and its hosting environment.
 
 ![image](docs/images/local.png)
 
  ---
 
-### Tor | Network Status
+### Network Status
 The section _Tor | Network Status_ displays information provided by [Onionoo](http://onionoo.torproject.org), the Tor network status protocol, concerning the Tor node monitored.
 
 ![image](docs/images/network.png)
@@ -178,7 +215,7 @@ The number of available charts depends on the age of the Tor node monitored. You
 
 ---
 
-### Tor | Control Center
+### Control Center
 Do you intend to monitor more than one Tor node? Are you interested in the Oninooo data of other Tor nodes? The section _Tor | Control Center_ provides that functionality.
 
 ![image](docs/images/control.png)
@@ -189,7 +226,7 @@ Enter a search phrase - which should be a (part of a) nickname of a Tor node or 
 
 ---
 
-### Tor | Messages
+### Messages
 The section _Tor | Message_ displays the messages received from the Tor node(s) monitored and from your Box.
 
 ![image](docs/images/messages.png)
@@ -199,22 +236,24 @@ You can alter the noisiness of the Tor node monitored by mean of the _Level_ sel
 
 This section is only available for controlled nodes.
 
-> The message system of _The Onion Box_ cannot be manipulated via the web interface. If you are interested in receiving _DEBUG_ or _TRACE_ message from your Box, you have to set the appropriate command line parameter.
+> The message system of _The Onion Box_ cannot be manipulated via the web interface. If you are interested in receiving _DEBUG_ or _TRACE_ message from your Box, you have to set the appropriate [command line](#command-line-parameters) parameter.
 
-## Configuration
+---
+
+## Configuration file
 
 By design, _The Onion Box_ is able to detect a typical local Tor node installation and will connect without further configuration. Above that, you may configure the way of operation of your Box via a configuration file.
 
-### Configuration file location
-If you do not provide a dedicated `path_to_the_configuration_file` via the command line, _The Onion Box_ checks for availability of a file named `theonionbox.cfg` at one of the following locations:
+### Location
+If you do not provide a dedicated `--config=<path>` to define the path to a configuration file via the [command line](#command-line-parameters) , _The Onion Box_ checks for availability of a file named `theonionbox.cfg` at one of the following locations (in the given order):
 * in the same directory as `theonionbox.py`: `./theonionbox.cfg`
 * in a directory named `config` below the directory of `theonionbox.py`: `./config/theonionbox.cfg`
 
-### Configuration file structure
-The configuration file of _The Onion Box_ is a simple text file "ini-style" with some mandatory and some optional sections. A template of that file is available as [`./config/theonionbox.example`](theonionbox/config/theonionbox.example) in the directory of `theonionbox.py`.
+### Structure
+The configuration file of _The Onion Box_ is a simple text file "ini-style". A template of that file is available as [`./config/theonionbox.example`](theonionbox/config/theonionbox.example) in the directory of `theonionbox.py`.
 
 #### Section `[config]`
-```
+```ini
 [config]
 ## v4.0 will only support version = 2
 protocol = 2
@@ -222,7 +261,7 @@ protocol = 2
 _The Onion Box_ as of version 4 only supports configuration file protocol `2`.
 
 #### Section `[TheOnionBox]`
-```
+```ini
 [TheOnionBox]
 ## Address of your Onion Box:
 ## This defaults to 0.0.0.0 to listen on all interfaces.
@@ -286,8 +325,7 @@ _The Onion Box_ as of version 4 only supports configuration file protocol `2`.
 
 #### Section `[Tor]`
 These are the parameters to connect and authenticate to your "primary" (or first or main) Tor node to be monitored.
-
-```
+```ini
 [Tor]
 ## How shall we establish the connection to your primary (controlled) Tor node?
 ## => via a ControlSocket (define additionally 'socket' parameter):
@@ -355,7 +393,7 @@ These are the parameters to connect and authenticate to your "primary" (or first
 ```
 
 #### Section `[TorProxy]`
-```
+```ini
 [TorProxy]
 ## Note: Operation via a proxy given by a unix domain socket is (as of 04/2017) not supported!
 
@@ -405,7 +443,9 @@ These are the parameters to connect and authenticate to your "primary" (or first
 #### Controlled Hosts
 For each Tor node you intend to monitor - in addition to the "primary" node configured in section `[Tor]` - you have to add a dedicated section proving the access data for its `ControlPort`.
 
-```
+> You must not name any of the following sections 'config', 'TheOnionBox', 'Tor' or 'TorProxy'.
+
+```ini
 #####
 ## Those are the Tor nodes to be controlled with the control center
 ## Note: You must not name any of the following sections 'config', 'TheOnionBox', 'Tor' or 'TorProxy'.
@@ -477,11 +517,11 @@ For each Tor node you intend to monitor - in addition to the "primary" node conf
 ## Note: There is no default setting.
 ```
 
-## Commandline parameters
+## Command line parameters
 
 _The Onion Box_ may be configured by a small number of commandline parameters:
 
-```
+```ini
 -c <path> | --config=<path>: Provide path & name of configuration file.
                              Note: This is only necessary when NOT using
                              './theonionbox.cfg' or './config/theonionbox.cfg'.
@@ -494,28 +534,115 @@ _The Onion Box_ may be configured by a small number of commandline parameters:
 
 `DEBUG` mode only affects the Box' core code. It forwards the debug messages of _The Onion Box_ to the console or the log file. If you encounter any problems, you may enable `DEBUG` mode to check what's happing.
 
-`TRACE` additionally forwards debug level messages of `bottle` (the WSGI micro web-framework used by the Box) and trace level messages of `stem` (Tor controller library). This mode is really noisy ... and the ultimate lever to follow the operation of _The Onion Box_ in case of problems.
+`TRACE` additionally forwards debug level messages of `bottle` (the WSGI micro web-framework used by the Box) and trace level messages of `stem` (the Tor controller library). This mode is really noisy ... and the ultimate lever to follow the operation of _The Onion Box_ in case of problems.
 
 ## Advanced Operation
 This chapter explains how to configure or set up _The Onion Box_ for dedicated use cases.
 
+### Monitoring a remote Tor node
+
+### Monitoring a remote Tor node via the Tor network
+
+
+## _The Onion Box_ as system service (aka daemon)
+After you've ensured that your Box operates without issues, you can set it up to operate as a background application, which is the same as a system service or daemon. The steps to perform this differ depending on the technology used by your operating derivate.
+
+When operated as a service, **log files** are per default stored into `<theonionbox-root-path>/log/theonionbox.log` and rotated regularly. If you create the directory `/var/log/theonionbox` and set the propper access rights for the user running `theonionbox.py`, the log files will be written there.
+
+### ... on FreeBSD
+Let's assume, you've stored your OnionBox files in a directory called `/usr/home/pi/theonionbox`. Your intension is to run The Box as user `pi` (which is by far better then operating it as `root`!).
+
+* Change to the directory where you stored the OnionBox files: `cd /usr/home/pi/theonionbox`
+* Ensure that `theonionbox.py` is executable: `sudo chmod 755 ./theonionbox.py`
+* Change to the `FreeBSD` directory within `/usr/home/pi/theonionbox`: `cd FreeBSD`
+* Within this directory you'll find the script [`theonionbox.sh`](FreeBSD/theonionbox.sh) prepared to launch your OnionBox as a background service.
+* Ensure that you set the path to the OnionBox files and the user to run the service as intended. Therefore open the file with an editor (here we use _nano_): `nano theonionbox.sh`
+* According to our assumptions above, set line 29 to `: ${theonionbox_dir="/usr/home/pi/theonionbox"}`.
+* Additionally set line 28 to `: ${theonionbox_user="pi"}`.
+* Close _nano_ and save the changes to `theonionbox.sh`. (Press _Strg+X_ then follow the instructions given!)
+* Copy the altered init script to `/usr/local/etc/rc.d`: `sudo cp ./theonionbox.sh /usr/local/etc/rc.d/theonionbox`
+* Change to `/usr/local/etc/rc.d`: `cd /usr/local/etc/rc.d`
+* Make sure the script you've copied before to `/usr/local/etc/rc.d` is executable: `sudo chmod 755 ./theonionbox`
+* Register this service to the system: `sudo echo 'theonionbox_enable="YES"' >>/etc/rc.conf`
+* Check that everything works so far: Launch your Onion Box for the first time as a service `sudo service theonionbox start`. This should give you no error messages.
+* Check that your Onion Box is active: `sudo service theonionbox status` should tell you `theonionbox is running as pid xxx.` ... yet might complain about a `$command_interpreter` mismatch - which isn't polite but doesn't hurt.
+* That's it!
+
+**Troubleshooting**
+* Please ensure that `/usr/sbin/daemon` is a valid path. If not either edit `/usr/local/etc/rc.d/theonionbox` line 49 or create a symbolic link to your installation's path to `daemon` as `/usr/sbin/daemon`.
+* `/usr/local/bin/python` should be defined as well being a symbolic link to the python version you intend to operate with.
+
+### ... using init.d
+Let's assume, you've stored your OnionBox files in a directory called `/home/pi/theonionbox`. Your intension is to run The Box as user `pi` (which is by far better then operating it as `root`!).
+
+* Change to the directory where you stored the OnionBox files: `cd /home/pi/theonionbox`
+* Ensure that `theonionbox.py` is executable: `sudo chmod 755 ./theonionbox.py`
+* Change to the `init.d` directory within `/home/pi/theonionbox`: `cd init.d`
+* Within this directory you'll find the init script [`theonionbox.sh`](init.d/theonionbox.sh) prepared to launch your OnionBox as a background service.
+* Ensure that you set the path to the OnionBox files and the user to run the service as intended. Therefore open the file with an editor (here we use _nano_): `nano theonionbox.sh`
+* According to our assumptions above, set line 19 to `DIR=/home/pi/theonionbox`.
+* Additionally set line 28 to `DAEMON_USER=pi`.
+* Close _nano_ and save the changes to `theonionbox.sh`. (Press _Strg+X_ then follow the instructions given!)
+* Copy the altered init script to `/etc/init.d`: `sudo cp ./theonionbox.sh /etc/init.d`
+* Change to `/etc/init.d`: `cd /etc/init.d`
+* Make sure the script you've copied before to `/etc/init.d` is executable: `sudo chmod 755 ./theonionbox.sh`
+* Register this service to the system: `sudo system daemon-reload`
+* Check that everything works so far: Launch your Onion Box for the first time as a service `sudo ./theonionbox.sh start`. This should give you no error messages but feedback a nice \[OK\].
+* Check that your Onion Box is active: `sudo ./theonionbox.sh status` should tell you `active (running)`.
+* Finally run `sudo update-rc.d theonionbox.sh defaults` to link `theonionbox.sh` into init's default launch sequence.
+
+### ... using systemd
+- Create user `theonionbox`
+- Install _The Onion Box_ to `~theonionbox` and `sudo chmod 755 ./theonionbox.py`
+- Edit `~theonionbox/config/theonionbox.cfg`to your needs
+- Create service file with `sudo vi /etc/systemd/system/theonionbox.service` with the following content:
+
+```ini
+# Run The Onion Box as background service
+# https://github.com/ralphwetzel/theonionbox/
+
+[Unit]
+Description=The Onion Box
+Documentation=https://github.com/ralphwetzel/theonionbox/wiki
+After=network.target
+
+[Service]
+Type=simple
+User=theonionbox
+WorkingDirectory=~
+ExecStart=/srv/theonionbox/theonionbox.py --mode=service
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+> Alternatively you could copy the file from [here](systemd/theonionbox.service).
+
+- Start the new service with `sudo systemctl start theonionbox.service`
+- If everything is okay, start the service on next boot with `sudo systemctl enable theonionbox.service`
+
 ## Q&A
 ### I receive a 'socks5h not supported' warning. What shall I do?
-If you receive this message, your `requests` module installation most probably is outdated - and not supporting `socks5h` proxy operations.
+If you receive this message, your `requests` module installation most probably is outdated - and not supporting _socks5h_ proxy operations.
 
 If you do the obvious thing and try to `pip install requests --upgrade`, you risk to destroy your `pip` functionality.
 
-Therefore you should first
-
+Therefore you should first  
 `sudo easy_install -U pip` (Python 2.x)  
 or  
-`sudo easy_install3 -U pip` (Python 3.x)  
+`sudo easy_install3 -U pip` (Python 3.x)
+to install the latest `pip` version **together with a very recent version of `requests`**.
 
-to install the latest pip version **together with the a very recent version of `requests`**.
-
-> This works even if your `pip` installation is already broken and issuing e.g. an ´IncompleteRead´ error.
+> This works even if your `pip` installation is already broken and issuing e.g. an _IncompleteRead_ error.
 
 After that, you could `pip install requests --upgrade` if you like, yet usually it shouldn't be necessary any more.
 
+## Acknowledgments
+Day by day it is a repetitive pleasure to learn from uncountable people who share their knowledge, their time and their work with the world. This section shall express my gratefulness to those who supported me solving issues I encountered during the last years. **Thank You!**
 
+[SC. Phillips](http://www.scphillips.com) whose [Blog](http://blog.scphillips.com/posts/2013/07/getting-a-python-script-to-run-in-the-background-as-a-service-on-boot/) gave a perfect starting point when I tried to operate the Box as a background service.
 
+All the people contributing to [StackOverflow](https://stackoverflow.com/)
+who taught me Python by example.
+
+[svengo](https://github.com/svengo) who [contributed](https://github.com/ralphwetzel/theonionbox/issues/24) the procedure to operate _The Onion Box_ as a daemon with [systemd](#-using-systemd) .
