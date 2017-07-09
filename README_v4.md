@@ -35,8 +35,14 @@ Above that, _The Onion Box_ is able to display Tor network status protocol data 
     - [Structure](#structure)
 - [Command line parameters](#command-line-parameters)
 - [Advanced Operation](#advanced-operation)
-    - [Monitoring a remote Tor node](#monitoring-a-remote-tor-node)
-    - [Monitoring a remote Tor node via the Tor network](#monitoring-a-remote-tor-node-via-the-tor-network)
+    - [Cookie Authentication](#cookie-authentication)
+    - [Password Authentication](#password-authentication)
+    - [No Authentication](#no-authentication)
+    - [Hidden Service Authentication](#hidden-service-authentication)
+    - [ControlSocket](#controlsocket)
+    - [Basic Tor configuration](#basic-tor-configuration)
+    - [ControlPort and ControlSocket](#controlport-and-controlsocket)
+    - [Modes of Authentication](#modes-of-authentication)
 - [_The Onion Box_ as system service (aka daemon)](#the-onion-box-as-system-service-aka-daemon)
     - [... on FreeBSD](#-on-freebsd)
     - [... using init.d](#-using-initd)
@@ -45,7 +51,6 @@ Above that, _The Onion Box_ is able to display Tor network status protocol data 
     - [I receive a 'socks5h not supported' warning. What shall I do?](#i-receive-a-socks5h-not-supported-warning-what-shall-i-do)
 - [Acknowledgments](#acknowledgments)
 
----
 
 ## Supported environment
 _The Onion Box_ is a Python application, developed with v2.7.13 and v3.6.0.
@@ -79,17 +84,11 @@ If you intend to use the advanced GeoIP2 functionality, you have to install as w
 If you intend to operate The Box in SSL mode, you have to install as well the module [ssl](https://pypi.python.org/pypi/ssl).
 
 
-Those modules are usually installed using `pip`, e.g.:
-
-```
-pip install psutil
-```
+Those modules are usually installed using `pip`, e.g.: `pip install psutil`
 
 Please use always the latest version available for your Python release. Remember that you (usually) need to have root privileges to operate pip, e.g.: `sudo -u pip install psutil`.
 
 > Check this [Q&A](#i-receive-a-socks5h-not-supported-warning-what-shall-i-do) if your `pip` installation is broken or if you receive a `socks5h proxy not supported` warning.
-
----
 
 ## Basic Operation
 The Box of course provides numerous setting to customize its operational behaviours. Yet it as well has great default settings and is able to detect the usual Tor setups without further configuration. Therefore, if you are operating your node at `ControlPort 9051` (which is the default for a relay) or `ControlPort 9151` (the default for TorBrowser) just open a console, change to the directory where you installed your Box and launch it:
@@ -114,16 +113,12 @@ Your Box will perform some steps to initialize and then wait for connections at 
 
 At that stage, just open your favourite web browser and connect to your Box. Enjoy monitoring!
 
----
-
 ## The Web Interface
 The web interface of _The Onion Box_ consists of a number of sections. If a section is displayed and how the section looks like, depends on the data your Box received from the Tor node monitored or knows about it from the Tor network status protocol. The web interface is generated on demand based on the latest data available.
 
 > Tip: If a dedicated section is not displayed, just reload the page. Press `F5` or `command + R` to re-run the page creation process.
 
 If you want to see _The Onion Box_ in action, just connect to myOnionBox (the system set up for the development activities). Be aware that this is an onion link providing access a Tor Hidden Service. You need [TorBrowser](https://www.torproject.org/projects/torbrowser.html.en) or a similar tool to follow this link.
-
----
 
 ### Header
 The Header of the page displays some basic information about the Tor node monitored.
@@ -133,8 +128,6 @@ The Header of the page displays some basic information about the Tor node monito
 If you connected to this node via password authentication, you'll find a Logout Button in the upper right corner.
 
 If your Box discovers that there is an update of it's code available, a button in the upper left corner is displayed, providing access to some further information - and a link to GitHub.
-
----
 
 ### General Information
 The section _Host | General Information_ displays information regarding the host system.
@@ -146,8 +139,6 @@ This section is only available if the Box is running at the same physical device
 _Latest Reboot_ as well as _Temperature_ are only available on supported operating systems.
 
 If the host provides several CPU cores, you may click on the _CPU Usage_ chart to get a popup window displaying a seperate usage chart for each core.
-
----
 
 ### Configuration
 The section _Tor | Configuration_ displays the configuration parameters of the Tor node monitored:
@@ -164,14 +155,14 @@ If the curser hovers over the name of a configuration parameter, a hashtag is di
 
 There are some parameters that can be defined (e.g. via the command line), despite Tor doesn't signal back that those are set. The following table lists those parameters:
 
-| |
+| Non-displayable Parameters |
 |---|
 | __OwningControllerProcess |
 
 ---
 
 ### Hidden Services
-The section _Hidden Services | Configuration_ displays the configuration parameters for the hidden service(s) of the Tor node monitored:
+The section _Tor | Hidden Services_ displays the configuration parameters for the hidden service(s) of the Tor node monitored:
 
 ![image](docs/images/hidden.png)
 
@@ -216,7 +207,7 @@ The number of available charts depends on the age of the Tor node monitored. You
 ---
 
 ### Control Center
-Do you intend to monitor more than one Tor node? Are you interested in the Oninooo data of other Tor nodes? The section _Tor | Control Center_ provides that functionality.
+Do you intend to monitor more than one Tor node? Are you interested in the Oninooo data of other Tor nodes? The section _Box | Control Center_ provides that functionality.
 
 ![image](docs/images/control.png)
 
@@ -227,7 +218,7 @@ Enter a search phrase - which should be a (part of a) nickname of a Tor node or 
 ---
 
 ### Messages
-The section _Tor | Message_ displays the messages received from the Tor node(s) monitored and from your Box.
+The section _Box | Messages_ displays the messages received from the Tor node(s) monitored and from your Box.
 
 ![image](docs/images/messages.png)
 
@@ -537,12 +528,107 @@ _The Onion Box_ may be configured by a small number of commandline parameters:
 `TRACE` additionally forwards debug level messages of `bottle` (the WSGI micro web-framework used by the Box) and trace level messages of `stem` (the Tor controller library). This mode is really noisy ... and the ultimate lever to follow the operation of _The Onion Box_ in case of problems.
 
 ## Advanced Operation
-This chapter explains how to configure or set up _The Onion Box_ for dedicated use cases.
+Monitoring a Tor node in the end just demands two prerequisites: Access to an interface to control the node and a way to authenticate against the node. Therefore _Advanced Operations_ is all about the different ways to provide a controlling interface and the different ways of authentication.
 
-### Monitoring a remote Tor node
+### Cookie Authentication
+By default (defined in the configuration file [`torrc.default`](#configuration)) a Tor node offers _Cookie Authentication_ as standard authentication method.  
 
-### Monitoring a remote Tor node via the Tor network
+According to the Tor manual, when using _Cookie Authentication_, the Tor node allows "connections on the control port when the connecting process knows the contents of a file named `control_auth_cookie`, which Tor will create in its data directory".  
+This implies that _Cookie Authentication_ can only be used locally - which means that this authentication method is only suitable if you have installed _The Onion Box_ on the same system that hosts the Tor node you intend to monitor.  
+To access `control_auth_cookie`, your Box needs to have the correct privileges. This can be achieved most easily by running it as the same user as the Tor node (which e.g. is _debian-tor_ on Debian systems): `sudo -u debian-tor python theonionbox.py`
 
+
+### Password Authentication
+By definition of the `HashedControlPassword` parameter in the `torrc` configuration file of your Tor node, you can advise Tor to operate with _Password Authentication_.
+
+> To create a password hash of _mypassword_ issue a `sudo tor --hash-password mypassword`.
+
+_Password Authentication_ provides a way of access control to your Tor node even if you monitor a remote node.
+
+If your Box discoveres that _Password Authentication_ is required, it will ask for that password providing a Login Screen:
+
+![Login Screen](docs/images/login.png)
+
+
+### No Authentication
+There might be situations, where access control to the ControlPort is not demanded or even obstructive.
+In that case it may be necessary to explicitely turn off _Cookie Authentication_ in your `torrc` - as it might be enabled by default: `CookieAuthentication 0`.
+
+### ControlSocket
+By default (defined in the configuration file [`torrc.default`](#configuration)) a Tor node offers a `ControlSocket` as standard controlling interface. This default socket is e.g. defined as `/var/run/tor/control`.
+
+A `ControlSocket` can only been accessed locally; therefore you need to install _The Onion Box_ on the same system that hosts the Tor node you intend to monitor.
+To access a `ControlSocket` the process trying to connect needs to have the correct privileges. This can be achieved most easily by running your Box as the same user as the Tor node (which e.g. is _debian-tor_ on Debian systems): `sudo -u debian-tor python theonionbox.py`
+
+
+
+This chapter explains how to configure _The Onion Box_ and sometimes as well the Tor node to be monitored for dedicated use cases.
+
+### Additional remarks
+On Unix or Unix-like systems it is preferred to use a `ControlSocket` rather than a `ControlPort` as interface to the control port of the Tor node. Providing a socket ensures that only a process local to the system is able to connect.
+
+
+### Basic Tor configuration
+ControlPort + ControlSocket is open
+
+
+## Hidden Service Operations
+_The Onion Box_ supports as well remote monitoring of a Tor node via the Tor notwork services. While it might be a bit more effort to set up such a connection, it provides the advantage that the whole traffic circulates only within the Tor eco system; there is no footprint of the monitoring activity in the open internet, adding a further layer of security to your operations.
+
+### Basic configuration
+To create that kind of connection, you have to prepare a hidden service that allows connection to the ControlPort of the Tor node to be monitored - by adding
+```ini
+HiddenServiceDir /var/lib/tor/theonionbox/
+HiddenServicePort 9876 /var/run/tor/control
+```
+to this node's `torrc`.  
+The first parameter of `HiddenServicePort` is the virtual ControlPort we'll connect to later.  
+The second parameter of `HiddenServicePort` is the local controlling interface of the node - which might be a `ControlSocket` (as in the example shown) or a `ControlPort` (like `127.0.0.1:9051`).
+
+After a restart of the Tor node by `sudo service tor restart`, you will find the onion address of your Hidden Service in `<HiddenServiceDir>/hostname`. The address usually is a 16 character string followed by `.onion`, e.g. 7an5onionad2res2.onion.
+
+To monitor this Tor node, add a dedicated section to the configuration file of your Box.
+```
+[MyProxyNode]
+control=proxy
+host=7an5onionad2res2.onion
+port=9876
+```
+Provide as `host` parameter the onion address of your hidden service, as `port` the virtual ControlPort number you defined in the node's `torrc`.
+
+### Access control
+
+As this Hidden Service configuration exposes the ControlPort of your Tor node to everyone who is able to connect to a Hidden Service, you have to consider a way to control the access to prevent misuse.
+
+The first option is to enable [_Password Authentication_](#password-authentication) on the Tor node monitored.
+
+Alternatively you could take advantage of Tor's _Hidden Service Client Authorization_ feature. In short, it restricts access to the Hidden Service to those clients that are able to provide the correct _Authorization Cookie_.
+
+To enable this feature, edit again your Tor node's `torrc`. Alter the Hidden Service section to
+```ini
+HiddenServiceDir /var/lib/tor/theonionbox/
+HiddenServicePort 9876 /var/run/tor/control
+HiddenServiceAuthorizeClient stealth myBoxConnector
+```
+The second parameter of `HiddenServiceAuthorizeClient` is the **unique** username you intend to use to operate this connection.
+> Please do **not** use _myBoxConnector_ as in the example above; this term definitely is no more _unique_ and therefore quite unsuitable to secure your connection!
+
+After another restart of Tor via `sudo service tor restart`, you will find the authorization cookie for the given username in `<HiddenServiceDir>/hostname`.  
+Take this cookie - a 22 character string, e.g. _xa3NyourCookY6herexTOB_ - and add it to the settings you defined for this connection in the configuration file of your Box:
+```ini
+[MyProxyNode]
+control=proxy
+host=7an5onionad2res2.onion
+port=9876
+cookie=xa3NyourCookY6herexTOB
+```
+Your Box will ensure that the configuration cookie will be registered prior to a connection attempt.
+
+As this procedure limits the use of the Hidden Service - and thus the access to the control port of the node - to only those (trusted) users that are able to provide the right authorization cookie, you might consider switching off the standard authentication functionality of the node's control port via it's `torrc`:
+```ini
+CoookieAuthentication 0
+# HashedControlPassword
+```
 
 ## _The Onion Box_ as system service (aka daemon)
 After you've ensured that your Box operates without issues, you can set it up to operate as a background application, which is the same as a system service or daemon. The steps to perform this differ depending on the technology used by your operating derivate.
@@ -645,4 +731,4 @@ Day by day it is a repetitive pleasure to learn from uncountable people who shar
 All the people contributing to [StackOverflow](https://stackoverflow.com/)
 who taught me Python by example.
 
-[svengo](https://github.com/svengo) who [contributed](https://github.com/ralphwetzel/theonionbox/issues/24) the procedure to operate _The Onion Box_ as a daemon with [systemd](#-using-systemd) .
+[svengo](https://github.com/svengo) who [contributed](https://github.com/ralphwetzel/theonionbox/issues/24) the [procedure](#-using-systemd) to operate _The Onion Box_ as a daemon with systemd .
