@@ -1,13 +1,15 @@
 from __future__ import absolute_import
-from stem.control import Controller, with_default, UNDEFINED, LOG_CACHE_FETCHES, _case_insensitive_lookup
+# from stem.control import Controller, with_default, UNDEFINED, LOG_CACHE_FETCHES, _case_insensitive_lookup
 from stem.util import str_type, log
-from tob.tob_time import getTimer
+from tob.deviation import getTimer
 
-from stem.socket import ControlPort, ControlSocketFile
-import stem
+# from stem.socket import ControlPort, ControlSocketFile
+# import stem
+import stem.control
+import stem.socket
 import socket
 
-import logging
+# import logging
 import datetime
 import sys
 import time
@@ -20,8 +22,29 @@ py = sys.version_info
 py27 = py >= (2, 7, 0)
 py33 = py >= (3, 3, 0)
 
+try:
+    ConnectionRefusedError
+except NameError:
+    ConnectionRefusedError = OSError
 
-class tobControlPort(ControlPort):
+
+class BaseController(stem.control.Controller):
+
+    def __init__(self, control_socket, is_authenticated):
+        self.callback = None
+        super(BaseController, self).__init__(control_socket, is_authenticated)
+
+    def register_post_auth_callback(self, callback):
+        self.callback = callback
+
+    def _post_authentication(self):
+        if self.callback is not None:
+            self.callback()
+
+        super(BaseController, self)._post_authentication()
+
+
+class ControlPort(stem.socket.ControlPort):
 
     timeout = None
     control_socket = None
@@ -29,7 +52,7 @@ class tobControlPort(ControlPort):
     def __init__(self, address='127.0.0.1', port=9051, connect=True, timeout=None):
 
         self.timeout = timeout
-        ControlPort.__init__(self, address, port, connect)
+        stem.socket.ControlPort.__init__(self, address, port, connect)
 
     # this is basically stem.socket.ControlPort._make_socket adapted to set a custom timeout value
     def _make_socket(self):
@@ -44,12 +67,18 @@ class tobControlPort(ControlPort):
 
         try:
             # timeout management
+            timeout_cache = None
             if self.timeout:
+                timeout_cache = self.control_socket.gettimeout()
                 self.control_socket.settimeout(self.timeout)
-                pass
 
             self.control_socket.connect((self._control_addr, self._control_port))
+
+            if self.timeout:
+                self.control_socket.settimeout(timeout_cache)    # reset after successful connection
+
             return self.control_socket
+
         except socket.error as exc:
 
             # to compensate for a ResourceWarning 'unclosed socket'
@@ -62,7 +91,7 @@ class tobControlPort(ControlPort):
             self.control_socket = None
 
 
-class tobControlSocketFile(ControlSocketFile):
+class ControlSocketFile(stem.socket.ControlSocketFile):
 
     timeout = None
     control_socket = None
@@ -70,7 +99,7 @@ class tobControlSocketFile(ControlSocketFile):
     def __init__(self, path='/var/run/tor/control', connect=True, timeout=None):
 
         self.timeout = timeout
-        ControlSocketFile.__init__(self, path, connect)
+        stem.socket.ControlSocketFile.__init__(self, path, connect)
 
     # this is basically stem.socket.ControlSocketFile._make_socket adapted to set a custom timeout value
     def _make_socket(self):
@@ -90,12 +119,18 @@ class tobControlSocketFile(ControlSocketFile):
 
         try:
             # timeout management
+            timeout_cache = None
             if self.timeout:
+                timeout_cache = self.control_socket.gettimeout()
                 self.control_socket.settimeout(self.timeout)
-                pass
 
             self.control_socket.connect(self._socket_path)
+
+            if self.timeout:
+                self.control_socket.settimeout(timeout_cache)    # reset after successful connection
+
             return self.control_socket
+
         except socket.error as exc:
 
             # to compensate for a ResourceWarning 'unclosed socket'
@@ -108,9 +143,7 @@ class tobControlSocketFile(ControlSocketFile):
             self.control_socket = None
 
 
-import socks
-
-class tobControlProxy(ControlPort):
+class ControlProxy(stem.socket.ControlPort):
 
     timeout = None
     control_socket = None
@@ -120,10 +153,12 @@ class tobControlProxy(ControlPort):
 
         self.timeout = timeout
         self.proxy = proxy
-        ControlPort.__init__(self, address, port, connect)
+        stem.socket.ControlPort.__init__(self, address, port, connect)
 
     # this is basically stem.socket.ControlPort._make_socket adapted to set a custom timeout value
     def _make_socket(self):
+
+        import socks
 
         if self.control_socket:
             self.close_socket()
@@ -140,12 +175,18 @@ class tobControlProxy(ControlPort):
 
         try:
             # timeout management
+            timeout_cache = None
             if self.timeout:
+                timeout_cache = self.control_socket.gettimeout()
                 self.control_socket.settimeout(self.timeout)
-                pass
 
             self.control_socket.connect((self._control_addr, self._control_port))
+
+            if self.timeout:
+                self.control_socket.settimeout(timeout_cache)    # reset after successful connection
+
             return self.control_socket
+
         except socket.error as exc:
 
             # to compensate for a ResourceWarning 'unclosed socket'
@@ -157,7 +198,8 @@ class tobControlProxy(ControlPort):
             self.control_socket.close()
             self.control_socket = None
 
-class tobController(Controller):
+
+class Controller(BaseController):
 
     timestamp = 0   # Timestamp when the cache was refreshed the last time
     info_keys = []  # List of keys to refresh get_info from Tor. List grows based on cache misses in _get_cache_map.
@@ -165,37 +207,50 @@ class tobController(Controller):
     utc_compensation = 0    # offset (in seconds) to correct datetime values coming from stem
 
     @staticmethod
-    def from_port_timeout(address='127.0.0.1', port=9051, timeout=None):
+    def from_port_timeout(address='127.0.0.1', port='default', timeout=None):
         # this one is basically stem.Controller.from_port patched
         # to forward a timeout value to BoxControlPort
 
-        if not stem.util.connection.is_valid_ipv4_address(address):
-            raise ValueError('Invalid IP address: %s' % address)
-        elif not stem.util.connection.is_valid_port(port):
-            raise ValueError('Invalid port: %s' % port)
+        # if not stem.util.connection.is_valid_ipv4_address(address):
+        #     raise ValueError('Invalid IP address: %s' % address)
+        # elif not stem.util.connection.is_valid_port(port):
+        #     raise ValueError('Invalid port: %s' % port)
 
         # timeout management
         if timeout and timeout < 0:
             timeout = None
 
-        control_socket = tobControlPort(address=address, port=port, timeout=timeout)
-        return tobController(control_socket)
+        if port == 'default':
+            try:
+                control_socket = ControlPort(address=address, port=9051, timeout=timeout)
+                return Controller(control_socket)
+            except stem.SocketError as exc:
+                try:
+                    control_socket = ControlPort(address=address, port=9151, timeout=timeout)
+                    return Controller(control_socket)
+                except stem.SocketError:
+                    raise exc
+        else:
+            control_socket = ControlPort(address=address, port=int(port), timeout=timeout)
+            return Controller(control_socket)
 
     @staticmethod
     def from_socket_file(path='/var/run/tor/control', timeout=None):
         # this one is basically stem.Controller.from_port patched
         # to forward a timeout value to BoxControlPort
 
-        control_socket = tobControlSocketFile(path)
-        return tobController(control_socket)
+        control_socket = ControlSocketFile(path)
+        return Controller(control_socket)
 
     @staticmethod
-    def host_via_proxy(address='127.0.0.1', port=951, proxy=None, timeout=None):
-        control_socket = tobControlProxy(address=address, port=port, proxy=proxy, timeout=timeout)
-        return tobController(control_socket)
+    def host_via_proxy(address='127.0.0.1', port=9051, proxy=None, timeout=None):
+        control_socket = ControlProxy(address=address, port=port, proxy=proxy, timeout=timeout)
+        return Controller(control_socket)
 
     def __init__(self, control_socket, is_authenticated=False):
-        Controller.__init__(self, control_socket, is_authenticated)
+
+        super(Controller, self).__init__(control_socket, is_authenticated)
+
         self.set_caching(True)  # this might be redundant yet ensures that we don't rely on a setting made in stem
         self.timestamp = 0
 
@@ -220,7 +275,7 @@ class tobController(Controller):
 
     def refresh(self, params=None):
         boxLog = logging.getLogger('theonionbox')
-        boxLog.debug('Controller: Refreshing GET_INFO cache...')
+        # boxLog.debug('Controller: Refreshing GET_INFO cache...')
 
         keys = []
         if params is None:
@@ -230,7 +285,7 @@ class tobController(Controller):
         else:
             keys = params
 
-        # print(keys)
+        boxLog.debug('Controller: Refreshing GET_INFO cache @ {}'.format(keys))
 
         # This is only partially nice
         # ... as we're clearing the whole cache
@@ -249,7 +304,6 @@ class tobController(Controller):
             if len(k) > 8 and k[:8] == 'getinfo.':
                 keys.append(k[8:])
         # print(keys)
-
 
     def get_timestamp(self):
         return self.timestamp
@@ -284,8 +338,8 @@ class tobController(Controller):
     #
     #     return retval
 
-    @with_default()
-    def get_info(self, params, default=UNDEFINED, get_bytes=False, cache_miss_warning=True):
+    @stem.control.with_default()
+    def get_info(self, params, default=stem.control.UNDEFINED, get_bytes=False, cache_miss_warning=True):
         """
         get_info(params, default = UNDEFINED, get_bytes = False)
 
@@ -337,7 +391,7 @@ class tobController(Controller):
         cached_results = self._get_cache_map(from_cache, 'getinfo')
 
         for key in cached_results:
-            user_expected_key = _case_insensitive_lookup(params, key)
+            user_expected_key = stem.control._case_insensitive_lookup(params, key)
             reply[user_expected_key] = cached_results[key]
             params.remove(user_expected_key)
 
@@ -349,7 +403,7 @@ class tobController(Controller):
 
         # if everything was cached then short circuit making the query
         if not params:
-            if LOG_CACHE_FETCHES:
+            if stem.control.LOG_CACHE_FETCHES:
                 log.trace('GETINFO %s (cache fetch)' % ' '.join(reply.keys()))
 
             if is_multiple:
@@ -577,3 +631,58 @@ class tobController(Controller):
 
         return acc_stats
 
+
+def create_controller(node, proxy=None, timeout=5):
+
+    boxLog = logging.getLogger('theonionbox')
+
+    mode = node['control']
+    host = node['host']
+    port = node['port']
+    # cookie = node['cookie']
+
+    if mode == 'socket':
+
+        try:
+            sockt = node['socket']
+        except KeyError as exc:
+            raise exc
+
+        boxLog.info("Trying to connect to Tor ControlSocket @ '{}'...".format(sockt))
+        contrlr = Controller.from_socket_file(sockt, timeout)
+
+    elif mode == 'proxy':
+        if proxy is None:
+            raise ConnectionRefusedError('Proxy not defined.')
+
+        try:
+            cookie = node['cookie']
+        except KeyError:
+            pass
+        else:
+            if cookie is not None:
+                if proxy.assure_cookie(host, cookie) is False:
+                    raise ConnectionRefusedError('Unable to set cookie for {}.'.format(host))
+
+        proxy_address = proxy.address()
+        if proxy_address is None:
+            raise ConnectionRefusedError('Proxy defined is not responding.')
+        else:
+            try:
+                host_port = int(port)
+            except ValueError:
+                raise ConnectionRefusedError('Invalid port defined: {}'.format(port))
+            boxLog.info(
+                "Trying to connect to Tor @ '{}:{}' via Proxy @ '{}'...".format(host, host_port, proxy_address))
+            contrlr = Controller.host_via_proxy(host, host_port, proxy_address, timeout)
+
+    elif mode == 'port':
+        boxLog.info('Trying to connect to Tor ControlPort {}:{}...'.format(host, port))
+        if timeout:
+            boxLog.info('Timeout set to {}s.'.format(timeout))
+        contrlr = Controller.from_port_timeout(host, port, timeout)
+
+    else:
+        raise ValueError("node['control'] == {} is an invalid parameter.".format(mode))
+
+    return contrlr

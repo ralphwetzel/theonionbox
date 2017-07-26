@@ -4,7 +4,7 @@ from math import floor
 import itertools
 # from tob_time import TimeManager
 from threading import RLock
-import tob.tob_time
+import tob.deviation
 
 
 # class tob_list(list):
@@ -46,11 +46,26 @@ class LiveDataManager(object):
     ld_Lock = RLock()
 
     def __init__(self):
+
+        self.last_bandwidth_not_zero = True
+
+        self.bandwidth_hd_record = deque(maxlen=900)  # a deque of dicts, one dict per second, max 900 secs (= 15+ minutes)
+        self.bandwidth_ld_record = deque(maxlen=1440)  # an increasing deque of dict; one dict per minute; max 24h
+
+        self.minute_of_last_record = 0  # flag to check if to add a new minute record to bandwidth_ld_record
+
+        self.basis_total_read = 0
+        self.basis_total_written = 0
+        self.bandwidth_total_read = 0
+        self.bandwidth_total_written = 0
+
+        self.bandwidth_total_count = 0
+
         self.record_bandwidth()     # record '0,0' a bit more than a minute ago to initialize
 
     def record_bandwidth(self, time_stamp=None, bytes_read=0, bytes_written=0, compensate_deviation=True):
 
-        timer = tob.tob_time.getTimer()
+        timer = tob.deviation.getTimer()
 
         if time_stamp is None:
             time_stamp = time()
@@ -227,7 +242,7 @@ class Cumulator(object):
         if max_count is not None:
             self.max_count = max_count
 
-        timestamp = tob.tob_time.getTimer().time()
+        timestamp = tob.deviation.getTimer().time()
 
         self.values = {}
         self.baskets = {}
@@ -286,7 +301,7 @@ class Cumulator(object):
 
     def cumulate(self, timestamp=None, **kwargs):
 
-        timestamp = tob.tob_time.getTimer().compensate(timestamp)
+        timestamp = tob.deviation.getTimer().compensate(timestamp)
 
         if len(kwargs) == 0:
             size = len(self.values)

@@ -22,8 +22,9 @@ var read_data_history = [];
 // var history_chart_keys = ['3_days', '1_week', '1_month', '3_months', '1_year', '5_years'];
 // var history_chart_labels = ['3 Days', '1 Week', '1 Month', '3 Months', '1 Year', '5 Years'];
 
-var history_chart_keys = ['y5', 'y1', 'm3', 'm1', 'w1', 'd3'];
-var history_chart_labels = ['5 Years', '1 Year', '3 Months', '1 Month', '1 Week', '3 Days'];
+// 20170318 RDW: Moved to box.js
+// var history_chart_keys = ['y5', 'y1', 'm3', 'm1', 'w1', 'd3'];
+// var history_chart_labels = ['5 Years', '1 Year', '3 Months', '1 Month', '1 Week', '3 Days'];
 
 for (len = history_chart_keys.length, i=0; i<len; ++i) {
     if (i in history_chart_keys) {

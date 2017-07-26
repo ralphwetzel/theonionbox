@@ -3,7 +3,15 @@
 
     tor = get('tor') if tor is None else tor
     geoip = get('geoip') if geoip is None else geoip
-    ip = tor.get_address()
+
+    # this could be done as well by
+    # ip = tor.get_address()
+    # yet this section shall display onionoo data (only)
+    ip = None   
+
+    if len(oo_details('or_addresses')) > 0:
+        ip = oo_details('or_addresses')[0]
+    end
 
     geoip_lat = geoip.latitude(ip, oo_details('latitude'))
     geoip_long = geoip.longitude(ip, oo_details('longitude'))

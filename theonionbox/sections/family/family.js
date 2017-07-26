@@ -64,6 +64,7 @@ var family_charts = [];
 var family_canvas = [];
 
 for (var len_nodes = family_nodes.length, k=0; k<len_nodes; ++k) {
+    console.log('node: ' + family_nodes[k])
     written_data_family[family_nodes[k]] = {};
     read_data_family[family_nodes[k]] = {};
     for (var len = history_chart_keys.length, i=0; i<len; ++i) {
@@ -87,37 +88,47 @@ $(document).ready(function() {
 
         boxData.addHandler('oo_family', new family_handler());
 
-        var canvas;
+        // var canvas;
         for (var len = family_nodes.length, k=0; k<len; ++k) {
             var node = family_nodes[k];
 
-            // console.log(node);
+            console.log(node);
 
-            canvas = document.getElementById('FMLY' + node + '-read');
+            var canvas = document.getElementById('FMLY' + node + '-read');
             family_charts[node + '-read'].prepare(canvas, 5000);
 
             fc_watchers[node + '-read'] = scrollMonitor.create(canvas, 100);
-            fc_watchers[node + '-read'].enterViewport(function () {
-                family_charts[node + '-read'].start();
-            });
-            fc_watchers[node + '-read'].exitViewport(function () {
-                family_charts[node + '-read'].stop();
-            });
+            fc_watchers[node + '-read'].enterViewport(family_start_redering(node + '-read'));
+            fc_watchers[node + '-read'].exitViewport(family_stop_redering(node + '-read'));
 
             
-            canvas = document.getElementById('FMLY' + node + '-write');
+            var canvas = document.getElementById('FMLY' + node + '-write');
             family_charts[node + '-write'].prepare(canvas, 5000);
 
             fc_watchers[node + '-write'] = scrollMonitor.create(canvas, 100);
-            fc_watchers[node + '-write'].enterViewport(function () {
-                family_charts[node + '-write'].start();
-            });
-            fc_watchers[node + '-write'].exitViewport(function () {
-                family_charts[node + '-write'].stop();
-            });
+            fc_watchers[node + '-write'].enterViewport(family_start_redering(node + '-write'));
+            fc_watchers[node + '-write'].exitViewport(family_stop_redering(node + '-write'));
         }
     % end
 });
+
+function family_start_redering(chart_index) {
+    var this_index = chart_index;
+    return function() {
+        console.log(this_index);
+        family_charts[this_index].start();
+    }
+}
+
+function family_stop_redering(chart_index) {
+    var this_index = chart_index;
+    return function() {
+        console.log(this_index);
+        family_charts[this_index].stop();
+    }
+}
+
+
 
 family_handler.prototype.process = function(family_data, timedelta) {
 
@@ -182,7 +193,7 @@ family_handler.prototype.process = function(family_data, timedelta) {
 
                         var result = [];
 
-                        if (last_key_write != '') {
+                        if (last_key_write !== '') {
                             var first_time = data.write[key][0][0];
                             var check_time = written_data_family[node][last_key_write].data[0][0];
                             var check_index = 0;
@@ -200,7 +211,7 @@ family_handler.prototype.process = function(family_data, timedelta) {
                         insert_button = true;
                     }
 
-                    if (insert_button == true) {
+                    if (insert_button === true) {
                         family_buttons[key] = true;
                     }
                 }
@@ -214,7 +225,7 @@ family_handler.prototype.process = function(family_data, timedelta) {
 
     for (var len = history_chart_keys.length, i = 0; i < len; ++i) {
         var key = history_chart_keys[i];
-        if (family_buttons[key] == true) {
+        if (family_buttons[key] === true) {
             if (!$('#family_' + key).length) {
 
                 button_code = '<label id=\"family_' + key + '\"';
@@ -253,7 +264,7 @@ family_handler.prototype.process = function(family_data, timedelta) {
 
     // change chart to display only if no or invalid selection
     if (family_shows === '' || family_shows !== '' && !$('#family_' + family_shows).length) {
-        if (family_shows != new_show_key) {
+        if (family_shows !== new_show_key) {
             set_family_display(new_show_key);
         }
     }
@@ -264,7 +275,7 @@ family_handler.prototype.process = function(family_data, timedelta) {
 
 function set_family_display(selector)
 {
-    if (selector == family_shows) { return; }
+    if (selector === family_shows) { return; }
 
     var charts = ['d3', 'w1', 'm1', 'm3', 'y1', 'y5'];
 

@@ -9,6 +9,7 @@
 
 <%
     base_path = get('virtual_basepath', '') + '/'
+	session_id = get('session_id')
 %>
 
 
@@ -41,7 +42,7 @@ function authRequest(username, password) {
             }
         }
         return request;
-    }
+    };
 
 	// start here
 	this.request = function() {
@@ -70,10 +71,10 @@ function authRequest(username, password) {
 					basicHeaders = basicHeaders.split(':')[1];
 					basicHeaders = basicHeaders.split(',');
 					self.scheme = basicHeaders[0].split(/\s/)[1];
-					for (var i = 0; i < basicHeaders.length; i++) {
-						var equalIndex = basicHeaders[i].indexOf('='),
-							key = basicHeaders[i].substring(0, equalIndex),
-							val = basicHeaders[i].substring(equalIndex + 1);
+					for (var j = 0; j < basicHeaders.length; j++) {
+						var equalIndex = basicHeaders[j].indexOf('='),
+							key = basicHeaders[j].substring(0, equalIndex),
+							val = basicHeaders[j].substring(equalIndex + 1);
 						// find realm
 						if (key.match(/realm/i) != null) {
 							self.realm = val;
@@ -87,25 +88,25 @@ function authRequest(username, password) {
                 // if (!(self.firstRequest.status >= 200 && self.firstRequest.status < 400)){
                 if (self.firstRequest.status !== 401) {
         		    // console.log('self.firstRequest.readyState');
-                    document.location = '{{base_path}}';
+                    document.location = '{{base_path}}{{session_id}}/';
                 }
 			}
-		}
+		};
 
 		// handle error
 		self.firstRequest.onerror = function() {
 			if (self.firstRequest.status !== 401) {
     		    // console.log('self.firstRequest.onerror');
-		        document.location = '{{base_path}}';
+		        document.location = '{{base_path}}{{session_id}}/';
 			}
-		}
+		};
 
 		// send
 		self.firstRequest.send();
 
-	}
+	};
 
-	this.makeAuthenticatedRequest= function() {
+	this.makeAuthenticatedRequest = function() {
 
         // btoa will fail on IE<10; to be fixed when someone complains ;) !
 		self.response = btoa(username+':'+password);
@@ -118,7 +119,7 @@ function authRequest(username, password) {
 		self.authenticatedRequest.setRequestHeader('Authorization', basicAuthHeader);
 
 		self.authenticatedRequest.onload = function() {
-		    var redirect_location = '{{base_path}}';
+		    var redirect_location = '{{base_path}}{{session_id}}/';
 			// success
   			if (self.authenticatedRequest.status >= 200 && self.authenticatedRequest.status < 400) {
 				if (self.authenticatedRequest.responseText !== 'undefined') {
@@ -130,16 +131,16 @@ function authRequest(username, password) {
 			}
 		    // console.log('self.authenticatedRequest.onload');
 			document.location = redirect_location;
-		}
+		};
 
 		// handle errors
 		self.authenticatedRequest.onerror = function() { 
 		    // console.log('self.authenticatedRequest.onerror');
-		    document.location = '{{base_path}}';
+		    document.location = '{{base_path}}{{session_id}}/';
 		};
 
 		self.authenticatedRequest.send();
-	}
+	};
 
 	this.abort = function() {
 		if (self.firstRequest != null) {
@@ -148,5 +149,5 @@ function authRequest(username, password) {
 		if (self.authenticatedRequest != null) {
 			if (self.authenticatedRequest.readyState != 4) self.authenticatedRequest.abort();
 		}
-	}
-}
+	};
+};

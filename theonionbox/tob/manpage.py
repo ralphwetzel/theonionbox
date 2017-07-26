@@ -15,11 +15,31 @@ class ManPage(object):
             with open(index_filename) as ndx_file:
                 self.ndx = json.load(ndx_file)
         except Exception as exc:
-            boxLog.warn("Failed to load index file for manpage. Exception raised says '{}'!".format(exc))
+            boxLog.warning("Failed to load index file for manpage. Exception raised says '{}'!".format(exc))
             pass
         else:
             boxLog.info("Manpage index file '{}' loaded.".format(index_filename))
             self.success = True
+
+        # the parser makes an error constructing 'non-persistentoptions' ...
+        # ... which is no big issue as we intend to recreate & extend it anyhow!
+        self.ndx['non-persistentoptions'] = [
+            '__ControlPort',    # Those are from tor.1.html
+            '__DirPort',
+            '__DNSPort',
+            '__ExtORPort',
+            '__NATDPort',
+            '__ORPort',
+            '__SocksPort',
+            '__TransPort',
+            '__AllDirActionsPrivate',   # ... and beginning from here: control-spec.txt
+            '__DisablePredictedCircuits',
+            '__LeaveStreamsUnattached',
+            '__HashedControlSessionPassword',
+            '__ReloadTorrcOnSIGHUP',
+            '__OwningControllerProcess'
+        ]
+
 
     def get_success(self):
         return self.success

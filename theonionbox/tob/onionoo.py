@@ -7,15 +7,18 @@ from time import strptime
 from calendar import timegm
 import logging
 import sys
+from threading import RLock, Semaphore
 
 from concurrent.futures import ThreadPoolExecutor
+
+from tob.proxy import Proxy
 
 #####
 # Python version detection
 py = sys.version_info
 py30 = py >= (3, 0, 0)
 
-__supported_protocol__ = '3.2'
+__supported_protocol__ = ['4.0']
 
 
 class Mode(object):
@@ -28,8 +31,7 @@ class TorType(object):
     BRIDGE = 1
 
 ONIONOO_OPEN = 'https://onionoo.torproject.org'
-ONIONOO_HIDDEN = 'http://onionoorcazzotwa.onion'
-# ONIONOO_HIDDEN = 'http://tgel7v4rpcllsrk2.onion'
+ONIONOO_HIDDEN = ['http://onionoorcazzotwa.onion', 'http://tgel7v4rpcllsrk2.onion']
 
 
 # class Query(object):
@@ -129,8 +131,8 @@ class Document(object):
 
     def __init__(self):
         # self.oo_query = Query(fingerprint)
-        self._is_relay = None
-        self._is_bridge = None
+        self._is_relay = False
+        self._is_bridge = False
         self.document_data = None
         self.object_data = None
         self.cache = {}
@@ -147,7 +149,7 @@ class Document(object):
             return
 
         v = self.version()
-        if v != __supported_protocol__:
+        if v not in __supported_protocol__:
             # lgr.warn("Onionoo protocol version mismatch! Supported: {} | Received: {}."
             #         .format(__supported_protocol__, v))
             self.update(None)
@@ -170,22 +172,22 @@ class Document(object):
 
         return
 
-    def _get(self, datum):
+    def get(self, datum):
         if self.document_data is None:
             return None
         return self.document_data[datum] if datum in self.document_data else None
 
     def version(self):
-        return self._get('version')
+        return self.get('version')
 
     def next_major_version_scheduled(self):
-        return self._get('next_major_version_scheduled')
+        return self.get('next_major_version_scheduled')
 
     def relays_published(self):
-        return self._get('relays_published')
+        return self.get('relays_published')
 
     def relays(self):
-        rlys = self._get('relays')
+        rlys = self.get('relays')
         if rlys is None:
             return None
         if len(rlys) > 0:
@@ -193,10 +195,10 @@ class Document(object):
         return None
 
     def bridges_published(self):
-        return self._get('bridges_published')
+        return self.get('bridges_published')
 
     def bridges(self):
-        brdgs = self._get('bridges')
+        brdgs = self.get('bridges')
         if brdgs is None:
             return None
         if len(brdgs) > 0:
@@ -208,6 +210,9 @@ class Document(object):
 
     def is_bridge(self):
         return self._is_bridge
+
+    def is_unknown(self):
+        return not (self._is_relay or self._is_bridge)
 
     def published(self):
         if self.is_relay():
@@ -231,7 +236,7 @@ class Document(object):
         except Exception:
             # This Exception will be raised if a wrong 'name' was provided while programming
             # OR if the relay is so young that there are no historical infos in the onionoo data!
-            self.log.warn("While decoding Onionoo history data: Key '{}' not found.".format(name))
+            self.log.warning("While decoding Onionoo history data: Key '{}' not found.".format(name))
 
             return None
 
@@ -331,6 +336,8 @@ class DocumentInterface(object):
     def is_bridge(self):
         return self._document.is_bridge()
 
+    def is_unknown(self):
+        return self._document.is_unknown()
 
 class Details(DocumentInterface):
 
@@ -437,7 +444,7 @@ class Details(DocumentInterface):
             else:
                 return None
 
-            # print(detail, retval, type(retval))
+            print(detail, retval, type(retval))
             return retval
 
         elif self._document.is_bridge():
@@ -505,47 +512,22 @@ class OnionOOFactory(object):
     # data = onionoo.Document object holding the onionoo network response or None
     onionoo = {}
     executor = None
+    query_lock = None
+    nodes_lock = None
+    # proxy = Proxy('127.0.0.1', 'default')
 
-    def __init__(self, proxy=None):
+    def __init__(self, proxy):
 
         self.onionoo = {}
-        self.query_address = {}
-        self.proxy_address = None   # to be formally compliant
+        self.proxy = proxy
 
-        self.proxy(proxy, False)
-        self.executor = ThreadPoolExecutor(max_workers=100)     # enough to query > 30 Tors at once...
+        self.executor = ThreadPoolExecutor(max_workers=300)     # enough to query > 100 Tors at once...
+        self.query_lock = RLock()
+        self.nodes_lock = RLock()
+        self.hidden_index = 1
+        self.is_refreshing = False
+        self.new_nodes = {}
 
-    def proxy(self, proxy, reconnect=True):
-
-        from stem.util.connection import is_valid_ipv4_address
-        from stem.util.connection import is_valid_port
-
-        if proxy is None:
-            self.proxy_address = None
-            self.query_address = {
-                'details': ONIONOO_OPEN + '/details',
-                'bandwidth': ONIONOO_OPEN + '/bandwidth',
-                'weights': ONIONOO_OPEN + '/weights'
-            }
-            return
-
-        try:
-            address, port = proxy.split(':')
-        except ValueError:
-            # if 'not enough values to unpack', e.g. no port given
-            raise ValueError("Failed to separate address '{}' into address:port.".format(proxy))
-
-        if not is_valid_ipv4_address(address):
-            raise ValueError('Invalid IP address: %s' % address)
-        elif not is_valid_port(port):
-            raise ValueError('Invalid port: %s' % port)
-
-        self.proxy_address = proxy
-        self.query_address = {
-            'details': ONIONOO_HIDDEN + '/details',
-            'bandwidth': ONIONOO_HIDDEN + '/bandwidth',
-            'weights': ONIONOO_HIDDEN + '/weights'
-        }
 
     def add(self, fingerprint):
 
@@ -554,6 +536,8 @@ class OnionOOFactory(object):
         # the key identifies the fingerprint as well as the document to allow storage in a flat dict.
         check_key = ['details:' + fingerprint, 'bandwidth:' + fingerprint, 'weights:' + fingerprint]
 
+        retval = False
+
         # if the key in question isn't in the dict
         for key in check_key:
             if key not in self.onionoo:
@@ -561,7 +545,13 @@ class OnionOOFactory(object):
                 lgr.debug('Adding fingerprint {} to onionoo query queue.'.format((fingerprint)))
 
                 # ... add it (yet without document! This indicates that we have no data so far.)
-                self.onionoo[key] = Document()
+                self.nodes_lock.acquire()
+                self.new_nodes[key] = Document()
+                self.nodes_lock.release()
+
+                retval = True
+
+        return retval
 
     def remove(self, fingerprint):
 
@@ -572,10 +562,24 @@ class OnionOOFactory(object):
             if key in self.onionoo:
                 del self.onionoo[key]
 
-    def refresh(self, only_keys_with_none_data=False, async=True):
+            if key in self.new_nodes:
+                self.nodes_lock.acquire()
+                del self.new_nodes[key]
+                self.nodes_lock.release()
+
+    def refresh(self, only_keys_with_none_data=False, async_mode=True):
+
+        self.is_refreshing = True
 
         lgr = logging.getLogger('theonionbox')
-        lgr.info('Refreshing onionoo data => Only New: {} | Async: {}'.format(only_keys_with_none_data, async))
+        lgr.info('Refreshing onionoo data => Only New: {} | Async: {}'.format(only_keys_with_none_data, async_mode))
+
+        self.nodes_lock.acquire()
+
+        self.onionoo.update(self.new_nodes)
+        self.new_nodes = {}
+
+        self.nodes_lock.release()
 
         # run through the dict of keys and query onionoo for updated documents
         for key in self.onionoo:
@@ -591,40 +595,71 @@ class OnionOOFactory(object):
                 # This definitely is weird!
                 continue
 
-            if async is True:
-                self.executor.submit(self.query, item, self.query_address[data_type], fp, self.proxy_address)
-            else:
-                self.query(item, self.query_address[data_type], fp, self.proxy_address)
+            # async_mode = True
 
-    def query(self, for_document, address, fingerprint, proxy):
+            if async_mode is True:
+                self.executor.submit(self.query, item, fp, data_type)
+            else:
+                self.query(item, fp, data_type)
+
+        # restart if meanwhile the landscape changed
+        if len(self.new_nodes) > 0:
+            self.refresh(True)
+
+        self.is_refreshing = False
+
+    def query(self, for_document, fingerprint, data_type):
 
         lgr = logging.getLogger('theonionbox')
-        lgr.debug("Onionoo: Launching query of '{}' for ${}.".format(address, fingerprint))
 
         # https://trac.torproject.org/projects/tor/ticket/6320
         hash = sha1(a2b_hex(fingerprint)).hexdigest()
-
         payload = {'lookup': hash}
+        
         headers = {'accept-encoding': 'gzip'}
         if len(for_document.ifModSince) > 0:
             headers['if-modified-since'] = for_document.ifModSince
 
-        proxies = {}
-        if proxy is not None:
+        proxy_address = self.proxy.address()
+
+        if proxy_address is None:
+            proxies = {}
+            query_base = ONIONOO_OPEN
+        else:
             proxies = {
-                'http': 'socks5://' + proxy,
-                'https': 'socks5://' + proxy
+                'http': 'socks5h://' + proxy_address,
+                'https': 'socks5h://' + proxy_address
             }
+            query_base = ONIONOO_HIDDEN[self.hidden_index]
+
+        query_address = query_base + '/' + data_type
 
         r = None
 
+        # even when querying async, there's just one query performed at a time
+        # self.query_lock.acquire()
+
+        lgr.debug("Onionoo: Launching query of '{}' for ${}.".format(query_address, fingerprint))
+
         try:
-            r = requests.get(address, params=payload, headers=headers, proxies=proxies)
+            r = requests.get(query_address, params=payload, headers=headers, proxies=proxies, timeout=10)
+        except requests.exceptions.ConnectTimeout:
+            lgr.info("Onionoo: Failed querying '{}' due to connection timeout. Switching to alternative service."
+                        .format(query_base))
+            # this is quite manual ... but asserts the right result
+            base_index = ONIONOO_HIDDEN.index(query_base)
+            self.hidden_index = (base_index + 1) % len(ONIONOO_HIDDEN)
+            # TODO: shall we restart the failed query here?
         except Exception as exc:
-            lgr.warning("Onionoo: Failed querying '{}' -> {}".format(address, exc))
+            lgr.warning("Onionoo: Failed querying '{}' -> {}".format(query_address, exc))
         else:
             lgr.debug("Onionoo: Finished querying '{}' for ${} with status code {}."
-                      .format(address, fingerprint, r.status_code))
+                      .format(query_address, fingerprint, r.status_code))
+            if len(r.text) > 0:
+                lgr.debug(("Onionoo: Received {} chars for ${}".format(len(r.text), fingerprint)))
+
+        # Ok! Now the next query may be launched...
+        # self.query_lock.release()
 
         if r is None:
             return
@@ -642,9 +677,28 @@ class OnionOOFactory(object):
             lgr.debug("Onionoo: Failed to un-json network data; error code says '{}'.".format(exc))
             return
 
-        # print(data)
-
         for_document.update(data)
+
+        if data_type == 'details':
+            node_details = Details(for_document)
+
+            do_refresh = False
+
+            #try:
+            fams = ['effective_family', 'alleged_family', 'indirect_family']
+            for fam in fams:
+                fam_data = node_details(fam)
+                if fam_data is not None:
+                    for fp in fam_data:
+                        if fp[0] is '$':
+                            do_refresh = self.add(fp[1:]) or do_refresh
+            #except:
+                # This probably wasn't a 'detail' document!
+            #    pass
+
+            if do_refresh and not self.is_refreshing:
+                self.refresh(True)
+
         return
         # except Exception as exc:
         #     lgr.info("Onionoo: Failed to query '{}': {}".format(address, exc))
@@ -653,19 +707,93 @@ class OnionOOFactory(object):
         #return
 
     def details(self, fingerprint):
+        if len(fingerprint)> 0 and fingerprint[0] == '$':
+            fingerprint = fingerprint[1:]
         key = 'details:' + fingerprint
         if key in self.onionoo:
             return Details(self.onionoo[key])
 
     def bandwidth(self, fingerprint):
+        if len(fingerprint)> 0 and fingerprint[0] == '$':
+            fingerprint = fingerprint[1:]
         key = 'bandwidth:' + fingerprint
         if key in self.onionoo:
             return Bandwidth(self.onionoo[key])
 
     def weights(self, fingerprint):
+        if len(fingerprint)> 0 and fingerprint[0] == '$':
+            fingerprint = fingerprint[1:]
         key = 'weights:' + fingerprint
         if key in self.onionoo:
             return Weights(self.onionoo[key])
 
     def shutdown(self):
         self.executor.shutdown(True)
+
+    def nickname2fingerprint(self, nickname):
+
+        if nickname[0] == '#':
+            nickname = nickname[1:]
+
+        data = self.search(nickname) or {}
+
+        if 'relays' in data:
+            for relay in data['relays']:
+                if 'n' in relay and 'f' in relay:
+                    if nickname == relay['n']:
+                        return relay['f']
+
+        if 'bridges' in data:
+            for bridge in data['bridges']:
+                if 'n' in bridge and 'h' in bridge:
+                    if nickname == bridge['n']:
+                        return bridge['h']
+
+        return None
+
+    def search(self, search_string, limit=None, offset=None):
+
+        lgr = logging.getLogger('theonionbox')
+
+        payload = {'search': search_string}
+        if limit and limit > 0:
+            payload['limit'] = limit
+        if offset and offset > 0:
+            payload['offset'] = offset
+
+        headers = {'accept-encoding': 'gzip'}
+
+        proxy_address = self.proxy.address()
+
+        if proxy_address is None:
+            proxies = {}
+            query_base = ONIONOO_OPEN
+        else:
+            proxies = {
+                'http': 'socks5h://' + proxy_address,
+                'https': 'socks5h://' + proxy_address
+            }
+            query_base = ONIONOO_HIDDEN[self.hidden_index]
+
+        query_address = query_base + '/summary'
+
+        r = None
+
+        try:
+            r = requests.get(query_address, params=payload, headers=headers, proxies=proxies, timeout=10)
+        except Exception as exc:
+            lgr.debug("Onionoo: Failed querying '{}' -> {}".format(query_address, exc))
+
+        if r is None:
+            return
+
+        if r.status_code != requests.codes.ok:
+            return
+
+        try:
+            data = r.json()
+        except Exception as exc:
+            lgr.debug("Onionoo: Failed to un-json network data; error code says '{}'.".format(exc))
+            return
+
+        return data

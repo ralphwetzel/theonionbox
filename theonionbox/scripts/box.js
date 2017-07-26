@@ -492,6 +492,46 @@
         //    $(this).off(e);
      });
 
+    var history_chart_keys = ['y5', 'y1', 'm3', 'm1', 'w1', 'd3'];
+    var history_chart_labels = ['5 Years', '1 Year', '3 Months', '1 Month', '1 Week', '3 Days'];
+
+    var history_series_options = {
+        dontDropOldData: true
+    };
+
+var oobw_style = {
+    millisPerPixel: 500,
+    maxValueScale: 1.1,
+    minValueScale: 1.1,
+    // maxDataSetLength: 5000,     // TBC: is this ok for all use cases??
+    interpolation: 'step',
+    yMaxFormatter: function(data, precision) {
+        if (!precision) {
+            var precision = 2;
+        }
+        return (prettyNumber(data, '', 'si') + '/s');
+    },
+    yMinFormatter: function() { return ""; },
+    enableDpiScaling: true,
+    timeLabelLeftAlign: true,
+    timeLabelSeparation: 2,
+    grid:
+        {
+        fillStyle: '#E6E6E6',
+        strokeStyle: '#777777',
+        millisPerLine: 60000,
+        verticalSections: 1,
+        borderVisible: true
+        },
+    labels: {
+        fillStyle: '#000000',
+        disabled: false,
+        fontSize: 10,
+        fontFamily: 'monospace',
+        precision: 2
+        }
+    };
+
     // Display Styles setzen
     function pad2(number) { return (number < 10 ? '0' : '') + number; }
     var chart_style = {};
@@ -641,6 +681,14 @@
     };
 % end
 
+    /* Bootstrap Toggle */
+% # include('bootstrap-toggle/js/bootstrap-toggle.min.js')
+
+
+% # include('bootstrap-switch/js/bootstrap-switch.min.js')
+
+
+
 <%
     # Compensating the missing 'FileNotFoundError' in Python2.x
     # try:
@@ -684,6 +732,13 @@
         }
     });
 
+// to compensate for missing 'messages' section
+if (typeof log !== 'function') {
+    log = function(text) {
+        console.log(text)
+    };
+}
+
 % if login is False:
     // Final step of the script ... to launch the site logic!
     //$(window).on('load', function() {
@@ -697,3 +752,5 @@
     });
 
 % end
+
+

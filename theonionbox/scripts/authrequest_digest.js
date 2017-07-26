@@ -15,6 +15,7 @@
     include(md5)
 
     base_path = get('virtual_basepath', '') + '/'
+	session_id = get('session_id')
 %>
 
 
@@ -55,7 +56,7 @@ function authRequest(username, password) {
             }
         }
         return request;
-    }
+    };
 
 	this.request = function() {
 		self.firstRequest = new self.ajaxRequest();
@@ -82,10 +83,10 @@ function authRequest(username, password) {
 					digestHeaders = digestHeaders.split(':')[1];
 					digestHeaders = digestHeaders.split(',');
 					self.scheme = digestHeaders[0].split(/\s/)[1];
-					for (var i = 0; i < digestHeaders.length; i++) {
-						var equalIndex = digestHeaders[i].indexOf('='),
-							key = digestHeaders[i].substring(0, equalIndex),
-							val = digestHeaders[i].substring(equalIndex + 1);
+					for (var j = 0; j < digestHeaders.length; j++) {
+						var equalIndex = digestHeaders[j].indexOf('='),
+							key = digestHeaders[j].substring(0, equalIndex),
+							val = digestHeaders[j].substring(equalIndex + 1);
 						// find realm
 						if (key.match(/realm/i) != null) {
 							self.realm = val;
@@ -112,20 +113,20 @@ function authRequest(username, password) {
 			if (self.firstRequest.readyState === 4) {
                 // if (!(self.firstRequest.status >= 200 && self.firstRequest.status < 400)) {
                 if (self.firstRequest.status !== 401) {
-                    document.location = '{{base_path}}';
+                    document.location = '{{base_path}}{{session_id}}/';
                 }
 			}
-		}
+		};
 		// send
 		self.firstRequest.send();
 
 		// handle error
 		self.firstRequest.onerror = function() {
 			if (self.firstRequest.status !== 401) {
-		        document.location = '{{base_path}}';
+		        document.location = '{{base_path}}{{session_id}}/';
 			}
 		}
-	}
+	};
 
 	this.makeAuthenticatedRequest= function() {
 
@@ -134,8 +135,9 @@ function authRequest(username, password) {
 		self.authenticatedRequest = new self.ajaxRequest();
 		self.authenticatedRequest.open(self.method, self.url, true);
 		self.authenticatedRequest.timeout = self.timeout;
+		var digestAuthHeader;
 		if (self.qop) {
-            var digestAuthHeader = self.scheme+' '+
+            digestAuthHeader = self.scheme+' '+
                 'username="'+username+'", '+
                 'realm="'+self.realm+'", '+
                 'nonce="'+self.nonce+'", '+
@@ -147,7 +149,7 @@ function authRequest(username, password) {
                 'cnonce="'+self.cnonce+'"';
 		}
 		else {
-            var digestAuthHeader = self.scheme
+            digestAuthHeader = self.scheme
                 + ' username="'+username+'"'
                 + ', realm="'+self.realm+'"'
                 + ', nonce="'+self.nonce+'"'
@@ -159,7 +161,7 @@ function authRequest(username, password) {
 		self.authenticatedRequest.setRequestHeader('Authorization', digestAuthHeader);
 
 		self.authenticatedRequest.onload = function() {
-		    var redirect_location = '{{base_path}}';
+		    var redirect_location = '{{base_path}}{{session_id}}/';
 			// success
   			if (self.authenticatedRequest.status >= 200 && self.authenticatedRequest.status < 400) {
 				if (self.authenticatedRequest.responseText !== 'undefined') {
@@ -170,15 +172,15 @@ function authRequest(username, password) {
 				}
 			}
 			document.location = redirect_location;
-		}
+		};
 
 		// handle errors
 		self.authenticatedRequest.onerror = function() {
-		    document.location = '{{base_path}}';
+		    document.location = '{{base_path}}{{session_id}}/';
 		};
 
 		self.authenticatedRequest.send();
-	}
+	};
 
 	// to get rid of CryptoJS
     this.formulateResponse = function() {
@@ -186,8 +188,9 @@ function authRequest(username, password) {
 		var HA1 = md5(ha1_prep);
 		var ha2_prep = self.method+':'+self.url;
 		var HA2 = md5(ha2_prep);
+		var response;
 		if (self.qop) {
-            var response = md5(HA1+':'+
+            response = md5(HA1+':'+
                 self.nonce+':'+
                 ('00000000' + self.nc).slice(-8)+':'+
                 self.cnonce+':'+
@@ -195,13 +198,13 @@ function authRequest(username, password) {
                 HA2);
 		}
 		else {
-            var response = md5(HA1+':'+
+            response = md5(HA1+':'+
                 self.nonce+':'+
                 HA2);
 		}
 
 		return response;
-	}
+	};
 
 	// generate 16 char client nonce
 	this.generateCnonce = function() {
@@ -212,7 +215,7 @@ function authRequest(username, password) {
 			token += characters.substr(randNum, 1);
 		}
 		return token;
-	}
+	};
 
 	this.abort = function() {
 		if (self.firstRequest != null) {
@@ -221,6 +224,6 @@ function authRequest(username, password) {
 		if (self.authenticatedRequest != null) {
 			if (self.authenticatedRequest.readyState != 4) self.authenticatedRequest.abort();
 		}
-	}
-}
+	};
+};
 

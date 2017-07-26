@@ -14,11 +14,12 @@ class SessionFactory(object):
     latest_ping = None
     _time = None
 
-    def __init__(self, time_manager, session_lifetime=SESSION_MAX_TTL):
+    def __init__(self, time_manager, session_lifetime=SESSION_MAX_TTL, delete_session_callback = None):
 
         self.session_lifetime = session_lifetime if session_lifetime < SESSION_MAX_TTL else SESSION_MAX_TTL
         self._time = time_manager
         self.reset()
+        self.del_callback = delete_session_callback
 
     def create(self, remote_addr, status):
 
@@ -90,6 +91,13 @@ class SessionFactory(object):
 
     def delete(self, session_id):
         if session_id in self.session_data_pool:
+            # ensure external cleanuo
+            if self.del_callback is not None:
+                try:
+                    self.del_callback(session_id)
+                except:
+                    pass
+
             del self.session_data_pool[session_id]
             del self.session_ping_pool[session_id]
             del self.session_addr_pool[session_id]

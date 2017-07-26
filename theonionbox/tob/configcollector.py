@@ -43,6 +43,8 @@ class ConfigCollector(object):
             config_params[c0] = config[1]
             conf_map.append(c0)
 
+        #print(conf_map)
+
         # Finally we get the default values for all parameters
         # ... that have a default value!
         defopt = {}
@@ -62,6 +64,8 @@ class ConfigCollector(object):
         # Now get the current settings of all parameters
         # ... that we have gathered before
         tcm = self.tor.get_conf_map(conf_map, None, True)
+
+        # print(tcm)
 
         # running through all the parameters
         for option in conf_map:
@@ -141,8 +145,12 @@ class ConfigCollector(object):
                     elif deflt[1] == 'GB':
                         factor = 1073741824
 
-                if int(tgi[0]) == int(deflt[0]) * factor:
-                    continue
+                try:
+                    if int(tgi[0]) == int(deflt[0]) * factor:
+                        continue
+                except:
+                    print(tgi, deflt, factor)
+                    tgi = 'Error!'
 
             elif cpo == 'TimeIntervalCommaList':
                 _default = default[0].replace(' ', '')
@@ -154,5 +162,7 @@ class ConfigCollector(object):
 
             # result is a dict {option_name: [list of parameters]}
             configs_used[option] = tgi
+
+        # print(configs_used)
 
         return configs_used

@@ -1,0 +1,20 @@
+# Contribution by svengo
+# https://github.com/ralphwetzel/theonionbox/issues/24
+
+# Run The Onion Box as background service
+# https://github.com/ralphwetzel/theonionbox/
+
+[Unit]
+Description=The Onion Box
+Documentation=https://github.com/ralphwetzel/theonionbox/wiki
+After=network.target
+
+[Service]
+Type=simple
+User=theonionbox
+WorkingDirectory=~
+ExecStart=/srv/theonionbox/theonionbox.py --mode=service
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

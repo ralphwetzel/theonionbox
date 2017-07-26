@@ -9,13 +9,13 @@ hiddenservice_handler.prototype.prepare = function() {
 };
 
 hiddenservice_handler.prototype.nav = function() {
-    return 'Configuration';
+    return 'HiddenService';
 };
 
 $(document).ready(function() {
     addNavBarButton('HiddenService', 'hiddenservice');
 
     document.addEventListener("touchstart", function(){}, true);
-    boxData.addHandler('config', new hiddenservice_handler());
+    boxData.addHandler('hiddenservice', new hiddenservice_handler());
 });
 

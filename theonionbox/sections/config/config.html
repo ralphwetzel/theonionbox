@@ -23,11 +23,14 @@ except:
     pass
 end
 
-#print(tor.get_info('config/defaults'))
-#print('-----')
-#print(tor.get_info('config/names'))
-#print('-----')
-#print(tor.get_info('config-text'))
+enable_print = False
+if enable_print is True:
+    print(tor.get_info('config/defaults'))
+    print('-----')
+    print(tor.get_info('config/names'))
+    print('-----')
+    print(tor.get_info('config-text'))
+end
 
 %>
 
@@ -37,12 +40,14 @@ end
     import psutil
     cmd_line = []
 
-    try:
-        pid = tor.get_pid()
-        p = psutil.Process(pid)
-        cmd_line = p.cmdline()  # This returns a list!
-    except:
-        pass
+    if tor.is_localhost():
+        try:
+            pid = tor.get_pid()
+            p = psutil.Process(pid)
+            cmd_line = p.cmdline()  # This returns a list!
+        except:
+            pass
+        end
     end
 
     if len(cmd_line) > 0:
@@ -112,6 +117,9 @@ end
     mp_groups = manpg.get_groups()
     if mp_groups:
         for group in mp_groups:
+            if group == 'HIDDEN SERVICE OPTIONS':
+                continue
+            end
             headr = False
             options = manpg.get_options(group)
             if options:
@@ -134,22 +142,29 @@ end
                         <div class = "row">
                             <div class="{{box_datum_grid}}">
                                 <p class="option_hover truncate ">
-                                    <a href="manpage.html#{{option}}" target="manpage_window">#</a> {{option}}
+                                    % if option[:2] != '__':
+                                        <a href="manpage.html#{{option}}" target="manpage_window">#</a> {{option}}
+                                    % else:
+                                        {{option}}
+                                    % end
                                 </p>
                             </div>
                             <div class="{{box_value_grid}}">
                                 <p>
                                     <%
                                         pt = config_params[option] # pt => parameter-type
-                                        optngrp = {'ControlPort': 'CONTROL',
-                                                   'DirPort': 'DIR',
-                                                   'ORPort': 'OR',
-                                                   'SocksPort': 'SOCKS'}
+
+                                        #optngrp = {'ControlPort': 'CONTROL',
+                                        #           'DirPort': 'DIR',
+                                        #           'ORPort': 'OR',
+                                        #           'SocksPort': 'SOCKS'}
+
                                         values = []
-                                        if option in optngrp:
-                                            port_tuples = tor.get_listeners(optngrp[option], '')
-                                            values = [prt[0] + ':' + str(prt[1]) for prt in port_tuples]
-                                        end
+
+                                        #if option in optngrp:
+                                        #    port_tuples = tor.get_listeners(optngrp[option], '')
+                                        #    values = [prt[0] + ':' + str(prt[1]) for prt in port_tuples]
+                                        #end
 
                                         if len(values) == 0:
                                             values = configs_used[option]
@@ -179,8 +194,8 @@ end
                                         end
                                         out = ''
                                         for value in values:
-                                            if option == 'HashedControlPassword':
-                                                value = value[:35] + '...'  # no need to transmit this completely!
+                                            if option in ['HashedControlPassword', '__HashedControlSessionPassword']:
+                                                value = value[:43] + '...'  # no need to transmit this completely!
                                                 # value += '<br><span>Why is this value always truncated?</span>'
                                             end
                                             if len(out) > 0:

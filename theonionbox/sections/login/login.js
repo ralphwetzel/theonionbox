@@ -3,6 +3,7 @@
     login_params = sc['login'] if 'login' in sc else {}
 
     base_path = get('virtual_basepath', '') + '/'
+    session_id = get('session_id')
 
 %>
 
@@ -25,7 +26,7 @@ function do_login(event)
         return false;
     }
     catch(err) {
-        document.location = '{{base_path}}';
+        document.location = '{{base_path}}{{session_id}}/';
     }
 }
 

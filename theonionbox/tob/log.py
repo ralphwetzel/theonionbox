@@ -11,7 +11,7 @@ import uuid
 import logging
 from logging.handlers import MemoryHandler, BufferingHandler
 import functools
-from tob.time import getTimer
+from tob.deviation import getTimer
 import sys
 
 from threading import RLock
@@ -461,6 +461,7 @@ class ForwardHandler(MemoryHandler):
         return record.levelno >= self.level
 
 
+# 20170409 RDW: Not used?
 # John Spong @
 # http://stackoverflow.com/questions/17931426/strip-newline-and-white-spaces-from-python-logger-messages
 class WhitespaceRemovingFormatter(logging.Formatter):
@@ -469,7 +470,8 @@ class WhitespaceRemovingFormatter(logging.Formatter):
         return super(WhitespaceRemovingFormatter, self).format(record)
 
 
-from time import gmtime, strftime, mktime
+from time import strftime, mktime, localtime
+
 
 class ConsoleFormatter(logging.Formatter):
 
@@ -563,7 +565,7 @@ class ConsoleFormatter(logging.Formatter):
             out = ('[{}]' + out).format(out_lvlname)[:8]
 
         if msg != '':
-            out += strftime('%H:%M:%S', gmtime(record.created)) + '.{:0=3d} '.format(int(record.msecs))
+            out += strftime('%H:%M:%S', localtime(record.created)) + '.{:0=3d} '.format(int(record.msecs))
 
             try:
                 if record.source != 'box':
@@ -584,6 +586,7 @@ class ConsoleFormatter(logging.Formatter):
 
         return out
 
+# 20170409 RDW: Not used?
 class ClientFormatter(logging.Formatter):
 
     def format(self, record):
@@ -611,7 +614,7 @@ class ClientFormatter(logging.Formatter):
             out = ('[{}]' + out).format(out_lvlname)[:8]
 
         if msg != '':
-            out += strftime('%H:%M:%S', gmtime(record.created)) + '.{:0=3d} '.format(int(record.msecs))
+            out += strftime('%H:%M:%S', localtime(record.created)) + '.{:0=3d} '.format(int(record.msecs))
             out += msg
 
             if lvlname in colorcodes:
@@ -636,7 +639,7 @@ class FileFormatter(logging.Formatter):
             out = ('[{}]' + out).format(out_lvlname)[:8]
 
         if msg != '':
-            out += strftime('%H:%M:%S', gmtime(record.created)) + '.{:0=3d} '.format(int(record.msecs))
+            out += strftime('%H:%M:%S', localtime(record.created)) + '.{:0=3d} '.format(int(record.msecs))
             out += msg
 
         return out
