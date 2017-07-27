@@ -759,6 +759,45 @@ WantedBy=multi-user.target
 - Start the new service with `sudo systemctl start theonionbox.service`
 - If everything is okay, start the service on next boot with `sudo systemctl enable theonionbox.service`
 
+## Usage Monitoring
+To create a small survey of its usage, _The Onion Box_ sends the following information to `t527moy64zwxsfhb.onion`, the hidden service acting as _The Onion Box Update Service_ when requesting the latest version information of Tor and the Box:
+
+- An UUID created newly each time during launch of the Box.
+- The stamp of your Box release
+- The name of the operating system hosting your Box
+- The release information of the operating system hosting your Box
+
+By intension these information are not at all sufficient to identify you (as a person) or the system hosting your Box. They just allow to estimate the number of concurrently running instances of _The Onion Box_ and the diversity of the underlying operating systems.
+
+Please refer to [version.py](theonionbox/tob/version.py) to review the code:
+```python
+[...]
+
+proxies = {
+    'http': 'socks5h://' + proxy_address,
+    'https': 'socks5h://' + proxy_address
+}
+payload = {
+    'protocol': __VERSION_PROTOCOL__,
+    'version': self.version,
+    'system': self.system,
+    'release': self.release
+}
+
+address = 'http://t527moy64zwxsfhb.onion/{}/check.html'.format(self.id)
+
+r = None
+
+try:
+    r = requests.get(address, proxies=proxies, params=payload, timeout=10)
+except Exception as exc:
+    pass
+
+[...]
+
+```
+
+
 ## Q&A
 ### I receive a _Not supported proxy scheme socks5h_  warning. What shall I do?
 If you receive this message, your `requests` module installation most probably is outdated - and not supporting _socks5h_ proxy operations.
