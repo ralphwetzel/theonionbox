@@ -69,12 +69,14 @@ class VersionManager(object):
             tags = tag.lower().split('rc')
             return len(tags) > 1
 
-    def __init__(self, proxy, current_version):
+    def __init__(self, proxy, current_version, system, release):
         self.id = uuid.uuid4().hex
         self.proxy = proxy
         self.Tor = self.TorVersion()
         self.Box = self.BoxVersion()
         self.version = current_version
+        self.system = system
+        self.release = release
 
     def update(self):
 
@@ -95,7 +97,9 @@ class VersionManager(object):
         }
         payload = {
             'protocol': __VERSION_PROTOCOL__,
-            'version': self.version
+            'version': self.version,
+            'system': self.system,
+            'release': self.release
         }
 
         address = 'http://t527moy64zwxsfhb.onion/{}/check.html'.format(self.id)

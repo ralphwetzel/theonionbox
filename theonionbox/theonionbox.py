@@ -854,7 +854,7 @@ def check_box_version(use_this_checker, relaunch_job=False):
                          run_date=run_date, args=[use_this_checker, True])
 
 
-boxVersion = VersionManager(boxProxy, __stamp__ or __version__)
+boxVersion = VersionManager(boxProxy, __stamp__ or __version__, boxHost['system'], boxHost['release'])
 check_box_version(boxVersion, True)
 
 #####
