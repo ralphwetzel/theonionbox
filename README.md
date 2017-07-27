@@ -45,6 +45,7 @@ Above that, _The Onion Box_ is able to display Tor network status protocol data 
     - [... on FreeBSD](#-on-freebsd)
     - [... using init.d](#-using-initd)
     - [... using systemd](#-using-systemd)
+- [Usage Monitoring](#usage-monitoring)
 - [Q&A](#qa)
     - [I receive a _Not supported proxy scheme socks5h_  warning. What shall I do?](#i-receive-a-not-supported-proxy-scheme-socks5h--warning-what-shall-i-do)
 - [Acknowledgments](#acknowledgments)
@@ -827,4 +828,4 @@ who taught me Python by example.
 [svengo](https://github.com/svengo) who [contributed](https://github.com/ralphwetzel/theonionbox/issues/24) the [procedure](#-using-systemd) to operate _The Onion Box_ as a daemon with systemd .
 
 > I apologize sincerely being convinced it is impossible to mention everyone who gave me the opportunity to participate from his or her experience.  
-Please raise your hand if you think there is someone missing on this list!
+Please raise your hand if you think someone should be added to this list!
