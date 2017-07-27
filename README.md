@@ -778,9 +778,14 @@ After that, you could `pip install requests --upgrade` if you like, yet usually 
 ## Acknowledgments
 Day by day it is a repetitive pleasure to learn from uncountable people who share their knowledge, their time and their work with the world. This section shall express my gratefulness to those who supported me solving issues I encountered during the last years. **Thank You!**
 
+Łukasz Dziedzic (and his friends) for creating and publishing the great [Lato](https://latofonts.com) font family.
+
 [SC. Phillips](http://www.scphillips.com) whose [Blog](http://blog.scphillips.com/posts/2013/07/getting-a-python-script-to-run-in-the-background-as-a-service-on-boot/) gave a perfect starting point when I tried to operate the Box as a background service.
 
 All the people contributing to [StackOverflow](https://stackoverflow.com/)
 who taught me Python by example.
 
 [svengo](https://github.com/svengo) who [contributed](https://github.com/ralphwetzel/theonionbox/issues/24) the [procedure](#-using-systemd) to operate _The Onion Box_ as a daemon with systemd .
+
+> I apologize sincerely being convinced it is impossible to mention everyone who gave me the opportunity to participate from his or her experience.  
+Please raise your hand if you think there is someone missing on this list!
