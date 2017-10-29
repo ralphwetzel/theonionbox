@@ -103,6 +103,10 @@ class ConfigCollector(object):
             if tgi is None and default == ['']:
                 continue
 
+            # if default is None:
+            #     print('{}: {}'.format(option, tgi))
+                # print(option)
+
             cpo = config_params[option]
 
             if cpo == 'Float':
@@ -112,7 +116,7 @@ class ConfigCollector(object):
                     continue
 
             elif cpo == 'Boolean':
-                if tgi[0] == default[0]:
+                if (default is not None) and (tgi[0] == default[0]):
                     continue
 
             elif cpo in ['TimeInterval', 'TimeMsecInterval']:
