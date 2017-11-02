@@ -444,7 +444,7 @@ class Details(DocumentInterface):
             else:
                 return None
 
-            print(detail, retval, type(retval))
+            # print(detail, retval, type(retval))
             return retval
 
         elif self._document.is_bridge():
@@ -515,13 +515,14 @@ class OnionOOFactory(object):
     query_lock = None
     nodes_lock = None
     # proxy = Proxy('127.0.0.1', 'default')
+    futures = list()
 
     def __init__(self, proxy):
 
         self.onionoo = {}
         self.proxy = proxy
 
-        self.executor = ThreadPoolExecutor(max_workers=300)     # enough to query > 100 Tors at once...
+        self.executor = ThreadPoolExecutor(max_workers=30)     # enough to query > 100 Tors at once...
         self.query_lock = RLock()
         self.nodes_lock = RLock()
         self.hidden_index = 1
@@ -597,10 +598,23 @@ class OnionOOFactory(object):
 
             # async_mode = True
 
+            query_launched = False
+
             if async_mode is True:
-                self.executor.submit(self.query, item, fp, data_type)
-            else:
-                self.query(item, fp, data_type)
+                try:
+                    self.executor.submit(self.query, item, fp, data_type)
+                    query_launched = True
+                except:
+                    # In case of error, we try to continue in sync mode!
+                    lgr.warning("Onionoo: Failed to launch thread to query for Tor network data.")
+                    pass
+
+            if query_launched is False:
+                try:
+                    self.query(item, fp, data_type)
+                except:
+                    # Ok. We silently swallow this...
+                    pass
 
         # restart if meanwhile the landscape changed
         if len(self.new_nodes) > 0:
@@ -653,10 +667,10 @@ class OnionOOFactory(object):
         except Exception as exc:
             lgr.warning("Onionoo: Failed querying '{}' -> {}".format(query_address, exc))
         else:
-            lgr.debug("Onionoo: Finished querying '{}' for ${} with status code {}."
-                      .format(query_address, fingerprint, r.status_code))
-            if len(r.text) > 0:
-                lgr.debug(("Onionoo: Received {} chars for ${}".format(len(r.text), fingerprint)))
+            lgr.debug("Onionoo: Finished querying '{}' for ${} with status code {}: {} chars received."
+                      .format(query_address, fingerprint, r.status_code, len(r.text)))
+            # if len(r.text) > 0:
+            #     lgr.debug(("Onionoo: Received {} chars for ${}".format(len(r.text), fingerprint)))
 
         # Ok! Now the next query may be launched...
         # self.query_lock.release()
@@ -679,25 +693,27 @@ class OnionOOFactory(object):
 
         for_document.update(data)
 
-        if data_type == 'details':
-            node_details = Details(for_document)
-
-            do_refresh = False
-
-            #try:
-            fams = ['effective_family', 'alleged_family', 'indirect_family']
-            for fam in fams:
-                fam_data = node_details(fam)
-                if fam_data is not None:
-                    for fp in fam_data:
-                        if fp[0] is '$':
-                            do_refresh = self.add(fp[1:]) or do_refresh
-            #except:
-                # This probably wasn't a 'detail' document!
-            #    pass
-
-            if do_refresh and not self.is_refreshing:
-                self.refresh(True)
+        # ToDo: Where's the benefit doing it this way?
+        # 
+        # if data_type == 'details':
+        #     node_details = Details(for_document)
+        #
+        #     do_refresh = False
+        #
+        #     #try:
+        #     fams = ['effective_family', 'alleged_family', 'indirect_family']
+        #     for fam in fams:
+        #         fam_data = node_details(fam)
+        #         if fam_data is not None:
+        #             for fp in fam_data:
+        #                 if fp[0] is '$':
+        #                     do_refresh = self.add(fp[1:]) or do_refresh
+        #     #except:
+        #         # This probably wasn't a 'detail' document!
+        #     #    pass
+        #
+        #     if do_refresh and not self.is_refreshing:
+        #         self.refresh(True)
 
         return
         # except Exception as exc:
