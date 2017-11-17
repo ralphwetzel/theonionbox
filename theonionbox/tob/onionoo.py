@@ -7,6 +7,7 @@ from time import strptime
 from calendar import timegm
 import logging
 import sys
+
 from threading import RLock, Semaphore
 
 from concurrent.futures import ThreadPoolExecutor
@@ -131,8 +132,10 @@ class Document(object):
 
     def __init__(self):
         # self.oo_query = Query(fingerprint)
+
         self._is_relay = False
         self._is_bridge = False
+
         self.document_data = None
         self.object_data = None
         self.cache = {}
@@ -149,7 +152,9 @@ class Document(object):
             return
 
         v = self.version()
+
         if v not in __supported_protocol__:
+
             # lgr.warn("Onionoo protocol version mismatch! Supported: {} | Received: {}."
             #         .format(__supported_protocol__, v))
             self.update(None)
@@ -172,12 +177,14 @@ class Document(object):
 
         return
 
+
     def get(self, datum):
         if self.document_data is None:
             return None
         return self.document_data[datum] if datum in self.document_data else None
 
     def version(self):
+
         return self.get('version')
 
     def next_major_version_scheduled(self):
@@ -195,6 +202,7 @@ class Document(object):
         return None
 
     def bridges_published(self):
+
         return self.get('bridges_published')
 
     def bridges(self):
@@ -236,6 +244,7 @@ class Document(object):
         except Exception:
             # This Exception will be raised if a wrong 'name' was provided while programming
             # OR if the relay is so young that there are no historical infos in the onionoo data!
+
             self.log.warning("While decoding Onionoo history data: Key '{}' not found.".format(name))
 
             return None
@@ -338,6 +347,7 @@ class DocumentInterface(object):
 
     def is_unknown(self):
         return self._document.is_unknown()
+
 
 class Details(DocumentInterface):
 
@@ -512,6 +522,7 @@ class OnionOOFactory(object):
     # data = onionoo.Document object holding the onionoo network response or None
     onionoo = {}
     executor = None
+
     query_lock = None
     nodes_lock = None
     # proxy = Proxy('127.0.0.1', 'default')
@@ -537,6 +548,7 @@ class OnionOOFactory(object):
         # the key identifies the fingerprint as well as the document to allow storage in a flat dict.
         check_key = ['details:' + fingerprint, 'bandwidth:' + fingerprint, 'weights:' + fingerprint]
 
+
         retval = False
 
         # if the key in question isn't in the dict
@@ -546,6 +558,7 @@ class OnionOOFactory(object):
                 lgr.debug('Adding fingerprint {} to onionoo query queue.'.format((fingerprint)))
 
                 # ... add it (yet without document! This indicates that we have no data so far.)
+
                 self.nodes_lock.acquire()
                 self.new_nodes[key] = Document()
                 self.nodes_lock.release()
@@ -553,6 +566,7 @@ class OnionOOFactory(object):
                 retval = True
 
         return retval
+
 
     def remove(self, fingerprint):
 
@@ -581,6 +595,7 @@ class OnionOOFactory(object):
         self.new_nodes = {}
 
         self.nodes_lock.release()
+
 
         # run through the dict of keys and query onionoo for updated documents
         for key in self.onionoo:
@@ -675,6 +690,7 @@ class OnionOOFactory(object):
         # Ok! Now the next query may be launched...
         # self.query_lock.release()
 
+
         if r is None:
             return
 
@@ -723,22 +739,28 @@ class OnionOOFactory(object):
         #return
 
     def details(self, fingerprint):
+
         if len(fingerprint)> 0 and fingerprint[0] == '$':
             fingerprint = fingerprint[1:]
+
         key = 'details:' + fingerprint
         if key in self.onionoo:
             return Details(self.onionoo[key])
 
     def bandwidth(self, fingerprint):
+
         if len(fingerprint)> 0 and fingerprint[0] == '$':
             fingerprint = fingerprint[1:]
+
         key = 'bandwidth:' + fingerprint
         if key in self.onionoo:
             return Bandwidth(self.onionoo[key])
 
     def weights(self, fingerprint):
+
         if len(fingerprint)> 0 and fingerprint[0] == '$':
             fingerprint = fingerprint[1:]
+
         key = 'weights:' + fingerprint
         if key in self.onionoo:
             return Weights(self.onionoo[key])
