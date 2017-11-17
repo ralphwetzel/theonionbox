@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 from socket import AF_INET, SOCK_DGRAM
 import struct
 from time import time
@@ -7,9 +9,9 @@ import socket
 class TimeManager(object):
 
     time_deviation = 0
-    ntp_server = 'pool.ntp.org'
+    ntp_server = None
 
-    def __init__(self, ntp_server='pool.ntp.org'):
+    def __init__(self, ntp_server=None):
 
         if ntp_server is not None:
             self.ntp_server = ntp_server
@@ -20,6 +22,9 @@ class TimeManager(object):
 
         # This is *based* on an excellent snipplet from Matt Crampton
         # http://blog.mattcrampton.com/post/88291892461/query-an-ntp-server-from-python
+
+        if self.ntp_server is None:
+            return 0
 
         port = 123
         buffer = 1024
@@ -75,9 +80,9 @@ class TimeManager(object):
 class Timer(object):
 
     time_deviation = 0
-    ntp_server = 'pool.ntp.org'
+    ntp_server = None
 
-    def __init__(self, ntp_server='pool.ntp.org'):
+    def __init__(self, ntp_server=None):
 
         if ntp_server is not None:
             self.ntp_server = ntp_server
@@ -85,6 +90,9 @@ class Timer(object):
     #    self.update_time_deviation()
 
     def update_time_deviation(self):
+
+        if self.ntp_server is None:
+            return 0
 
         # This is *based* on an excellent snipplet from Matt Crampton
         # http://blog.mattcrampton.com/post/88291892461/query-an-ntp-server-from-python
@@ -157,7 +165,7 @@ class Manager(object):
     def getTimer(self):
         return self.timer
 
-__timerManager__ = Manager('pool.ntp.org')
+__timerManager__ = Manager(None)
 
 
 def getTimer():

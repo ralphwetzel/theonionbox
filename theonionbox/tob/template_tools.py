@@ -43,7 +43,7 @@ def header_row(bold='', section='', target=''):
     return out
 
 
-def group(title='', color='lightgrey', bold=False, target=''):
+def group_row(title='', color='lightgrey', bold=False, target=''):
     out = """
         <div class = "row" {5}>
             <div class="{0}">

@@ -16,6 +16,8 @@
 
     fam_details = oo_factory.details(family_fp)
 
+# print(fam_details._document.document_data)
+
     ef = fam_details('effective_family')
     af = fam_details('alleged_family')
     indf = fam_details('indirect_family')
@@ -71,9 +73,13 @@
                     if fp[0] is '$':
                         node_det = oo_factory.details(fp[1:])
                         if node_det is not None:
-                            nn = node_det('nickname')
-                            if nn is '':
+                            if node_det.is_unknown():
                                 nn = 'unnamed'
+                            else:
+                                nn = node_det('nickname')
+                                if nn is None or nn == '':
+                                    nn = 'unnamed'
+                                end
                             end
                             if nn.lower() == 'unnamed':
                                 nn = '_{}'.format(unnamed_counter)
@@ -108,23 +114,30 @@
                         fp = nodes[nn][1:]
                     end
 %>
-                    {{!group(group_nn, color='black', bold=True, target='family_node_'+(fp if fp is not None else group_nn))}}
+                    {{!group_row(group_nn, color='black', bold=True, target='family_node_'+(fp if fp is not None else group_nn))}}
                     % if fp is not None:
                         {{!standard_row('Fingerprint', fp)}}
                     % end
                     % if fp and oo_factory.details(fp):
-                        {{!standard_row('Flags', ' | '.join(oo_factory.details(fp)('flags')))}}
+                        % flags = oo_factory.details(fp)('flags')
+                        % if flags is not None and len(flags) > 0:
+                            {{!standard_row('Flags', ' | '.join(flags))}}
+                        % end
                     % end
                     % if fp:
                         <div class="row">
                             <div class="{{box_datum_grid}}"><p>Performance</p></div>
                             <div class="{{box_value_grid}}">
                                 <div class="row">
-                                    <div class="col-md-6">
-                                        <canvas class="bw_chart box_canvas" id="FMLY{{nodes[nn][1:]}}-read" width="300" height="150" style="vertical-align: middle"></canvas>
+                                    <div class="col-xs-6">
+                                        <p>
+                                            <canvas class="bw_chart box_canvas" id="FMLY{{nodes[nn][1:]}}-read" width="300" height="150" style="vertical-align: middle"></canvas>
+                                        </p>
                                     </div>
-                                    <div class="col-md-6">
-                                        <canvas class="bw_chart box_canvas" id="FMLY{{nodes[nn][1:]}}-write" width="300" height="150" style="vertical-align: middle"></canvas>
+                                    <div class="col-xs-6">
+                                        <p>
+                                            <canvas class="bw_chart box_canvas" id="FMLY{{nodes[nn][1:]}}-write" width="300" height="150" style="vertical-align: middle"></canvas>
+                                        </p>
                                     </div>
                                 </div>
                             </div>

@@ -234,8 +234,8 @@ bw_style.ld.w = {
 var monitor_bandwidth_player;
 
 function monitor_play_bandwidth(data) {
-    $('#bw_down').text("Total: " + prettyNumber(data.tr, '', 'si') + " | Current: " + prettyNumber(data.r, '', 'si') + '/s');
-    $('#bw_up').text("Total: " + prettyNumber(data.tw, '', 'si') + " | Current: " + prettyNumber(data.w, '', 'si') + '/s');
+    $('#bw_down').text("Total: " + prettyNumber(data.tr, '', 'si') + " | Currently: " + prettyNumber(data.r, '', 'si') + '/s');
+    $('#bw_up').text("Total: " + prettyNumber(data.tw, '', 'si') + " | Currently: " + prettyNumber(data.w, '', 'si') + '/s');
 }
 
 

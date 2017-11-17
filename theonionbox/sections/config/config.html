@@ -5,7 +5,6 @@
 # used for the scripting part of TheOnionBox!
 
 import os
-from tob.tob_config import Configuration
 
 configs_used = []
 configs_all = []
@@ -24,6 +23,15 @@ except:
     pass
 end
 
+enable_print = False
+if enable_print is True:
+    print(tor.get_info('config/defaults'))
+    print('-----')
+    print(tor.get_info('config/names'))
+    print('-----')
+    print(tor.get_info('config-text'))
+end
+
 %>
 
 {{!header_row('Tor', 'Configuration', 'config')}}
@@ -32,12 +40,14 @@ end
     import psutil
     cmd_line = []
 
-    try:
-        pid = tor.get_pid()
-        p = psutil.Process(pid)
-        cmd_line = p.cmdline()  # This returns a list!
-    except:
-        pass
+    if tor.is_localhost():
+        try:
+            pid = tor.get_pid()
+            p = psutil.Process(pid)
+            cmd_line = p.cmdline()  # This returns a list!
+        except:
+            pass
+        end
     end
 
     if len(cmd_line) > 0:
@@ -76,87 +86,47 @@ end
     <div class="col-xs-1"></div>
 </div>
 
-
-% my_config = Configuration()
-% torrc_found = True
-% defaults_found = True
-
 <div class = "row">
     <div class="{{box_datum_grid}}">
         <p>torrc</p>
     </div>
     <div class="{{box_value_grid}}">
-        % path = tor.get_info('config-file')
-        % my_config.set_torrc(path)
-        % if not os.path.exists(path):
-        %   torrc_found = False
-        %   end
-        <p>{{!path}}</p>
+        <p>{{!tor.get_info('config-file')}}</p>
     </div>
     <div class="col-xs-1"></div>
 </div>
-% if not torrc_found:
-    <div class = "row">
-        <div class="{{box_datum_grid}}">
-            <p></p>
-        </div>
-        <div class="{{box_value_grid}} alert alert-danger">
-            %# <p style='color: lightgrey; font-size: 15px'>Path to configuration files used:</p>
-            Could not access '{{path}}'.<br>
-            Are you monitoring your Tor relay from a remote system? Be aware that
-            this might create a security issue!
-        </div>
-        <div class="col-xs-1"></div>
-    </div>
-% end
-
 
 <div class = "row">
     <div class="{{box_datum_grid}}">
         <p>torrc.defaults</p>
     </div>
     <div class="{{box_value_grid}}">
-        % path = tor.get_info('config-defaults-file')
-        % my_config.set_defaults(path)
-        % if not os.path.exists(path):
-        %   defaults_found = False
-        %   end
-        <p>{{!path}}</p>
+        <p>{{!tor.get_info('config-defaults-file')}}</p>
     </div>
     <div class="col-xs-1"></div>
 </div>
-
-% if not defaults_found:
-    <div class = "row">
-        <div class="{{box_datum_grid}}">
-            <p></p>
-        </div>
-        <div class="{{box_value_grid}} alert alert-danger">
-            %# <p style='color: lightgrey; font-size: 15px'>Path to configuration files used:</p>
-            Could not access '{{path}}'.<br>
-            The following list therefore <b>does not</b> cover the configuration options
-            set via this file!
-        </div>
-        <div class="col-xs-1"></div>
-    </div>
-% end
-
-% config_from_tor = tor.get_info('config-text')
-% configs_used = my_config.get_config(config_from_tor)
-
 <%
+
+    from tob.configcollector import ConfigCollector
+
+    cfgcoll = ConfigCollector(tor)
+    configs_used = cfgcoll.collect_configs_used()
+
     manpg = get('manpage', None)
 
     mp_groups = manpg.get_groups()
     if mp_groups:
         for group in mp_groups:
+            if group == 'HIDDEN SERVICE OPTIONS':
+                continue
+            end
             headr = False
             options = manpg.get_options(group)
             if options:
                 for option in options:
                     if option in configs_used:
                         if headr is False:
-    %>
+%>
                             <div class = "row">
                                 <div class="{{box_datum_grid}}">
                                     <p class='truncate' style='color: lightgrey; '>{{group.title()}}</p>
@@ -172,25 +142,32 @@ end
                         <div class = "row">
                             <div class="{{box_datum_grid}}">
                                 <p class="option_hover truncate ">
-                                    <a href="manpage.html#{{option}}" target="manpage_window">#</a> {{option}}
+                                    % if option[:2] != '__':
+                                        <a href="manpage.html#{{option}}" target="manpage_window">#</a> {{option}}
+                                    % else:
+                                        {{option}}
+                                    % end
                                 </p>
                             </div>
                             <div class="{{box_value_grid}}">
                                 <p>
                                     <%
                                         pt = config_params[option] # pt => parameter-type
-                                        optngrp = {'ControlPort': 'CONTROL',
-                                                   'DirPort': 'DIR',
-                                                   'ORPort': 'OR',
-                                                   'SocksPort': 'SOCKS'}
+
+                                        #optngrp = {'ControlPort': 'CONTROL',
+                                        #           'DirPort': 'DIR',
+                                        #           'ORPort': 'OR',
+                                        #           'SocksPort': 'SOCKS'}
+
                                         values = []
-                                        if option in optngrp:
-                                            port_tuples = tor.get_listeners(optngrp[option], '')
-                                            values = [prt[0] + ':' + str(prt[1]) for prt in port_tuples]
-                                        end
+
+                                        #if option in optngrp:
+                                        #    port_tuples = tor.get_listeners(optngrp[option], '')
+                                        #    values = [prt[0] + ':' + str(prt[1]) for prt in port_tuples]
+                                        #end
 
                                         if len(values) == 0:
-                                            values = tor.get_conf(option, None, True)
+                                            values = configs_used[option]
                                         end
                                     %>
                                     % if pt == 'Boolean':
@@ -217,8 +194,8 @@ end
                                         end
                                         out = ''
                                         for value in values:
-                                            if option == 'HashedControlPassword':
-                                                value = value[:45] + '...'  # no need to transmit this completely!
+                                            if option in ['HashedControlPassword', '__HashedControlSessionPassword']:
+                                                value = value[:43] + '...'  # no need to transmit this completely!
                                                 # value += '<br><span>Why is this value always truncated?</span>'
                                             end
                                             if len(out) > 0:
@@ -243,11 +220,12 @@ end
                             <div class="col-xs-1"></div>
                         </div>
     <%
-                        end
                     end
                 end
             end
+
         end
+    end
 %>
 
 <div class = "row">
@@ -265,7 +243,7 @@ end
        <p style='color: lightgrey;'>Remark</p>
     </div>
    <div class="{{box_value_grid}}">
-       <p style='color: lightgrey;'>Any configuration option not displayed above is probably used with its default value.</p>
+       <p style='color: lightgrey;'>Any configuration option not displayed above is set to its default value.</p>
    </div>
 </div>
 

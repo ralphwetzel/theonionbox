@@ -47,7 +47,8 @@
 
 %   title = 'The Onion Box'
 %   if 'title' in header:
-%       title = header['title']
+%       ttl = header['title']
+%       title = ttl if len(ttl)> 0 else title
 %   end
 <div class="row box_header">
     <div class="{{box_bold_grid}}"></div>

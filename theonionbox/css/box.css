@@ -3,7 +3,7 @@
 %# used for the scripting part of TheOnionBox!
 
 <%
-    # base_path = get('virtual_basepath', '') + '/'
+    base_path = get('virtual_basepath', '') + '/'
 %>
 
 % navbar_height = 50
@@ -132,7 +132,7 @@ body {
         try:
             include(file)
         except TemplateError as exc:
-            css_log.info("While including '{}' into 'box.css': {}".format(file, exc))
+            css_log.debug("While including '{}' into 'box.css': {}".format(file, exc))
         except Exception as exc:
             css_log.warning("While including '{}' into 'box.css': {}".format(file, exc))
         end
@@ -155,3 +155,86 @@ body {
     border-color: transparent;
 }
 
+% # /* Styles for the Upload/Download Glyphs */
+
+@font-face {
+  font-family: 'tob';
+  src:  url('{{base_path}}{{session_id}}/fonts/tob.eot?5gsh4g');
+  src:  url('{{base_path}}{{session_id}}/fonts/tob.eot?5gsh4g#iefix') format('embedded-opentype'),
+    url('{{base_path}}{{session_id}}/fonts/tob.ttf?5gsh4g') format('truetype'),
+    url('{{base_path}}{{session_id}}/fonts/tob.woff?5gsh4g') format('woff'),
+    url('{{base_path}}{{session_id}}/fonts/tob.svg?5gsh4g#tob') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}
+
+[class^="icon-"], [class*=" icon-"] {
+  /* use !important to prevent issues with browser extensions that change fonts */
+  font-family: 'tob' !important;
+  speak: none;
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+
+  /* Better Font Rendering =========== */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.icon-download:before {
+  content: "\e900";
+}
+.icon-upload:before {
+  content: "\e901";
+}
+
+
+
+.form-group input[type="checkbox"] {
+    display: none;
+}
+
+.form-group input[type="checkbox"] + .btn-group > label span {
+    width: 20px;
+}
+
+.form-group input[type="checkbox"] + .btn-group > label span:first-child {
+    display: none;
+}
+.form-group input[type="checkbox"] + .btn-group > label span:last-child {
+    display: inline-block;
+}
+
+.form-group input[type="checkbox"]:checked + .btn-group > label span:first-child {
+    display: inline-block;
+}
+.form-group input[type="checkbox"]:checked + .btn-group > label span:last-child {
+    display: none;
+}
+
+
+
+.config_group {
+    overflow: hidden;
+    text-align: left;
+}
+.config_group:after {
+    background-color: lightgrey;
+    content: "";
+    display: inline-block;
+    height: 1px;
+    position: relative;
+    vertical-align: middle;  /* middle seemed to be more obvious, yer super looks better (in chrome) */
+    width: 100%;
+}
+
+.config_group:after {
+    left: 0.5em;
+    margin-right: -100%;
+}
+
+/* Bootstrap Toggle Styles */
+% # include('bootstrap-toggle/css/bootstrap-toggle.min.css')
+% # include('bootstrap-switch/css/bootstrap-switch.min.css')

@@ -20,7 +20,6 @@ setup(
         description='Web Interface for TOR relay',
         install_requires=[
             'psutil',
-            'configparser',
             'stem',
             'bottle>=0.12.8',
         ]

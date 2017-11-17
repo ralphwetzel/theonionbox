@@ -1,0 +1,33 @@
+.config_group {
+    overflow: hidden;
+    text-align: left;
+}
+.config_group:after {
+    background-color: lightgrey;
+    content: "";
+    display: inline-block;
+    height: 1px;
+    position: relative;
+    vertical-align: middle;  /* middle seemed to be more obvious, yer super looks better (in chrome) */
+    width: 100%;
+}
+
+.config_group:after {
+    left: 0.5em;
+    margin-right: -100%;
+}
+
+.option_hover a {
+    visibility: hidden;
+}
+
+.option_hover:hover a, option_hover:active a {
+    visibility: visible;
+}
+
+.truncate {
+  max-width: 1000px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

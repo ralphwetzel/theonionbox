@@ -22,11 +22,19 @@
                    "V2Dir": "black",       "V3Dir": "black", "Tor Communication Error": "red", 'none': 'cyan',
                     "unknown": "black"}
 
-    def flags():
-        flags = []
+    def flags(is_bridge = False):
+        flags = ['unknown']
         try:
-            flags = tor.get_flags()
-        except:
+            if is_bridge is True:
+                oo_details = get('oo_details', None)
+                if oo_details is not None:
+                    # get_flags() only works for relays, not for bridges
+                    flags = oo_details('flags') or ['unknown']
+                end
+            else:
+                flags = tor.get_flags() or ['unknown']
+            end
+        except Exception as exc:
             pass
         end
 
@@ -55,8 +63,8 @@
 %>
 
 <%
-    from tob.version_tester import TorVersionTester
-    tvt = TorVersionTester()
+    bv = get('boxVersion')
+    tvt = bv.Tor
 
     tvs = tor.get_version_short()
 %>
@@ -92,21 +100,21 @@
             </div>
             <div class="{{box_value_grid}}">
                 <p>
-                    <a href="https://dist.torproject.org/" target="_blank">{{tvt.latest_stable()}}</a>
+                    <a href="https://dist.torproject.org/" target="_blank">{{tvt.stable}}</a>
                 </p>
             </div>
         </div>
 <%
     end
-    if tvt.is_latest_alpha(tvs) is False:
+    if tvt.is_latest_unstable(tvs) is False:
 %>
         <div class = "row">
             <div class="{{box_datum_grid}}">
-                <p>Latest Alpha Version</p>
+                <p>Latest Unstable Version</p>
             </div>
             <div class="{{box_value_grid}}">
                 <p>
-                    <a href="https://dist.torproject.org/" target="_blank">{{tvt.latest_alpha()}}</a>
+                    <a href="https://dist.torproject.org/" target="_blank">{{tvt.unstable}}</a>
                 </p>
             </div>
         </div>
@@ -115,6 +123,17 @@
 {{!standard_row('PID', tor.get_pid())}}
 {{!standard_row('User', tor.get_user())}}
 
+<%
+    node_mode = 'Client'
+    if tor.get_conf('BridgeRelay', None) == '1':
+        node_mode = 'Bridge'
+    elif tor.get_conf('ORPort', None):
+        node_mode = 'Relay'
+    end
+%>
+{{!standard_row('Mode', node_mode)}}
+
+% if node_mode != 'Client':
 <div class="row">
     <div class="{{box_datum_grid}}">
         <p>Fingerprint</p>
@@ -128,14 +147,21 @@
                 pass
             end
         %>
-        <p>
-            %# <a href="https://atlas.torproject.org/#details/{{!_fngrprnt}}" target="_blank">
-                {{!_fngrprnt}}
-            %# </a>
-        </p>
+        % if _fngrprnt is None or len(_fngrprnt) < 1:
+            <p style="color: #31708f;">
+                Tor in client mode: No fingerprint.
+            </p>
+        % else:
+            <p>
+                %# <a href="https://atlas.torproject.org/#details/{{!_fngrprnt}}" target="_blank">
+                    {{!_fngrprnt}}
+                %# </a>
+            </p>
+        % end
     </div>
 </div>
 
-{{!standard_row('Flags', flags())}}
+{{!standard_row('Flags', flags(node_mode == 'Bridge'))}}
+% end
 
 <hr>

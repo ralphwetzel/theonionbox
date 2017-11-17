@@ -11,7 +11,7 @@ import uuid
 import logging
 from logging.handlers import MemoryHandler, BufferingHandler
 import functools
-from tob.tob_time import getTimer
+from tob.deviation import getTimer
 import sys
 
 from threading import RLock
@@ -74,14 +74,22 @@ def handle_tor_event(event, logger):
         # yet the workaround to make this work in 3.4.0 <= version < 3.4.2
         # is ridiculous! => https://docs.python.org/3/library/logging.html#logging.getLevelName
         logger.log(level_box_to_tor[level], msg=event.message, extra=extra)
+
+        # This might indicate an attempt to scan the ports of a hidden service!!
+        if 'connection_edge_process_relay_cell (at origin) failed' in event.message:
+            extra['source'] = 'box'
+            logger.log(level_box_to_tor['NOTICE'],
+                       msg="If you're running a hidden service this could "
+                           "indicate a failed attempt to establish a connection!",
+                       extra=extra)
+
     except Exception as exc:
         boxLog = logging.getLogger('theonionbox')
         boxLog.exception('Error while logging Tor event: level={} | msg={} | extra={}'
                          .format(level, event.message, extra), exc_info=True)
 
-class LoggingManager(object):
 
-    __tor_logger__ = 'tor@theonionbox'
+class LoggingManager(object):
 
     class _EventSwitchMonitor(object):
 
@@ -205,6 +213,7 @@ class LoggingManager(object):
             self.buffer_lock.release()
 
     tor = None
+    logger_name = None   # name of the logger of this node
     monitor = None
     clients = {}
 
@@ -216,17 +225,22 @@ class LoggingManager(object):
     # the levels and their default value
     levels = {'DEBUG': False, 'INFO': False, 'NOTICE': True, 'WARNING': True, 'ERROR': True, 'BOX': True}
 
-    def __init__(self, tor, notice=True, warn=True, err=True):
+    def __init__(self, controller, notice=True, warn=True, err=True):
 
-        lgr = logging.getLogger('theonionbox')
+        lgr = logging.getLogger('theonionbox')  # logging messages back to the box
 
-        self.tor = tor
+        self.self_id = str(uuid.uuid4().hex)
+        lgr.debug('LoggingManager created with id {}.'.format(self.self_id))
+
+        self.logger_name = '{}@theonionbox'.format(self.self_id)
+
+        self.tor = controller
         self.clients = {}
 
         self.monitor = self._EventSwitchMonitor()
 
         # This is necessary to ensure a different object for each runlevel
-        torLog = logging.getLogger(self.__tor_logger__)
+        torLog = logging.getLogger(self.logger_name)
         self.event_handlers = {'DEBUG': functools.partial(handle_tor_event, logger=torLog),
                                'INFO': functools.partial(handle_tor_event, logger=torLog),
                                'NOTICE': functools.partial(handle_tor_event, logger=torLog),
@@ -234,22 +248,18 @@ class LoggingManager(object):
                                'ERROR': functools.partial(handle_tor_event, logger=torLog)
                                }
 
-        id = str(uuid.uuid4())
-        self.self_id = id
-        lgr.debug('LoggingManager: self_id = {}.'.format(id))
-
-        self.add_client(id, clear_at_flush=False)
+        self.add_client(self.self_id, clear_at_flush=False)
         if notice != self.levels['NOTICE']:
-            self.switch(id, 'NOTICE', notice)
+            self.switch(self.self_id, 'NOTICE', notice)
         if warn != self.levels['WARNING']:
-            self.switch(id, 'WARNING', warn)
+            self.switch(self.self_id, 'WARNING', warn)
         if err != self.levels['ERROR']:
-            self.switch(id, 'ERROR', err)
+            self.switch(self.self_id, 'ERROR', err)
 
-    def connect2tor(self, tor):
-        if self.tor is not None:
-            raise AttributeError('You may connect this manager to Tor only once!')
-        self.tor = tor
+    # def connect2tor(self, tor):
+    #     if self.tor is not None:
+    #         raise AttributeError('You may connect this manager to Tor only once!')
+    #     self.tor = tor
 
     def add_client(self, session_id, capacity=400, clear_at_flush=True):
 
@@ -263,7 +273,7 @@ class LoggingManager(object):
             self.clients[session_id] = mh
 
             # add the MessageHandler to Tor's Logger
-            logging.getLogger(self.__tor_logger__).addHandler(mh)
+            logging.getLogger(self.logger_name).addHandler(mh)
 
         # switch on the default events
         for level in self.levels:
@@ -296,7 +306,7 @@ class LoggingManager(object):
             self.switch(session_id, level, False)
 
         # remove & close the MessageHandler
-        logging.getLogger(self.__tor_logger__).removeHandler(mh)
+        logging.getLogger(self.logger_name).removeHandler(mh)
         mh.close()
 
         # safe-delete the entry for this id
@@ -362,6 +372,12 @@ class LoggingManager(object):
         mh = self.clients[session_id]
         # and return the stored messages!
         return mh.flush(encode=encode)
+
+    def get_logger_name(self):
+        return self.logger_name
+
+    def get_id(self):
+        return self.self_id
 
 
 # Thanks to 'Mad Physicist'
@@ -445,6 +461,7 @@ class ForwardHandler(MemoryHandler):
         return record.levelno >= self.level
 
 
+# 20170409 RDW: Not used?
 # John Spong @
 # http://stackoverflow.com/questions/17931426/strip-newline-and-white-spaces-from-python-logger-messages
 class WhitespaceRemovingFormatter(logging.Formatter):
@@ -453,12 +470,79 @@ class WhitespaceRemovingFormatter(logging.Formatter):
         return super(WhitespaceRemovingFormatter, self).format(record)
 
 
-from time import gmtime, strftime, mktime
+from time import strftime, mktime, localtime
+
 
 class ConsoleFormatter(logging.Formatter):
+
+    def __init__(self):
+        import os
+        # Disable console line breaking when inside the development environment
+        self.pycharm = (os.getenv('PYCHARM_RUNNING_TOB', None) == '1')
+        super(self.__class__, self).__init__()
+
     def format(self, record):
         msg = str(record.msg).strip()
+
+        # if DEBUG: prepend special info to message
         lvlname = record.levelname
+
+        if msg != '' and lvlname == 'DEBUG':
+            premsg = '{}[{}'.format(record.filename, record.lineno)
+            if record.funcName != '<module>':
+                premsg += '|{}'.format(record.funcName)
+            premsg += ']: '
+
+            msg = premsg + msg
+
+        # only if not in PyCharm
+        if self.pycharm is False:
+
+            # add propper line breaks for nice output:
+            try:
+                from tob.terminalsize import get_terminal_size
+
+                # Try to get the size of the terminal
+                sx, sy = get_terminal_size()
+                # we need 8 chars for the lvlname
+                sx -= 21
+
+                # only if the line is long 'enough'...
+                if sx > 10:
+
+                    # split multiline msg to keep the newline seperators
+                    lines = msg.splitlines()
+                    out = []
+
+                    # for any line
+                    for aline in lines:
+                        terms = aline.split()
+
+                        # check if term still fitls in this line
+                        new_line = ''
+                        for aterm in terms:
+                            lnl = len(new_line)
+                            # max length defined by terminal window
+                            if sx - lnl > len(aterm):
+                                if lnl > 0:
+                                    new_line += ' '
+                                new_line += aterm
+                            else:
+                                out.append(new_line)
+                                # There is one special case here:
+                                # If the length of aterm is larger then 59,
+                                # it will create an ugly linebreak if output.
+                                # We accept this to ensure that all data is shown.
+                                new_line = aterm
+
+                        out.append(new_line)
+
+                    # put it together again!
+                    msg = ('\r\n' + ' ' * 21).join(out)
+
+            except:
+                # if it fails: don't care!
+                pass
 
         out_lvlname = lvlname
         if lvlname == 'WARNING':
@@ -467,24 +551,33 @@ class ConsoleFormatter(logging.Formatter):
             out_lvlname = ''
 
         # https://en.wikipedia.org/wiki/ANSI_escape_code
-        colorcodes = {'DEBUG': '\033[37m',      # light gray
-                      'INFO': '\033[94m',       # light blue
-                      'NOTICE': '',             # default
-                      'WARNING': '\033[91m',    # light red
-                      'ERROR': '\033[93;1m'}      # yellow (bold)
+        colorcodes = {
+            'TRACE': '\033[35m',      # magenta
+            'DEBUG': '\033[37m',      # light gray
+            'INFO': '\033[94m',       # light blue
+            'NOTICE': '',             # default
+            'WARNING': '\033[91m',    # light red
+            'ERROR': '\033[93;1m'     # yellow (bold)
+        }
 
         out = ' ' * 8
         if out_lvlname != '':
             out = ('[{}]' + out).format(out_lvlname)[:8]
 
         if msg != '':
-            out += strftime('%H:%M:%S', gmtime(record.created)) + '.{:0=3d} '.format(int(record.msecs))
+            out += strftime('%H:%M:%S', localtime(record.created)) + '.{:0=3d} '.format(int(record.msecs))
 
-            if lvlname == 'DEBUG':
-                out += '{}[{}'.format(record.filename, record.lineno)
-                if record.funcName != '<module>':
-                    out += '|{}'.format(record.funcName)
-                out += ']: '
+            try:
+                if record.source != 'box':
+                    out += '{} | '.format(record.source)
+            except:
+                pass
+
+            # if lvlname == 'DEBUG':
+            #     out += '{}[{}'.format(record.filename, record.lineno)
+            #     if record.funcName != '<module>':
+            #         out += '|{}'.format(record.funcName)
+            #     out += ']: '
 
             out += msg
 
@@ -493,6 +586,7 @@ class ConsoleFormatter(logging.Formatter):
 
         return out
 
+# 20170409 RDW: Not used?
 class ClientFormatter(logging.Formatter):
 
     def format(self, record):
@@ -506,18 +600,21 @@ class ClientFormatter(logging.Formatter):
             out_lvlname = ''
 
         # https://en.wikipedia.org/wiki/ANSI_escape_code
-        colorcodes = {'DEBUG': '\033[37m',      # gray
-                      'INFO': '\033[34m',       # blue
-                      'NOTICE': '',             # default
-                      'WARNING': '\033[31m',    # red
-                      'ERROR': '\033[31;1m'}    # red (bold)
+        colorcodes = {
+            'TRACE': '\033[35m',      # magenta
+            'DEBUG': '\033[37m',      # light gray
+            'INFO': '\033[94m',       # light blue
+            'NOTICE': '',             # default
+            'WARNING': '\033[91m',    # light red
+            'ERROR': '\033[93;1m'     # yellow (bold)
+        }
 
         out = ' ' * 8
         if out_lvlname != '':
             out = ('[{}]' + out).format(out_lvlname)[:8]
 
         if msg != '':
-            out += strftime('%H:%M:%S', gmtime(record.created)) + '.{:0=3d} '.format(int(record.msecs))
+            out += strftime('%H:%M:%S', localtime(record.created)) + '.{:0=3d} '.format(int(record.msecs))
             out += msg
 
             if lvlname in colorcodes:
@@ -542,7 +639,7 @@ class FileFormatter(logging.Formatter):
             out = ('[{}]' + out).format(out_lvlname)[:8]
 
         if msg != '':
-            out += strftime('%H:%M:%S', gmtime(record.created)) + '.{:0=3d} '.format(int(record.msecs))
+            out += strftime('%H:%M:%S', localtime(record.created)) + '.{:0=3d} '.format(int(record.msecs))
             out += msg
 
         return out
