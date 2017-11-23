@@ -1,3 +1,5 @@
+# coding=UTF-8
+
 #####
 # Class to support APScheduler v3 (default) and v2
 # despite their interfaces are incompatible!
@@ -91,7 +93,44 @@ class Scheduler(object):
     # https://github.com/ralphwetzel/theonionbox/issues/19#issuecomment-263110953
     def check_tz(self):
         from tzlocal import get_localzone
-        from apscheduler.util import astimezone
+
+        try:
+            # APScheduler 3.x
+            from apscheduler.util import astimezone
+
+        except ImportError:
+            # https://github.com/ralphwetzel/theonionbox/issues/31
+            # APScheduler 2.x
+            import six
+            from pytz import timezone, utc
+            from datetime import tzinfo
+
+            # copied here from apscheduler/util.py (version 3.4)
+            # copyright Alex Grönholm
+            # https://github.com/agronholm/apscheduler
+
+            def astimezone(obj):
+                """
+                Interprets an object as a timezone.
+
+                :rtype: tzinfo
+
+                """
+                if isinstance(obj, six.string_types):
+                    return timezone(obj)
+                if isinstance(obj, tzinfo):
+                    if not hasattr(obj, 'localize') or not hasattr(obj, 'normalize'):
+                        raise TypeError('Only timezones from the pytz library are supported')
+                    if obj.zone == 'local':
+                        raise ValueError(
+                            'Unable to determine the name of the local timezone -- you must explicitly '
+                            'specify the name of the local timezone. Please refrain from using timezones like '
+                            'EST to prevent problems with daylight saving time. Instead, use a locale based '
+                            'timezone name (such as Europe/Helsinki).')
+                    return obj
+                if obj is not None:
+                    raise TypeError('Expected tzinfo, got %s instead' % obj.__class__.__name__)
+
         tz = get_localzone()
         try:
             res = astimezone(tz)
