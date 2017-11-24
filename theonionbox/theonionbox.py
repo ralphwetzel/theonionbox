@@ -246,8 +246,8 @@ def log_encoder(string):
 
 boxLog.notice(__description__)
 boxLog.notice('Version v{}'.format(stamped_version))
-boxLog.info('Running on a {} Host.'.format(boxHost['system']))
-boxLog.info('Python version is {}.{}.{}.'.format(sys.version_info.major,
+boxLog.notice('Running on a {} Host.'.format(boxHost['system']))
+boxLog.notice('Python version is {}.{}.{}.'.format(sys.version_info.major,
                                                  sys.version_info.minor,
                                                  sys.version_info.micro))
 
@@ -444,14 +444,28 @@ else:
 # The dict will be extended while checking the configuration data to ensure
 # we have everything to run according configuration.
 
-# module name: message to user
+pip_version = 'pip3' if py30 else 'pip'
+
+# module name: {min_version, message to user}
 required_modules = {
-    'stem': '',
-    'bottle': '',
-    'apscheduler': '',
-    'requests': '',
+    'stem': {
+        'version': ['1.5.4']
+    },
+    'bottle': {
+        'version': ['0.12.13']
+    },
+    'apscheduler': {
+        'version': ['2.1.2', '3.4.0']
+    },
+    'requests': {
+        'version': ['2.18.0']
+    },
     # be aware that the module is named 'PySocks' yet the loader looks for 'socks'
-    'socks': "Required python module 'PySocks' is missing. You have to install it via 'pip install pysocks'."
+    'pysocks': {
+        'loader': 'socks',
+        'version': ['1.6.7'],
+        'info': "Required python module 'PySocks' is missing. You have to install it via '{} install pysocks'.".format(pip_version)
+    }
 }
 
 #####
@@ -482,7 +496,7 @@ if len(box_basepath):
 
 # tor_control validation
 if tor_control not in ['port', 'socket', 'proxy']:
-    boxLog.warning("Configuration: Wrong value '{}' defined for parameter 'tor_control'.")
+    boxLog.warning("Configuration: Wrong value '{}' defined for parameter 'tor_control'.".format(tor_control))
     boxLog.notice("Configuration: 'tor_control' set to default value 'port'.")
     tor_control = 'port'
 
@@ -492,8 +506,10 @@ if tor_control not in ['port', 'socket', 'proxy']:
 #                                   "'pip install {0}'"
 
 if box_ssl is True:
-    required_modules['ssl'] = "To operate via SSL you have to install python module '{0}': 'pip install {0}"
-
+    required_modules['ssl'] = {
+        'version': ['1.16'],
+        'info': "To operate via SSL you have to install python module '\{0\}': '{} install \{0\}".format(pip_version)
+    }
 
 if proxy_config['control'] == 'default':
     proxy_config['control'] = tor_control
@@ -549,7 +565,6 @@ if find_loader('stem') is None or box_cmdline['debug'] is True or box_cmdline['t
         except:
             out('Failed to connect to Tor.')
 
-
     if simple_tor is not None:
         out('Successfully connected to Tor @ {}:{}!'.format(tor_host, tor_port))
         out('This is the response to PROTOCOLINFO request:')
@@ -572,26 +587,53 @@ if find_loader('psutil') is None:
     boxLog.warning("Required python module 'psutil' is missing.")
     module_missing = True
     if boxHost['system'] == 'Linux':
-        boxLog.notice("You have to install it via 'pip install psutil'.")
+        boxLog.notice("You have to install it via '{} install psutil'.".format(pip_version))
         boxLog.notice("If this fails, make sure the python headers are installed, too: 'apt-get install python-dev'.")
     elif boxHost['system'] == 'Windows':
         boxLog.notice("Check 'https://pypi.python.org/pypi/psutil' for an installer package.")
     else:
         boxLog.notice("Check 'https://pypi.python.org/pypi/psutil' for installation instructions.")
 
-for module_name, message in required_modules.items():
-    if find_loader(module_name) is None:
+
+for key in required_modules:
+
+    module = required_modules[key]
+    loader_name = key if 'loader' not in module else module['loader']
+
+    if find_loader(loader_name) is None:
         module_missing = True
 
-        if len(message) > 0:
-            boxLog.warning(message.format(module_name))
+        if 'info' in module:
+            boxLog.warning(module['info'].format(loader_name))
         else:
-            boxLog.warning("Required python module '{0}' is missing. You have to install it via 'pip install {0}'."
-                           .format(module_name))
+            boxLog.warning("Required python module '{0}' is missing. You have to install it via '{1} install {0}'."
+                           .format(loader_name, pip_version))
+
+# required packages version verification
+from pip import get_installed_distributions
+from pkg_resources import parse_version
+
+boxLog.debug('Required packages version verification:')
+for pkg in get_installed_distributions():
+    if pkg.key in required_modules:
+        ok = False
+        check = required_modules[pkg.key]
+        if 'version' in check:
+            for required_version in check['version']:
+                if parse_version(pkg.version) >= parse_version(required_version):
+                    ok = True
+
+            boxLog.debug('> {} {} installed. {} required.'.format(pkg.key, pkg.version, check['version']))
+
+            if ok is not True:
+                boxLog.warning("Required python module '{0}' version '{2}' is outdated. Please run '{1} install --upgrade {0}'."
+                               .format(pkg.key, pip_version, pkg.version))
+                module_missing = True
 
 if module_missing:
-    boxLog.warning("Hint: You need to have root privileges to operate 'pip'.")
+    boxLog.warning("Hint: You need to have root privileges to operate '{}'.".format(pip_version))
     sys.exit(0)
+
 
 #####
 # SOCKS Proxy definition
@@ -622,7 +664,7 @@ tor_geoip = None
 
 if box_geoip_db is not None:
     if find_loader('geoip2') is None:
-        boxLog.warning("To use a GeoIP database, you have to install python module 'geoip2': 'pip install geoip2'")
+        boxLog.warning("To use a GeoIP database, you have to install python module 'geoip2': '{} install geoip2'".format(pip_version))
         box_geoip_db = None
     else:
         if os.path.exists(box_geoip_db):
@@ -809,7 +851,7 @@ elif boxHost['system'] == 'FreeBSD':
 
             try:
                 # Currently there is no YEAR data in the returned string!
-                # Therefore this could crash around January 2017!!
+                # Therefore this could crash around January 20xy!!
                 upt = datetime.strptime(' '.join(uptimes[2:]), '%b %d %H:%M')
             except Exception as exc:
                 boxLog.warning('Uptime information parsing error: {}'.format(exc))
