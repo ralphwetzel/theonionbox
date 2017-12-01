@@ -338,6 +338,7 @@
         // This bit here is purely for show. it drops the precision on numbers greater than 100 before the units.
         // it also always shows the full number of bytes if bytes is the unit.
         if(result >= 99.995 || i===0) {
+            if (result.toFixed(0) == 1) return '1 Byte';
             return result.toFixed(0) + separator + abbreviations[i];
         } else {
             return result.toFixed(2) + separator + abbreviations[i];
