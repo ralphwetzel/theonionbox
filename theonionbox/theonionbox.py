@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-__version__ = '4.0.0'
+__version__ = '4.0.2'
 __stamp__ = None    # stamp will be added later
 __description__ = 'The Onion Box: WebInterface to monitor your Tor operations.'
 
