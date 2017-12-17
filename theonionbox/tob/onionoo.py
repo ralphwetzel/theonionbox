@@ -18,7 +18,7 @@ from tob.proxy import Proxy
 py = sys.version_info
 py30 = py >= (3, 0, 0)
 
-__supported_protocol__ = ['4.2', '4.3', '4.4']
+__supported_protocol__ = ['4.2', '4.3', '4.4', '5.0']
 
 
 class Mode(object):
