@@ -21,7 +21,8 @@
         if fam_det is not None:
             # iterate through the nodes
             for fp in fam_det:
-                family_nodes.append(fp[1:])
+                # // onionoo protocol v5.0 adaptation
+                family_nodes.append(fp[1:] if fp[0] is '$' else fp)
             end
         end
     end

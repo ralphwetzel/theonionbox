@@ -70,7 +70,20 @@
                 unnamed_counter = 0
                 error_counter = 0
                 for fp in family_nodes:
-                    if fp[0] is '$':
+
+                    # // onionoo protocol v5.0 (fp[0] === '$' removed) adaptation
+                    fp = fp[1:] if fp[0] is '$' else fp
+
+                    try:
+                        # // test for valid fingerprint (hex chars only)
+                        int(fp,16)
+
+                        # // ok; final test
+                        if len(fp) != 40:
+                            raise ValueError
+                        end
+
+                        # // this seems to be a valid fingerprint
                         node_det = oo_factory.details(fp[1:])
                         if node_det is not None:
                             if node_det.is_unknown():
@@ -87,7 +100,8 @@
                             end
                             nodes[nn] = fp
                         end
-                    else:
+
+                    except ValueError, TypeError:
                         # This is not a fingerprint
                         # but already a nickname!
                         nn = '!{}'.format(error_counter)
@@ -104,14 +118,16 @@
                     no_data = False
                     if nn[0] == '_':
                         group_nn = 'Unnamed'
-                        fp = nodes[nn][1:]
+                        fp = nodes[nn]
+                        fp = fp[1:] if fp[0] is '$' else fp
                     elif nn[0] == '!':
                         group_nn = nodes[nn]
                         fp = None
                         not_found = True
                     else:
                         group_nn = nn
-                        fp = nodes[nn][1:]
+                        fp = nodes[nn]
+                        fp = fp[1:] if fp[0] is '$' else fp
                     end
 %>
                     {{!group_row(group_nn, color='black', bold=True, target='family_node_'+(fp if fp is not None else group_nn))}}

@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-__version__ = '4.0.2'
+__version__ = '4.0.3'
 __stamp__ = None    # stamp will be added later
 __description__ = 'The Onion Box: WebInterface to monitor your Tor operations.'
 
@@ -2248,8 +2248,8 @@ def post_data(session_id):
             # there are several different categories of families
             fams = ['effective_family', 'alleged_family', 'indirect_family']
 
-            family_data = {}  # the read / write data for one node; key = fingerprint of node [1:]
-            family_nodes = []  # list of fingerprints of the nodes [1:]
+            family_data = {}  # the read / write data for one node; key = fingerprint of node (pre 5.0: [1:])
+            family_nodes = []  # list of fingerprints of the nodes (pre 5.0: [1:])
 
             if 'family' not in session:
                 session['family'] = {}
@@ -2264,7 +2264,8 @@ def post_data(session_id):
                 if fam_det is not None:
                     # iterate through the nodes
                     for fp in fam_det:
-                        node_fp = fp[1:]
+                        # onionoo protocol v5.0 adaptation
+                        node_fp = fp[1:] if fp[0] is '$' else fp
                         node_key = 'family:{}'.format(node_fp)
                         node_bw = onionoo.bandwidth(node_fp)
 
