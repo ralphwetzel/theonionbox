@@ -1,8 +1,8 @@
 import logging
-from tob.log import LoggingManager
-from tob.livedata import LiveDataManager
-from tob.scheduler import Scheduler
-from tob.controller import Controller
+from log import LoggingManager
+from livedata import LiveDataManager
+from scheduler import Scheduler
+from controller import Controller
 from stem import SocketError
 from stem.control import EventType
 import functools
@@ -129,6 +129,9 @@ class TorNode(object):
         # bytes written.  These entries each represent about one second's worth
         # of traffic.
 
+        log = logging.getLogger('theonionbox')
+        log.debug('Initializing LiveData transmission...')
+
         try:
             bwevc = self.tor.get_info('bw-event-cache').split(' ')
             bwevc_len = len(bwevc)
@@ -140,7 +143,8 @@ class TorNode(object):
                                                , bytes_read=int(read)
                                                , bytes_written=int(written))
                 counter += 1
-        except:
+        except Exception as e:
+            log.warning('Failed to erstablish LiveData connection: {}'.format(e))
             pass
 
 
@@ -205,7 +209,7 @@ class TorNode(object):
         else:
             retval = False
             try:
-                self.tor.authenticate_password(password=password)
+                self.tor.authenticate(password=password)
                 self.password = password
                 retval = True
 
