@@ -1073,7 +1073,9 @@ forward slash (/) in the configuration file and on the command line.</p></div>
     usage for _relayed traffic_ on this node to the specified number of bytes
     per second, and the average outgoing bandwidth usage to that same value.
     Relayed traffic currently is calculated to include answers to directory
-    requests, but that may change in future versions. (Default: 0)
+    requests, but that may change in future versions. They do not include directory
+    fetches by the relay (from authority or other relays), because that is considered
+    "client" activity.  (Default: 0)
 </p>
 </dd>
 <dt class="hdlist1">
@@ -1083,7 +1085,8 @@ forward slash (/) in the configuration file and on the command line.</p></div>
 <p>
     If not 0, limit the maximum token bucket size (also known as the burst) for
     _relayed traffic_ to the given number of bytes in each direction.
-    (Default: 0)
+    They do not include directory fetches by the relay (from authority
+    or other relays), because that is considered "client" activity. (Default: 0)
 </p>
 </dd>
 <dt class="hdlist1">
@@ -1406,6 +1409,26 @@ forward slash (/) in the configuration file and on the command line.</p></div>
 </p>
 </dd>
 <dt class="hdlist1">
+<a id="CacheDirectory"></a> <strong>CacheDirectory</strong> <em>DIR</em>
+</dt>
+<dd>
+<p>
+    Store cached directory data in DIR. Can not be changed while tor is
+    running.
+    (Default: uses the value of DataDirectory.)
+</p>
+</dd>
+<dt class="hdlist1">
+<a id="CacheDirectoryGroupReadable"></a> <strong>CacheDirectoryGroupReadable</strong> <strong>0</strong>|<strong>1</strong>
+</dt>
+<dd>
+<p>
+    If this option is set to 0, don&#8217;t allow the filesystem group to read the
+    CacheDirectory. If the option is set to 1, make the CacheDirectory readable
+    by the default GID. (Default: 0)
+</p>
+</dd>
+<dt class="hdlist1">
 <a id="FallbackDir"></a> <strong>FallbackDir</strong> <em>ipv4address</em>:<em>port</em> orport=<em>port</em> id=<em>fingerprint</em> [weight=<em>num</em>] [ipv6=<strong>[</strong><em>ipv6address</em><strong>]</strong>:<em>orport</em>]
 </dt>
 <dd>
@@ -1475,7 +1498,8 @@ forward slash (/) in the configuration file and on the command line.</p></div>
     When configured to use both directory authorities and fallback
     directories, the directory authorities also work as fallbacks. They are
     chosen with their regular weights, multiplied by this number, which
-    should be 1.0 or less. (Default: 1.0)
+    should be 1.0 or less. The default is less than 1, to reduce load on
+    authorities. (Default: 0.1)
 </p>
 </dd>
 </dl></div>
@@ -1794,7 +1818,7 @@ forward slash (/) in the configuration file and on the command line.</p></div>
     be used twice, once with an IPv4 address and once with an IPv6 address.
     IPv6 addresses should be wrapped in square brackets.
     This setting will be ignored for connections to the loopback addresses
-    (127.0.0.0/8 and ::1).
+    (127.0.0.0/8 and ::1), and is not used for DNS requests as well.
 </p>
 </dd>
 <dt class="hdlist1">
@@ -1885,6 +1909,16 @@ forward slash (/) in the configuration file and on the command line.</p></div>
     When logging to syslog, adds a tag to the syslog identity such that
     log entries are marked with "Tor-<em>tag</em>". Can not be changed while tor is
     running. (Default: none)
+</p>
+</dd>
+<dt class="hdlist1">
+<a id="AndroidIdentityTag"></a> <strong>AndroidIdentityTag</strong> <em>tag</em>
+</dt>
+<dd>
+<p>
+    When logging to Android&#8217;s logging subsystem, adds a tag to the log identity
+    such that log entries are marked with "Tor-<em>tag</em>". Can not be changed while
+    tor is running. (Default: none)
 </p>
 </dd>
 <dt class="hdlist1">
@@ -2023,24 +2057,32 @@ forward slash (/) in the configuration file and on the command line.</p></div>
 </dt>
 <dd>
 <p>
-    Specify the scheduler type that tor should use to handle outbound data on
-    channels. This is an ordered list by priority which means that the first
-    value will be tried first and if unavailable, the second one is tried and
-    so on. It is possible to change thse values at runtime.
+    Specify the scheduler type that tor should use. The scheduler is
+    responsible for moving data around within a Tor process. This is an ordered
+    list by priority which means that the first value will be tried first and if
+    unavailable, the second one is tried and so on. It is possible to change
+    these values at runtime. This option mostly effects relays, and most
+    operators should leave it set to its default value.
     (Default: KIST,KISTLite,Vanilla)
 <br />
     The possible scheduler types are:
 <br />
-    <strong>KIST</strong>: Kernel Informed Socket Transport. Tor will use the kernel tcp
-    information stack per-socket to make an informed decision on if it should
-    send or not the data. (Only available on Linux)
+    <strong>KIST</strong>: Kernel-Informed Socket Transport. Tor will use TCP information
+    from the kernel to make informed decisions regarding how much data to send
+    and when to send it. KIST also handles traffic in batches (see
+    KISTSchedRunInterval) in order to improve traffic prioritization decisions.
+    As implemented, KIST will only work on Linux kernel version 2.6.39 or
+    higher.
 <br />
-    <strong>KISTLite</strong>: Same as KIST but without kernel support which means that tor
-    will use all the same mecanics as KIST but without the TCP information the
-    kernel can provide.
+    <strong>KISTLite</strong>: Same as KIST but without kernel support. Tor will use all
+    the same mechanics as with KIST, including the batching, but its decisions
+    regarding how much data to send will not be as good. KISTLite will work on
+    all kernels and operating systems, and the majority of the benefits of KIST
+    are still realized with KISTLite.
 <br />
-    <strong>Vanilla</strong>: The scheduler that tor has always used that is do as much as
-    possible or AMAP.
+    <strong>Vanilla</strong>: The scheduler that Tor used before KIST was implemented. It
+    sends as much data as possible, as soon as possible. Vanilla will work on
+    all kernels and operating systems.
 </p>
 </dd>
 <dt class="hdlist1">
@@ -2048,7 +2090,7 @@ forward slash (/) in the configuration file and on the command line.</p></div>
 </dt>
 <dd>
 <p>
-    If KIST or KISTLite is used in Schedulers option, this control at which
+    If KIST or KISTLite is used in the Schedulers option, this controls at which
     interval the scheduler tick is. If the value is 0 msec, the value is taken
     from the consensus if possible else it will fallback to the default 10
     msec. Maximum possible value is 100 msec. (Default: 0 msec)
@@ -3124,12 +3166,23 @@ is preferable since it reduces the chances for an attacker to guess the
 </p>
 </dd>
 <dt class="hdlist1">
+<a id="ClientDNSRejectInternalAddresses"></a> <strong>ClientDNSRejectInternalAddresses</strong> <strong>0</strong>|<strong>1</strong>
+</dt>
+<dd>
+<p>
+    If true, Tor does not believe any anonymously retrieved DNS answer that
+    tells it that an address resolves to an internal address (like 127.0.0.1 or
+    192.168.0.1). This option prevents certain browser-based attacks; it
+    is not allowed to be set on the default network. (Default: 1)
+</p>
+</dd>
+<dt class="hdlist1">
 <a id="ClientRejectInternalAddresses"></a> <strong>ClientRejectInternalAddresses</strong> <strong>0</strong>|<strong>1</strong>
 </dt>
 <dd>
 <p>
     If true, Tor does not try to fulfill requests to connect to an internal
-    address (like 127.0.0.1 or 192.168.0.1) <em>unless a exit node is
+    address (like 127.0.0.1 or 192.168.0.1) <em>unless an exit node is
     specifically requested</em> (for example, via a .exit hostname, or a
     controller request).  If true, multicast DNS hostnames for machines on the
     local network (of the form *.local) are also rejected.  (Default: 1)
@@ -3499,7 +3552,11 @@ is non-zero):</p></div>
     descriptors containing these lines and that Google indexes them, so
     spammers might also collect them. You may want to obscure the fact
     that it&#8217;s an email address and/or generate a new address for this
-    purpose.
+    purpose.<br />
+<br />
+    ContactInfo <strong>must</strong> be set to a working address if you run more than one
+    relay or bridge.  (Really, everybody running a relay or bridge should set
+    it.)
 </p>
 </dd>
 <dt class="hdlist1">
@@ -3578,32 +3635,33 @@ is non-zero):</p></div>
     write your IPv6 rules using accept6/reject6 *6, and your IPv4 rules using
     accept/reject *4. If you want to _replace_ the default exit policy, end
     your exit policy with either a reject *:* or an accept *:*. Otherwise,
-    you&#8217;re _augmenting_ (prepending to) the default exit policy. The default
-    exit policy is:<br />
+    you&#8217;re _augmenting_ (prepending to) the default exit policy.<br />
+<br />
+    If you want to use a reduced exit policy rather than the default exit
+    policy, set "ReducedExitPolicy 1". If you want to <em>replace</em> the default
+    exit policy with your custom exit policy, end your exit policy with either
+    a reject <strong>:</strong> or an accept <strong>:</strong>. Otherwise, you’re <em>augmenting</em> (prepending
+    to) the default or reduced exit policy.<br />
+<br />
+    The default exit policy is:
 </p>
 <div class="literalblock">
 <div class="content">
-<pre><code>      reject *:25
-      reject *:119
-      reject *:135-139
-      reject *:445
-      reject *:563
-      reject *:1214
-      reject *:4661-4666
-      reject *:6346-6429
-      reject *:6699
-      reject *:6881-6999
-      accept *:* +
-+
-   If you want to use a reduced exit policy rather than the default exit
-   policy, set "ReducedExitPolicy 1". If you want to _replace_ the default
-   exit policy with your custom exit policy, end your exit policy with either
-   a reject *:* or an accept *:*. Otherwise, you’re _augmenting_ (prepending
-   to) the default or reduced exit policy.</code></pre>
+<pre><code>reject *:25
+reject *:119
+reject *:135-139
+reject *:445
+reject *:563
+reject *:1214
+reject *:4661-4666
+reject *:6346-6429
+reject *:6699
+reject *:6881-6999
+accept *:*</code></pre>
 </div></div>
 </dd>
 <dt class="hdlist1">
-<a id="ExitPolicyDefault"></a>
+<a id="ExitPolicyDefault"></a> <strong>ExitPolicyDefault</strong>
 </dt>
 <dd>
 <p>
@@ -3640,7 +3698,7 @@ is non-zero):</p></div>
 </p>
 </dd>
 <dt class="hdlist1">
-[[ReducedExitPolicy] <strong>ReducedExitPolicy</strong> <strong>0</strong>|<strong>1</strong>
+<a id="ReducedExitPolicy"></a> <strong>ReducedExitPolicy</strong> <strong>0</strong>|<strong>1</strong>
 </dt>
 <dd>
 <p>
@@ -3656,87 +3714,89 @@ is non-zero):</p></div>
 </p>
 <div class="literalblock">
 <div class="content">
-<pre><code>       accept *:20-21
-       accept *:22
-       accept *:23
-       accept *:43
-       accept *:53
-       accept *:79
-       accept *:80-81
-       accept *:88
-       accept *:110
-       accept *:143
-       accept *:194
-       accept *:220
-       accept *:389
-       accept *:443
-       accept *:464
-       accept *:465
-       accept *:531
-       accept *:543-544
-       accept *:554
-       accept *:563
-       accept *:587
-       accept *:636
-       accept *:706
-       accept *:749
-       accept *:873
-       accept *:902-904
-       accept *:981
-       accept *:989-990
-       accept *:991
-       accept *:992
-       accept *:993
-       accept *:994
-       accept *:995
-       accept *:1194
-       accept *:1220
-       accept *:1293
-       accept *:1500
-       accept *:1533
-       accept *:1677
-       accept *:1723
-       accept *:1755
-       accept *:1863
-       accept *:2082
-       accept *:2083
-       accept *:2086-2087
-       accept *:2095-2096
-       accept *:2102-2104
-       accept *:3128
-       accept *:3389
-       accept *:3690
-       accept *:4321
-       accept *:4643
-       accept *:5050
-       accept *:5190
-       accept *:5222-5223
-       accept *:5228
-       accept *:5900
-       accept *:6660-6669
-       accept *:6679
-       accept *:6697
-       accept *:8000
-       accept *:8008
-       accept *:8074
-       accept *:8080
-       accept *:8082
-       accept *:8087-8088
-       accept *:8232-8233
-       accept *:8332-8333
-       accept *:8443
-       accept *:8888
-       accept *:9418
-       accept *:9999
-       accept *:10000
-       accept *:11371
-       accept *:19294
-       accept *:19638
-       accept *:50002
-       accept *:64738
-       reject *:* +
-+
-   (Default: 0)</code></pre>
+<pre><code>accept *:20-21
+accept *:22
+accept *:23
+accept *:43
+accept *:53
+accept *:79
+accept *:80-81
+accept *:88
+accept *:110
+accept *:143
+accept *:194
+accept *:220
+accept *:389
+accept *:443
+accept *:464
+accept *:465
+accept *:531
+accept *:543-544
+accept *:554
+accept *:563
+accept *:587
+accept *:636
+accept *:706
+accept *:749
+accept *:873
+accept *:902-904
+accept *:981
+accept *:989-990
+accept *:991
+accept *:992
+accept *:993
+accept *:994
+accept *:995
+accept *:1194
+accept *:1220
+accept *:1293
+accept *:1500
+accept *:1533
+accept *:1677
+accept *:1723
+accept *:1755
+accept *:1863
+accept *:2082
+accept *:2083
+accept *:2086-2087
+accept *:2095-2096
+accept *:2102-2104
+accept *:3128
+accept *:3389
+accept *:3690
+accept *:4321
+accept *:4643
+accept *:5050
+accept *:5190
+accept *:5222-5223
+accept *:5228
+accept *:5900
+accept *:6660-6669
+accept *:6679
+accept *:6697
+accept *:8000
+accept *:8008
+accept *:8074
+accept *:8080
+accept *:8082
+accept *:8087-8088
+accept *:8232-8233
+accept *:8332-8333
+accept *:8443
+accept *:8888
+accept *:9418
+accept *:9999
+accept *:10000
+accept *:11371
+accept *:19294
+accept *:19638
+accept *:50002
+accept *:64738
+reject *:*</code></pre>
+</div></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>(Default: 0)</code></pre>
 </div></div>
 </dd>
 <dt class="hdlist1">
@@ -3775,7 +3835,10 @@ is non-zero):</p></div>
     compromise its concealment.<br />
 <br />
     When listing a node, it&#8217;s better to list it by fingerprint than by
-    nickname: fingerprints are more reliable.
+    nickname: fingerprints are more reliable.<br />
+<br />
+    If you run more than one relay, the MyFamily option on each relay
+    <strong>must</strong> list all other relays, as described above.
 </p>
 </dd>
 <dt class="hdlist1">
@@ -3934,6 +3997,16 @@ is non-zero):</p></div>
     server is still alive and doing useful things. Settings this
     to 0 will disable the heartbeat. Otherwise, it must be at least 30
     minutes. (Default: 6 hours)
+</p>
+</dd>
+<dt class="hdlist1">
+<a id="MainloopStats"></a> <strong>MainloopStats</strong> <strong>0</strong>|<strong>1</strong>
+</dt>
+<dd>
+<p>
+    Log main loop statistics every <strong>HeartbeatPeriod</strong> seconds. This is a log
+    level <em>notice</em> message designed to help developers instrumenting Tor&#8217;s
+    main event loop. (Default: 0)
 </p>
 </dd>
 <dt class="hdlist1">
@@ -4282,6 +4355,26 @@ is non-zero):</p></div>
     key.  Instead, you&#8217;ll have to use "tor --keygen" to manage the permanent
     ed25519 master identity key, as well as the corresponding temporary
     signing keys and certificates. (Default: 0)
+</p>
+</dd>
+<dt class="hdlist1">
+<a id="KeyDirectory"></a> <strong>KeyDirectory</strong> <em>DIR</em>
+</dt>
+<dd>
+<p>
+    Store secret keys in DIR. Can not be changed while tor is
+    running.
+    (Default: the "keys" subdirectory of DataDirectory.)
+</p>
+</dd>
+<dt class="hdlist1">
+<a id="KeyDirectoryGroupReadable"></a> <strong>KeyDirectoryGroupReadable</strong> <strong>0</strong>|<strong>1</strong>
+</dt>
+<dd>
+<p>
+    If this option is set to 0, don&#8217;t allow the filesystem group to read the
+    KeywDirectory. If the option is set to 1, make the KeyDirectory readable
+    by the default GID. (Default: 0)
 </p>
 </dd>
 </dl></div>
@@ -4711,10 +4804,38 @@ on the public Tor network.</p></div>
 <dd>
 <p>
     Authoritative directories only. When set to 0, OR ports with an
-    IPv6 address are being accepted without reachability testing.
-    When set to 1, IPv6 OR ports are being tested just like IPv4 OR
-    ports. (Default: 0)
+    IPv6 address are not included in the authority&#8217;s votes. When set to 1,
+    IPv6 OR ports are tested for reachability like IPv4 OR ports. If the
+    reachability test succeeds, the authority votes for the IPv6 ORPort, and
+    votes Running for the relay. If the reachability test fails, the authority
+    does not vote for the IPv6 ORPort, and does not vote Running (Default: 0) <br />
 </p>
+<div class="literalblock">
+<div class="content">
+<pre><code>The content of the consensus depends on the number of voting authorities
+that set AuthDirHasIPv6Connectivity:</code></pre>
+</div></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>If no authorities set AuthDirHasIPv6Connectivity 1, there will be no
+IPv6 ORPorts in the consensus.</code></pre>
+</div></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>If a minority of authorities set AuthDirHasIPv6Connectivity 1,
+unreachable IPv6 ORPorts will be removed from the consensus. But the
+majority of IPv4-only authorities will still vote the relay as Running.
+Reachable IPv6 ORPort lines will be included in the consensus</code></pre>
+</div></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>If a majority of voting authorities set AuthDirHasIPv6Connectivity 1,
+relays with unreachable IPv6 ORPorts will not be listed as Running.
+Reachable IPv6 ORPort lines will be included in the consensus
+(To ensure that any valid majority will vote relays with unreachable
+IPv6 ORPorts not Running, 75% of authorities must set
+AuthDirHasIPv6Connectivity 1.)</code></pre>
+</div></div>
 </dd>
 <dt class="hdlist1">
 <a id="MinMeasuredBWsForAuthToIgnoreAdvertised"></a> <strong>MinMeasuredBWsForAuthToIgnoreAdvertised</strong> <em>N</em>
@@ -4945,7 +5066,7 @@ ClientBootstrapConsensusAuthorityOnlyDownloadSchedule 0, 1,
    4 (for 40 seconds), 8, 16, 32, 60
 ClientBootstrapConsensusMaxDownloadTries 80
 ClientBootstrapConsensusAuthorityOnlyMaxDownloadTries 80
-TestingClientDNSRejectInternalAddresses 0
+ClientDNSRejectInternalAddresses 0
 ClientRejectInternalAddresses 0
 CountPrivateBandwidth 1
 ExitPolicyRejectPrivate 0
@@ -5317,17 +5438,6 @@ TestingEnableTbEmptyEvent 1</code></pre>
     (Default: 3 hours for link and auth; 1 day for signing.)
 </p>
 </dd>
-<dt class="hdlist1">
-<a id="ClientDNSRejectInternalAddresses"></a> <a id="TestingClientDNSRejectInternalAddresses"></a> <strong>TestingClientDNSRejectInternalAddresses</strong> <strong>0</strong>|<strong>1</strong>
-</dt>
-<dd>
-<p>
-    If true, Tor does not believe any anonymously retrieved DNS answer that
-    tells it that an address resolves to an internal address (like 127.0.0.1 or
-    192.168.0.1). This option prevents certain browser-based attacks; don&#8217;t
-    turn it off unless you know what you&#8217;re doing. (Default: 1)
-</p>
-</dd>
 </dl></div>
 </div>
 </div>
@@ -5457,18 +5567,7 @@ section 5.4. End-users should mostly ignore them.</p></div>
 </p>
 </dd>
 <dt class="hdlist1">
-<em>DataDirectory</em><strong>/cached-status/</strong>
-</dt>
-<dd>
-<p>
-    The most recently downloaded network status document for each authority.
-    Each file holds one such document; the filenames are the hexadecimal
-    identity key fingerprints of the directory authorities.  Obsolete;
-    no longer in use.
-</p>
-</dd>
-<dt class="hdlist1">
-<em>DataDirectory</em><strong>/cached-certs</strong>
+<em>CacheDirectory</em><strong>/cached-certs</strong>
 </dt>
 <dd>
 <p>
@@ -5477,7 +5576,7 @@ section 5.4. End-users should mostly ignore them.</p></div>
 </p>
 </dd>
 <dt class="hdlist1">
-<em>DataDirectory</em><strong>/cached-consensus</strong> and/or <strong>cached-microdesc-consensus</strong>
+<em>CacheDirectory</em><strong>/cached-consensus</strong> and/or <strong>cached-microdesc-consensus</strong>
 </dt>
 <dd>
 <p>
@@ -5485,7 +5584,7 @@ section 5.4. End-users should mostly ignore them.</p></div>
 </p>
 </dd>
 <dt class="hdlist1">
-<em>DataDirectory</em><strong>/cached-descriptors</strong> and <strong>cached-descriptors.new</strong>
+<em>CacheDirectory</em><strong>/cached-descriptors</strong> and <strong>cached-descriptors.new</strong>
 </dt>
 <dd>
 <p>
@@ -5497,7 +5596,7 @@ section 5.4. End-users should mostly ignore them.</p></div>
 </p>
 </dd>
 <dt class="hdlist1">
-<em>DataDirectory</em><strong>/cached-extrainfo</strong> and <strong>cached-extrainfo.new</strong>
+<em>CacheDirectory</em><strong>/cached-extrainfo</strong> and <strong>cached-extrainfo.new</strong>
 </dt>
 <dd>
 <p>
@@ -5509,7 +5608,7 @@ section 5.4. End-users should mostly ignore them.</p></div>
 </p>
 </dd>
 <dt class="hdlist1">
-<em>DataDirectory</em><strong>/cached-microdescs</strong> and <strong>cached-microdescs.new</strong>
+<em>CacheDirectory</em><strong>/cached-microdescs</strong> and <strong>cached-microdescs.new</strong>
 </dt>
 <dd>
 <p>
@@ -5520,7 +5619,7 @@ section 5.4. End-users should mostly ignore them.</p></div>
 </p>
 </dd>
 <dt class="hdlist1">
-<em>DataDirectory</em><strong>/cached-routers</strong> and <strong>cached-routers.new</strong>
+<em>CacheDirectory</em><strong>/cached-routers</strong> and <strong>cached-routers.new</strong>
 </dt>
 <dd>
 <p>
@@ -5575,7 +5674,7 @@ A short history of bandwidth usage, as produced in the server
 </p>
 </dd>
 <dt class="hdlist1">
-<em>DataDirectory</em><strong>/diff-cache</strong>
+<em>CacheDirectory</em><strong>/diff-cache</strong>
 </dt>
 <dd>
 <p>
@@ -5630,15 +5729,7 @@ A short history of bandwidth usage, as produced in the server
 </p>
 </dd>
 <dt class="hdlist1">
-<em>DataDirectory</em><strong>/keys/</strong>*
-</dt>
-<dd>
-<p>
-    Only used by servers. Holds identity keys and onion keys.
-</p>
-</dd>
-<dt class="hdlist1">
-<em>DataDirectory</em><strong>/keys/authority_identity_key</strong>
+<em>KeyDirectory</em><strong>/authority_identity_key</strong>
 </dt>
 <dd>
 <p>
@@ -5649,7 +5740,7 @@ A short history of bandwidth usage, as produced in the server
 </p>
 </dd>
 <dt class="hdlist1">
-<em>DataDirectory</em><strong>/keys/authority_certificate</strong>
+<em>KeyDirectory</em><strong>/authority_certificate</strong>
 </dt>
 <dd>
 <p>
@@ -5659,7 +5750,7 @@ A short history of bandwidth usage, as produced in the server
 </p>
 </dd>
 <dt class="hdlist1">
-<em>DataDirectory</em><strong>/keys/authority_signing_key</strong>
+<em>KeyDirectory</em><strong>/authority_signing_key</strong>
 </dt>
 <dd>
 <p>
@@ -5669,7 +5760,7 @@ A short history of bandwidth usage, as produced in the server
 </p>
 </dd>
 <dt class="hdlist1">
-<em>DataDirectory</em><strong>/keys/legacy_certificate</strong>
+<em>KeyDirectory</em><strong>/legacy_certificate</strong>
 </dt>
 <dd>
 <p>
@@ -5678,7 +5769,7 @@ A short history of bandwidth usage, as produced in the server
 </p>
 </dd>
 <dt class="hdlist1">
-<em>DataDirectory</em><strong>/keys/legacy_signing_key</strong>
+<em>KeyDirectory</em><strong>/legacy_signing_key</strong>
 </dt>
 <dd>
 <p>
@@ -5687,7 +5778,7 @@ A short history of bandwidth usage, as produced in the server
 </p>
 </dd>
 <dt class="hdlist1">
-<em>DataDirectory</em><strong>/keys/secret_id_key</strong>
+<em>KeyDirectory</em><strong>/secret_id_key</strong>
 </dt>
 <dd>
 <p>
@@ -5696,7 +5787,7 @@ A short history of bandwidth usage, as produced in the server
 </p>
 </dd>
 <dt class="hdlist1">
-<em>DataDirectory</em><strong>/keys/ed25519_master_id_public_key</strong>
+<em>KeyDirectory</em><strong>/ed25519_master_id_public_key</strong>
 </dt>
 <dd>
 <p>
@@ -5704,7 +5795,7 @@ A short history of bandwidth usage, as produced in the server
 </p>
 </dd>
 <dt class="hdlist1">
-<em>DataDirectory</em><strong>/keys/ed25519_master_id_secret_key</strong>
+<em>KeyDirectory</em><strong>/ed25519_master_id_secret_key</strong>
 </dt>
 <dd>
 <p>
@@ -5716,7 +5807,7 @@ A short history of bandwidth usage, as produced in the server
 </p>
 </dd>
 <dt class="hdlist1">
-<em>DataDirectory</em><strong>/keys/ed25519_signing_secret_key</strong>
+<em>KeyDirectory</em><strong>/ed25519_signing_secret_key</strong>
 </dt>
 <dd>
 <p>
@@ -5726,7 +5817,7 @@ A short history of bandwidth usage, as produced in the server
 </p>
 </dd>
 <dt class="hdlist1">
-<em>DataDirectory</em><strong>/keys/ed25519_signing_cert</strong>
+<em>KeyDirectory</em><strong>/ed25519_signing_cert</strong>
 </dt>
 <dd>
 <p>
@@ -5735,7 +5826,7 @@ A short history of bandwidth usage, as produced in the server
 </p>
 </dd>
 <dt class="hdlist1">
-<em>DataDirectory</em><strong>/keys/secret_onion_key</strong> and <strong>secret_onion_key.old</strong>
+<em>KeyDirectory</em><strong>/secret_onion_key</strong> and <strong>secret_onion_key.old</strong>
 </dt>
 <dd>
 <p>
@@ -5746,7 +5837,7 @@ A short history of bandwidth usage, as produced in the server
 </p>
 </dd>
 <dt class="hdlist1">
-<em>DataDirectory</em><strong>/keys/secret_onion_key_ntor</strong> and <strong>secret_onion_key_ntor.old</strong>
+<em>KeyDirectory</em><strong>/secret_onion_key_ntor</strong> and <strong>secret_onion_key_ntor.old</strong>
 </dt>
 <dd>
 <p>
@@ -5798,7 +5889,7 @@ A short history of bandwidth usage, as produced in the server
 </p>
 </dd>
 <dt class="hdlist1">
-<em>DataDirectory</em><strong>/unverified-consensus</strong>
+<em>CacheDirectory</em><strong>/unverified-consensus</strong>
 </dt>
 <dd>
 <p>
@@ -5807,7 +5898,7 @@ A short history of bandwidth usage, as produced in the server
 </p>
 </dd>
 <dt class="hdlist1">
-<em>DataDirectory</em><strong>/unverified-microdesc-consensus</strong>
+<em>CacheDirectory</em><strong>/unverified-microdesc-consensus</strong>
 </dt>
 <dd>
 <p>
@@ -5986,7 +6077,7 @@ A short history of bandwidth usage, as produced in the server
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2017-11-02 22:13:07 CET
+Last updated 2018-01-13 19:37:19 CET
 </div>
 </div>
 </body>

@@ -63,7 +63,7 @@ var oobw_style = {
         fillStyle: '#000000',
         disabled: false,
         fontSize: 10,
-        fontFamily: 'monospace',
+        fontFamily: 'LatoLatinWebLight',
         precision: 2
         }
     };

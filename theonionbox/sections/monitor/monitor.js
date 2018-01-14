@@ -125,8 +125,13 @@ var bandwidth_style = {
         fillStyle: '#000000',
         disabled: false,
         fontSize: 10,
-        fontFamily: 'monospace',
+        fontFamily: 'LatoLatinWebLight',
         precision: 2
+        },
+    tooltip: true,
+    tooltipLine: {
+        lineWidth: 1,
+        strokeStyle: '#FF0000'
         }
     };
 
@@ -138,7 +143,7 @@ var bandwidth_read = new boxChart(bandwidth_style);
 
 var written_data_hd = new boxTimeSeries();
 var written_data_ld = new boxTimeSeries();
-var bandwidth_written = new boxChart(bandwidth_style);
+var bandwidth_low = new boxChart(bandwidth_style);
 
 function pad2(number) { return (number < 10 ? '0' : '') + number; }
 var monitor_style = {};
@@ -146,7 +151,7 @@ var monitor_style = {};
 monitor_style.hd = {
     millisPerPixel: 500,
     grid: {
-        millisPerLine: 60000,
+        millisPerLine: 60000
     },
     timestampFormatter: function(date) {
         return pad2(date.getHours()) + ':' + pad2(date.getMinutes());
@@ -157,13 +162,43 @@ monitor_style.hd = {
         }
         return (prettyNumber(data, '', 'si') + '/s');
     },
-    yMinFormatter: function() { return ""; }
+    yMinFormatter: function(data, precision) {
+        if (!precision) {
+            precision = 2;
+        }
+        return (prettyNumber(Math.abs(data), '', 'si') + '/s');
+    },
+    labels:
+        {
+            fontFamily: "LatoLatinWebLight"
+        },
+    /** Formats the HTML string content of the tooltip. */
+    tooltipFormatter: function (timestamp, data) {
+        var date = new Date(timestamp);
+        var lines = ['<span style="font-size: 12px">' +
+                        'Status@: ' + pad2(date.getHours()) + ':' + pad2(date.getMinutes()) + ':' + pad2(date.getSeconds()) +
+                        '</span>'];
+
+        for (var i = 0; i < data.length; ++i) {
+            var text = '';
+            if (data[i].series.options.tooltipTextFormatter) {
+                text = data[i].series.options.tooltipTextFormatter(data[i].value);
+            } else {
+                text = this.options.yMaxFormatter(data[i].value, this.options.labels.precision);
+            }
+            lines.push('<span style="color:' + data[i].series.options.strokeStyle + '; font-size: 12px">' +
+                text + '</span>');
+        }
+
+        return lines.join('<br>');
+    }
+    // yMinFormatter: function() { return ""; }
 };
 
 monitor_style.ld = {
     millisPerPixel: 30000,
     grid: {
-        millisPerLine: 3600000,
+        millisPerLine: 3600000
     },
     timestampFormatter: function(date) {
         return pad2(date.getHours()) + ':' + pad2(date.getMinutes());
@@ -174,25 +209,49 @@ monitor_style.ld = {
         }
         return (prettyNumber(data, '', 'si') + '/s');
     },
-    yMinFormatter: function() { return ""; }
+    yMinFormatter: function(data, precision) {
+        if (!precision) {
+            precision = 2;
+        }
+        return (prettyNumber(Math.abs(data), '', 'si') + '/s');
+    },
+    labels: {
+        fontFamily: "LatoLatinWebLight"
+    }
 };
-
 
 
 var bw_style = {};
 
 // HD = Minutes
 bw_style.hd = {};
+
 bw_style.hd.r = {
     chartOptions: monitor_style.hd,
-    timeseries: [ {
-        serie: read_data_hd,
-        options: {
-            lineWidth:1,
-            strokeStyle:'#64B22B',
-            fillStyle:'rgba(100, 178, 43, 0.30)'
+    timeseries: [
+        {
+            serie: written_data_hd,
+            options: {
+                lineWidth: 1,
+                strokeStyle: '#64B22B',
+                fillStyle: 'rgba(100, 178, 43, 0.30)',
+                tooltipTextFormatter: function(value) {
+                    return "Upload: " + prettyNumber(value, '', 'si') + '/s';
+                }
+                }
+            },
+        {
+            serie: read_data_hd,
+            options: {
+                lineWidth: 1,
+                strokeStyle: 'rgb(132, 54, 187)',
+                fillStyle: 'rgba(132, 54, 187, 0.30)',
+                tooltipTextFormatter: function(value) {
+                    return "Download: " + prettyNumber(Math.abs(value), '', 'si') + '/s';
+                }
+            }
         }
-    } ]
+    ]
 };
 bw_style.hd.w = {
     chartOptions: monitor_style.hd,
@@ -210,14 +269,24 @@ bw_style.hd.w = {
 bw_style.ld = {};
 bw_style.ld.r = {
     chartOptions: monitor_style.ld,
-    timeseries: [ {
-        serie: read_data_ld,
-        options: {
-            lineWidth:1,
-            strokeStyle:'#64B22B',
-            fillStyle:'rgba(100, 178, 43, 0.30)'
+    timeseries: [
+        {
+            serie: written_data_ld,
+            options: {
+                lineWidth: 1,
+                strokeStyle: '#64B22B',
+                fillStyle: 'rgba(100, 178, 43, 0.30)'
+                }
+            },
+        {
+            serie: read_data_ld,
+            options: {
+                lineWidth: 1,
+                strokeStyle: 'rgb(132, 54, 187)',
+                fillStyle: 'rgba(132, 54, 187, 0.30)'
+            }
         }
-    } ]
+    ]
 };
 bw_style.ld.w = {
     chartOptions: monitor_style.ld,
@@ -234,10 +303,18 @@ bw_style.ld.w = {
 var monitor_bandwidth_player;
 
 function monitor_play_bandwidth(data) {
-    $('#bw_down').text("Total: " + prettyNumber(data.tr, '', 'si') + " | Currently: " + prettyNumber(data.r, '', 'si') + '/s');
-    $('#bw_up').text("Total: " + prettyNumber(data.tw, '', 'si') + " | Currently: " + prettyNumber(data.w, '', 'si') + '/s');
+    $('#bw_down').text("Total: " + prettyNumber(data.tr, '', 'si') + " | Currently: " + prettyNumber(Math.abs(data.r), '', 'si') + '/s');
+    $('#bw_up').text("Total: " + prettyNumber(data.tw, '', 'si') + " | Currently: " + prettyNumber(Math.abs(data.w), '', 'si') + '/s');
 }
 
+$("#Glide").on("afterTransition.glide", function(event, data) {
+    // Access to event data
+    if (data.index === 1) {
+        bandwidth_read.mouseout();
+    } else if (data.index === 2) {
+        bandwidth_low.mouseout();
+    }
+});
 
 $(document).ready(function() {
 
@@ -251,6 +328,7 @@ $(document).ready(function() {
 
     var canvas = document.getElementById('monitor-bw-read');
     bandwidth_read.prepare(canvas, 5000);
+    bandwidth_read.streamTo(canvas, 5000);
     bandwidth_read.setDisplay(bw_style.hd.r);
 
     var bwr_watcher = scrollMonitor.create(canvas, 100);
@@ -262,23 +340,28 @@ $(document).ready(function() {
     });
 
 
-    canvas = document.getElementById('monitor-bw-written');
-    bandwidth_written.prepare(canvas, 5000);
-    bandwidth_written.setDisplay(bw_style.hd.w);
+    canvas = document.getElementById('monitor-bw-low');
+    bandwidth_low.streamTo(canvas, 5000);
+    bandwidth_low.prepare(canvas, 5000);
+    bandwidth_low.setDisplay(bw_style.ld.r);
 
     var bww_watcher = scrollMonitor.create(canvas, 100);
     bww_watcher.enterViewport(function () {
-        bandwidth_written.start();
+         bandwidth_low.start();
     });
     bww_watcher.exitViewport(function () {
-        bandwidth_written.stop();
+        bandwidth_low.stop();
     });
-    
+
 
     monitor_bandwidth_player = new boxDataPlayer(monitor_play_bandwidth, 5000, 's');
     monitor_bandwidth_player.start();
 
-
+    $("#Glide").glide({
+        type: "slider",
+        autoplay: false,
+        keyboard: false
+    });
 
 });
 
@@ -292,7 +375,7 @@ function monitor_set_display(selector) {
     if ($.inArray(selector, monitor_charts) > -1) {
         if (selector == 'hd' || selector == 'ld') {
             bandwidth_read.setDisplay(bw_style[selector].r);
-            bandwidth_written.setDisplay(bw_style[selector].w);
+            // bandwidth_written.setDisplay(bw_style[selector].w);
         }
         monitor_bandwidth_shows = selector;
     }

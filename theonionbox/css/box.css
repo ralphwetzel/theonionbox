@@ -235,6 +235,16 @@ body {
     margin-right: -100%;
 }
 
+div.smoothie-chart-tooltip {
+    background: #b9b9b9;
+    padding: 1em;
+    margin-top: 5px;
+    font-family: "LatoLatinWebLight";
+    color: white;
+    font-size: 10px;
+    pointer-events: none;
+}
+
 /* Bootstrap Toggle Styles */
 % # include('bootstrap-toggle/css/bootstrap-toggle.min.css')
 % # include('bootstrap-switch/css/bootstrap-switch.min.css')

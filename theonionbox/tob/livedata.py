@@ -4,7 +4,7 @@ from math import floor
 import itertools
 # from tob_time import TimeManager
 from threading import RLock
-import tob.deviation
+from deviation import getTimer
 
 
 # class tob_list(list):
@@ -47,6 +47,9 @@ class LiveDataManager(object):
 
     def __init__(self):
 
+        log = logging.getLogger('theonionbox')
+        log.debug('Creating LiveDataManager...')
+
         self.last_bandwidth_not_zero = True
 
         self.bandwidth_hd_record = deque(maxlen=900)  # a deque of dicts, one dict per second, max 900 secs (= 15+ minutes)
@@ -65,7 +68,7 @@ class LiveDataManager(object):
 
     def record_bandwidth(self, time_stamp=None, bytes_read=0, bytes_written=0, compensate_deviation=True):
 
-        timer = tob.deviation.getTimer()
+        timer = getTimer()
 
         if time_stamp is None:
             time_stamp = time()
@@ -88,6 +91,12 @@ class LiveDataManager(object):
             #to prevent division by zero:
             # if self.bandwidth_total_count == 0:
             #     self.bandwidth_total_count = 1
+
+            # bytes_read = download
+            bytes_read *= (-1)
+
+            # bytes_written = upload
+
 
             # HD Data
             self.hd_Lock.acquire()
@@ -242,7 +251,7 @@ class Cumulator(object):
         if max_count is not None:
             self.max_count = max_count
 
-        timestamp = tob.deviation.getTimer().time()
+        timestamp = getTimer().time()
 
         self.values = {}
         self.baskets = {}
@@ -301,7 +310,7 @@ class Cumulator(object):
 
     def cumulate(self, timestamp=None, **kwargs):
 
-        timestamp = tob.deviation.getTimer().compensate(timestamp)
+        timestamp = getTimer().compensate(timestamp)
 
         if len(kwargs) == 0:
             size = len(self.values)

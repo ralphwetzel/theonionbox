@@ -21,8 +21,22 @@
         }
       }
       return arguments[0];
+    },
+    binarySearch: function(data, value) {
+      var low = 0,
+          high = data.length;
+      while (low < high) {
+        var mid = (low + high) >> 1;
+        if (value < data[mid][0])
+          high = mid;
+        else
+          low = mid + 1;
+      }
+      return low;
     }
   };
+
+
 
 function isElementOutOfViewport(el) {
 
@@ -55,22 +69,79 @@ function boxChart(options)
 
     SmoothieChart.call(this, options);
 
-    if (options.yMinFormatter == null) {
+    if (options.yMinFormatter === null) {
         this.options.yMinFormatter = null;
     }
 
-    if (options.yMaxFormatter == null) {
+    if (options.yMaxFormatter === null) {
         this.options.yMaxFormatter = null;
     }
 
     // options.enableDpiScaling = true;
+    //console.log(this.mousemove);
 
     // Flag to size the chart to the dimensions of the parent element
     this.options.sizeToParent = true;
+
+    this.mousemove = this.mousemove.bind(this);
+    this.mouseout = SmoothieChart.prototype.mouseout.bind(this);
 }
 
 boxChart.prototype = new SmoothieChart();
 
+boxChart.prototype.updateTooltip = function () {
+    var el = this.getTooltipEl();
+
+    if (!this.mouseover || !this.options.tooltip) {
+      el.style.display = 'none';
+      return;
+    }
+
+    var time = this.lastChartTimestamp;
+
+    // x pixel to time
+    var t = this.options.scrollBackwards
+      ? time - this.mouseX * this.options.millisPerPixel
+      : time - (this.canvas.offsetWidth - this.mouseX) * this.options.millisPerPixel;
+
+    var data = [];
+
+     // For each data set...
+    for (var d = 0; d < this.seriesSet.length; d++) {
+      var timeSeries = this.seriesSet[d].timeSeries;
+      if (timeSeries.disabled) {
+          continue;
+      }
+
+      // find datapoint closest to time 't'
+      var closeIdx = Util.binarySearch(timeSeries.data, t);
+      if (closeIdx > 0 &&
+          closeIdx < timeSeries.data.length &&
+          Math.abs(timeSeries.data[closeIdx][0] - t) < this.options.millisPerPixel * 2) {
+        data.push({ series: this.seriesSet[d], index: closeIdx, value: timeSeries.data[closeIdx][1] });
+      }
+    }
+
+    if (data.length) {
+      el.innerHTML = this.options.tooltipFormatter.call(this, t, data);
+      el.style.display = 'block';
+    } else {
+      el.style.display = 'none';
+    }
+  };
+
+  boxChart.prototype.mousemove = function (evt) {
+    this.mouseover = true;
+    this.mouseX = evt.offsetX;
+    this.mouseY = evt.offsetY;
+    this.mousePageX = evt.pageX;
+    this.mousePageY = evt.pageY;
+
+    var el = this.getTooltipEl();
+    el.style.top = Math.round(this.mousePageY + 15) + 'px';
+    el.style.left = Math.round(this.mousePageX + 15) + 'px';
+    this.updateTooltip();
+  };
 
 /////
 // Customized resize function to respect the size of the parent container
@@ -160,6 +231,8 @@ boxChart.prototype.updateValueRange = function() {
     var chartOptions = this.options,
         chartMaxValue = Number.NaN,
         chartMinValue = Number.NaN;
+        // chartMaxValue = 1,
+        //chartMinValue = -1;
 
     var _valueRange = this.valueRange;
     var _currentValueRange = this.currentValueRange;
@@ -270,34 +343,37 @@ boxChart.prototype.prepare = function(canvas, delayMillis) {
     // this.start();
   };
 
-  /**
-   * Starts the animation of this chart.
-   */
-  boxChart.prototype.start = function() {
-    if (this.frame) {
-      // We're already running, so just return
-      return;
-    }
+/*   /!**
+    * Starts the animation of this chart.
+    *!/
+   boxChart.prototype.start = function() {
+     if (this.frame) {
+       // We're already running, so just return
+       return;
+            }
 
-    // Renders a frame, and queues the next frame for later rendering
-    var animate = function() {
-      this.frame = SmoothieChart.AnimateCompatibility.requestAnimationFrame(function() {
-        this.render();
-        animate();
-      }.bind(this));
-    }.bind(this);
+     this.canvas.addEventListener('mousemove', this.mousemove);
+     this.canvas.addEventListener('mouseout', this.mouseout);
 
-/*
-    for (var sset in this.seriesSet)
-    {
-        if (sset.resetBoundsFunction) {
-            sset.resetBoundsFunction();
-        }
-    }
-*/
+     // Renders a frame, and queues the next frame for later rendering
+     var animate = function() {
+       this.frame = SmoothieChart.AnimateCompatibility.requestAnimationFrame(function() {
+         this.render();
+         animate();
+       }.bind(this));
+     }.bind(this);
 
-    animate();
-  };
+ /!*
+     for (var sset in this.seriesSet)
+          {
+         if (sset.resetBoundsFunction) {
+             sset.resetBoundsFunction();
+         }
+     }
+ *!/
+
+     animate();
+     };*/
 
 // adaptation of the original smoothie code to allow for left-aligning the time labels
 // rather than right-aligning (as it's the smoothie standard)
@@ -309,6 +385,7 @@ boxChart.prototype.prepare = function(canvas, delayMillis) {
 boxChart.prototype.render = function(canvas, time) {
 
     var nowMillis = new Date().getTime();
+    var y0;
 
     if (!this.isAnimatingScale) {
       // We're not animating. We can use the last render time and the scroll speed to work out whether
@@ -325,13 +402,15 @@ boxChart.prototype.render = function(canvas, time) {
 
     // Chart MUST be rendered if resized!
     var mustRender = this.resize();
-
+    this.updateTooltip();
 
     canvas = canvas || this.canvas;
     time = time || nowMillis - (this.delay || 0);
 
     // Round time down to pixel granularity, so motion appears smoother.
     time -= time % this.options.millisPerPixel;
+
+    this.lastChartTimestamp = time;
 
     var context = canvas.getContext('2d'),
         chartOptions = this.options,
@@ -350,6 +429,7 @@ boxChart.prototype.render = function(canvas, time) {
           }
           return Math.round(dimensions.width - ((time - t) / chartOptions.millisPerPixel));
         };
+
 
     // to allow 'resetBounds' based on the visible timeframe
     this.oldestValidTime = oldestValidTime;
@@ -445,6 +525,11 @@ boxChart.prototype.render = function(canvas, time) {
             context.moveTo(gx, 0);
             context.lineTo(gx, dimensions.height);
         }
+
+        // to allow rendering of the vertical divider label
+        // even when the divider scolled out of view
+        vertical_dividers.push(t);
+
         context.stroke();
         context.closePath();
     }
@@ -497,7 +582,7 @@ boxChart.prototype.render = function(canvas, time) {
                 return nm.getTime();
             };
         }
-        else if (chartOptions.grid.timeDividers == 'yearly') {
+        else if (chartOptions.grid.timeDividers === 'yearly') {
 
             this_year = new Date(time);
             this_year.setMinutes(0);
@@ -587,10 +672,11 @@ boxChart.prototype.render = function(canvas, time) {
         var x = timeToXPixel(dataSet[i][0]), y = null;
         var y_data = dataSet[i][1];
 
-        if (y_data != null) {
+        if (y_data !== null) {
             y = valueToYPixel(y_data);
         } else if (seriesOptions.nullTo0 === true) {
-            y = valueToYPixel(-10);  // better than just '0'
+            // y = valueToYPixel(-10);  // better than just '0'
+            y = valueToYPixel(0);  // we need '0' to ensure propper fill algo
         } else {
             has_null = true;
         }
@@ -599,7 +685,8 @@ boxChart.prototype.render = function(canvas, time) {
 
         if (i === 0) {
           firstX = x;
-          y = (y === null ? -10 : y)
+          // y = (y === null ? -10 : y)
+          y = (y === null ? 0 : y)
           context.moveTo(x, y);
         } else if (y !== null) {
 
@@ -646,12 +733,16 @@ boxChart.prototype.render = function(canvas, time) {
         lastX = x; lastY = y;
       }
 
+    y0 = valueToYPixel(0);
+
       if (dataSet.length > 1) {
         if (seriesOptions.fillStyle && !has_null) {
           // Close up the fill region.
           context.lineTo(dimensions.width + seriesOptions.lineWidth + 1, lastY);
-          context.lineTo(dimensions.width + seriesOptions.lineWidth + 1, dimensions.height + seriesOptions.lineWidth + 1);
-          context.lineTo(firstX, dimensions.height + seriesOptions.lineWidth);
+          // context.lineTo(dimensions.width + seriesOptions.lineWidth + 1, dimensions.height + seriesOptions.lineWidth + 1);
+          // context.lineTo(firstX, dimensions.height + seriesOptions.lineWidth);
+          context.lineTo(dimensions.width + seriesOptions.lineWidth + 1, y0);
+          context.lineTo(firstX, y0);
           context.fillStyle = seriesOptions.fillStyle;
           context.fill();
         }
@@ -664,31 +755,56 @@ boxChart.prototype.render = function(canvas, time) {
       context.restore();
     }
 
+    // Draw the y0 - line
+    context.save();
+    context.lineWidth = chartOptions.grid.lineWidth;
+    context.strokeStyle = chartOptions.grid.strokeStyleHor;
+    context.beginPath();
+    context.moveTo(0, y0);
+    context.lineTo(dimensions.width, y0);
+    context.stroke();
+    context.closePath();
+
+    var maxValueString = "";
+    var minValueString = "";
+    var labelPos_max = NaN;
+    var labelPos_min = NaN;
+
+    var minValueRect = {left: 0, top: 0, width: 0, height: chartOptions.labels.fontSize};
+    var maxValueRect = {left: 0, top: 0, width: 0, height: chartOptions.labels.fontSize};
+
+
+
     // Draw the axis values on the chart.
     if (!chartOptions.labels.disabled && !isNaN(this.valueRange.min) && !isNaN(this.valueRange.max)) {
 
         if (chartOptions.yMaxFormatter) {
-            var maxValueString = chartOptions.yMaxFormatter(this.valueRange.max, chartOptions.labels.precision);
+            maxValueString = chartOptions.yMaxFormatter(this.valueRange.max, chartOptions.labels.precision);
+            maxValueRect.width = context.measureText(maxValueString).width;
         }
         if (chartOptions.yMinFormatter) {
-            var minValueString = chartOptions.yMinFormatter(this.valueRange.min, chartOptions.labels.precision);
-        }
-        if (maxValueString) {
-            var labelPos = chartOptions.scrollBackwards ? 0 : dimensions.width - context.measureText(maxValueString).width - 2;
-        }
-        else if (minValueString) {
-            var labelPos = chartOptions.scrollBackwards ? 0 : dimensions.width - context.measureText(maxValueString).width - 2;
-        }
-        else {
-            return;
+            minValueString = chartOptions.yMinFormatter(this.valueRange.min, chartOptions.labels.precision);
+            minValueRect.width = context.measureText(minValueString).width;
         }
         context.fillStyle = chartOptions.labels.fillStyle;
-        if (maxValueString) {
-            context.fillText(maxValueString, labelPos, chartOptions.labels.fontSize);
+
+        // console.log(context.measureText(maxValueString));
+        // console.log(minValueString);
+
+        if (maxValueString.length > 0) {
+            labelPos_max = chartOptions.scrollBackwards ? 0 : dimensions.width - maxValueRect.width - 2;
+            context.fillText(maxValueString, labelPos_max, chartOptions.labels.fontSize);
+            maxValueRect.left += labelPos_max;
+            maxValueRect.top += chartOptions.labels.fontSize;
         }
-        if (minValueString) {
-            context.fillText(minValueString, labelPos, dimensions.height - 2);
+        if (minValueString.length > 0) {
+            labelPos_min = chartOptions.scrollBackwards ? 0 : dimensions.width - minValueRect.width - 2;
+            context.fillText(minValueString, labelPos_min, dimensions.height - 2);
+            minValueRect.left += labelPos_min;
+            minValueRect.top += dimensions.height - 2;
+
         }
+
     }
 
     // ... to here!
@@ -698,26 +814,80 @@ boxChart.prototype.render = function(canvas, time) {
     // Below is an adaptation to left-align the timestamps rather that right-align
     // (as the original implementation does)
 
+    function intersect(a, b) {
+        return (a.left <= b.left + b.width &&
+              b.left <= a.left + a.width &&
+              a.top <= b.top + b.height &&
+              b.top <= a.top + a.height);
+    }
+
+
     // Display timestamps along x-axis at the bottom of the chart.
     if (chartOptions.timestampFormatter && vertical_dividers.length > 0) {
-      var textUntilX = chartOptions.scrollBackwards
-        ? context.measureText(minValueString).width
-        : dimensions.width - context.measureText(minValueString).width + 4;
+      // var textUntilX = chartOptions.scrollBackwards
+      //   ? context.measureText(minValueString).width
+      //   : dimensions.width - context.measureText(minValueString).width + 4;
 
       var vd_length = vertical_dividers.length;
+
+      // var tls = chartOptions.timeLabelSeparation;
+      // tls *= (chartOptions.scrollBackwards || chartOptions.timeLabelLeftAlign) ? 1 : -1;
+
+      // var textUntilX;
+
+      var textUntilX = (chartOptions.scrollBackwards || chartOptions.timeLabelLeftAlign) ? dimensions.width : 0;
+
 
       for (var i = 0; i < vd_length; i++) {
 
         t = vertical_dividers[i];
 
+        // Formats the timestamp based on user specified formatting function
+        // SmoothieChart.timeFormatter function above is one such formatting option
+        var tx = new Date(t);
+        var ts = chartOptions.timestampFormatter(tx);
+        var tsRect = {left: 0, top: 0, width: context.measureText(ts).width, height: chartOptions.labels.fontSize};
+
+
         var gx = timeToXPixel(t);
-        // Only draw the timestamp if it won't overlap with the previously drawn one.
-        if ((!chartOptions.scrollBackwards && gx < textUntilX) || (chartOptions.scrollBackwards && gx > textUntilX))  {
-          // Formats the timestamp based on user specified formatting function
-          // SmoothieChart.timeFormatter function above is one such formatting option
-          var tx = new Date(t),
-            ts = chartOptions.timestampFormatter(tx),
-            tsWidth = context.measureText(ts).width;
+        tsRect.top += y0 - 2;
+
+        if (tsRect.top < tsRect.height) {
+            tsRect.top += tsRect.height + 2 * 2;
+        }
+
+        if (chartOptions.scrollBackwards || chartOptions.timeLabelLeftAlign) {
+
+            tsRect.left = gx + chartOptions.timeLabelSeparation + 2;
+
+            if ((tsRect.left + tsRect.width) < textUntilX && !intersect(tsRect, minValueRect) && !intersect(tsRect, maxValueRect)) {
+                context.fillStyle = chartOptions.labels.fillStyle;
+                context.fillText(ts, tsRect.left, tsRect.top);
+                textUntilX = tsRect.left + tsRect.width;
+            }
+
+
+        } else {
+
+            tsRect.left = gx - tsRect.width - chartOptions.timeLabelSeparation - 2;
+
+            if ((tsRect.left + tsRect.width) > textUntilX && !intersect(tsRect, minValueRect) && !intersect(tsRect, maxValueRect)) {
+                context.fillStyle = chartOptions.labels.fillStyle;
+                context.fillText(ts, tsRect.left, tsRect.top);
+                textUntilX = tsRect.left + tsRect.width;
+            }
+
+        }
+
+
+
+
+/*        // Only draw the timestamp if it won't overlap with the previously drawn one.
+        if ((!chartOptions.scrollBackwards && gx < textUntilX) ||
+            (chartOptions.scrollBackwards && gx > textUntilX) ||
+            () ||
+            () )  {
+
 
           // Original code:
           // textUntilX = chartOptions.scrollBackwards
@@ -738,13 +908,28 @@ boxChart.prototype.render = function(canvas, time) {
           // }
 
           if(chartOptions.scrollBackwards || chartOptions.timeLabelLeftAlign) {
-            context.fillText(ts, gx + chartOptions.timeLabelSeparation, dimensions.height - 2);
+            // context.fillText(ts, gx + chartOptions.timeLabelSeparation, dimensions.height - 2);
+            context.fillText(ts, gx + chartOptions.timeLabelSeparation, y0 - 2);
           } else {
-            context.fillText(ts, gx - chartOptions.timeLabelSeparation - tsWidth, dimensions.height - 2);
-          }
+            // context.fillText(ts, gx - chartOptions.timeLabelSeparation - tsWidth, dimensions.height - 2);
+            context.fillText(ts, gx - chartOptions.timeLabelSeparation - tsWidth, y0 - 2);
+          }*/
 
-        }
+
       }
+    }
+
+    if (chartOptions.tooltip && this.mouseover === true) {
+        //console.log(True);
+      // Draw vertical bar to show tooltip position
+      context.lineWidth = chartOptions.tooltipLine.lineWidth;
+      context.strokeStyle = chartOptions.tooltipLine.strokeStyle;
+      context.beginPath();
+      context.moveTo(this.mouseX, 0);
+      context.lineTo(this.mouseX, dimensions.height);
+      context.closePath();
+      context.stroke();
+      this.updateTooltip();
     }
 
     context.restore(); // See .save() above.

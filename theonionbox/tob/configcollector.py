@@ -1,5 +1,5 @@
 # from stem.control import BaseController
-from tob.manpage import ManPage
+from manpage import ManPage
 
 
 class ConfigCollector(object):

@@ -56,6 +56,9 @@ class VersionManager(object):
             tag = tag.lower().split('rc')[0]    # strip 'RC..'
             tag = tag.lower().split('dev')[0]   # strip 'dev'
 
+            if tag[-1:] == '.':
+                tag = tag[:-1]
+
             v = tag.split('.')
             v = [int(y) for y in v]  # string to int
             while len(v) < 3:

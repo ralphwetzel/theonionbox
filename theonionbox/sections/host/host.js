@@ -95,7 +95,7 @@ var proc_style = {
         fillStyle: '#000000',
         disabled: false,
         fontSize: 10,
-        fontFamily: 'monospace',
+        fontFamily: 'LatoLatinWebLight',
         precision: 0
         }
     };
@@ -124,7 +124,7 @@ var temp_style = {
         fillStyle: '#000000',
         disabled: false,
         fontSize: 10,
-        fontFamily: 'monospace',
+        fontFamily: 'LatoLatinWebLight',
         precision: 0
         }
     };
