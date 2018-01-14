@@ -4,7 +4,7 @@
 
 {{!header_row('Tor', 'Monitoring', 'monitor')}}
 
-<div class="row">
+<!--<div class="row">
     <div class="{{box_datum_grid}}"><p>Live Charts</p></div>
     <div class="{{box_value_grid}}">
         <div class="btn-toolbar pull-left" role="group">
@@ -16,34 +16,62 @@
                     <input type="radio" autocomplete="off">Hours
                 </label>
             </div>
-<!--
-            <label id="onionoo_more" class="btn btn-default" role="button" disabled="disabled"
-                   data-toggle="collapse" data-target="#moreBandwidth" aria-expanded="false"
-                   aria-controls="moreBandwidth">
-                More <span class="caret"></span>
-            </label> -->
-<!--
-            <label id="zoom" class="btn btn-default" role="button">
-                Zoom 1x
-            </label>
--->
         </div>
     </div>
     <div class="col-xs-1"></div>
-</div>
+</div>-->
 
 <div class="row">
-    <div class="{{box_datum_grid}}">Download</div>
+    <div class="{{box_datum_grid}}">Bandwidth</div>
     <div class="{{box_value_grid}}">
         <p>
-            <canvas class="bw_chart box_canvas" id="monitor-bw-read" width="300" height="150" style="vertical-align: middle"></canvas>
+
+        <div id="Glide" class="glide">
+
+<!--            <div class="glide__arrows">
+                <button class="glide__arrow prev" data-glide-dir="<">prev</button>
+                <button class="glide__arrow next" data-glide-dir=">">next</button>
+            </div>-->
+
+
+
+            <div class="glide__wrapper">
+                <ul class="glide__track">
+                    <li class="glide__slide">
+                        <canvas class="bw_chart box_canvas" id="monitor-bw-read" width="300" height="200"
+                                style="vertical-align: middle">
+                        </canvas>
+                    </li>
+                    <li class="glide__slide">
+                        <canvas class="bw_chart box_canvas" id="monitor-bw-low" width="300" height="200"
+                                style="vertical-align: middle">
+                        </canvas>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="glide__bullets"></div>
+
+        </div>
+
+
         </p>
     </div>
     <div class="col-xs-1"></div>
 </div>
 
 <div class="row">
-    <div class="{{box_datum_grid}}"></div>
+    <div class="{{box_datum_grid}}" style="color: #64B22B">Upload</div>
+    <div class="{{box_value_grid}}">
+        <p id="bw_up">
+            Total: 0 Bytes | Current: 0 Bytes/s
+        </p>
+    </div>
+    <div class="col-xs-1"></div>
+</div>
+
+<div class="row">
+    <div class="{{box_datum_grid}}" style="color: rgb(132, 54, 187)">Download</div>
     <div class="{{box_value_grid}}">
         <p id="bw_down">
             Total: 0 Bytes | Current: 0 Bytes/s
@@ -53,6 +81,16 @@
 </div>
 
 <div class="row">
+    <div class="{{box_datum_grid}}">Data Source</div>
+    <div class="{{box_value_grid}}">
+        <p id="bw_source">
+            Live Chart monitoring Tor node
+        </p>
+    </div>
+    <div class="col-xs-1"></div>
+</div>
+<!--
+<div class="row">
     <div class="{{box_datum_grid}}">Upload</div>
     <div class="{{box_value_grid}}">
         <p>
@@ -61,13 +99,5 @@
     </div>
     <div class="col-xs-1"></div>
 </div>
-<div class="row">
-    <div class="{{box_datum_grid}}"></div>
-    <div class="{{box_value_grid}}">
-        <p id="bw_up">
-            Total: 0 Bytes | Current: 0 Bytes/s
-        </p>
-    </div>
-    <div class="col-xs-1"></div>
-</div>
+-->
 <hr>

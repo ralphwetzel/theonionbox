@@ -1,0 +1,7 @@
+%# Note that this file is not a valid *.css file!
+%# It is intended to be a bottlepy - style template
+%# used for the scripting part of TheOnionBox!
+
+.glide--horizontal .glide__bullets {
+      bottom: 30px;
+    }
