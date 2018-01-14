@@ -218,7 +218,7 @@ protocol = 2
 # socket = /var/run/tor/control
 ## Note: There is no default setting.
 
-## Hidden Service connections my be secured by definition of a authorization cookie.
+## Hidden Service connections may be secured by definition of a authorization cookie.
 ## To operate via those connections, you may define this cookie here.
 ## For further details refer to 'HiddenServiceAuthorizeClient' on https://www.torproject.org/docs/tor-manual.html
 # cookie = xuseyourcookieherexTOB
