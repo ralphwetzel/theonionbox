@@ -1,5 +1,4 @@
-The Onion Box
-=============
+# The Onion Box
 _The Onion Box_ provides a web interface to monitor the operation of
 a [Tor](https://www.torproject.org) node. It is able to monitor any Tor node operated as relay, as bridge and even as client - as long as it can establish a connection to the node and authenticate successfully.
 
@@ -14,9 +13,6 @@ Above that, _The Onion Box_ is able to display Tor network status protocol data 
 
 [TOC levels=3 markdown bullet formatted hierarchy]: # "## Table of Contents"
 ## Table of Contents
-- [Supported environment](#supported-environment)
-- [Installation](#installation)
-- [Basic Operation](#basic-operation)
 - [The Web Interface](#the-web-interface)
     - [Header](#header)
     - [General Information](#general-information)
@@ -26,7 +22,14 @@ Above that, _The Onion Box_ is able to display Tor network status protocol data 
     - [Network Status](#network-status)
     - [Control Center](#control-center)
     - [Messages](#messages)
-- [Configuration file](#configuration-file)
+- [Getting Started](#getting-started)
+    - [Scenario Assumption](#scenario-assumption)
+    - [Supported environment](#supported-environment)
+    - [System Preparation](#system-preparation)
+    - [Installation](#installation)
+    - [First Flight](#first-flight)
+- [Dependencies](#dependencies)
+- [Configuration by file](#configuration-by-file)
     - [Location](#location)
     - [Structure](#structure)
 - [Command line parameters](#command-line-parameters)
@@ -48,88 +51,28 @@ Above that, _The Onion Box_ is able to display Tor network status protocol data 
     - [... using systemd](#-using-systemd)
 - [Usage Monitoring](#usage-monitoring)
 - [Q&A](#qa)
-    - [I receive a _Not supported proxy scheme socks5h_  warning. What shall I do?](#i-receive-a-not-supported-proxy-scheme-socks5h--warning-what-shall-i-do)
+    - [I receive a _Not supported proxy scheme socks5h_ warning. What shall I do?](#i-receive-a-not-supported-proxy-scheme-socks5h-warning-what-shall-i-do)
 - [Acknowledgments](#acknowledgments)
 
-
-Supported environment
----------------------
-_The Onion Box_ is a Python application, developed with v2.7 and v3.6.
-
-By default, it should operate successfully on every platform providing Python support. Confirmation can be given that it works properly in following environments:
-- Bananian | [Jessie](https://github.com/ralphwetzel/theonionbox/issues/7#issuecomment-346902660)
-- Debian | Jessie
-- FreeBSD
-- macOS | Darwin
-- Raspbian | Jessie
-- Unbutu 16.04
-- Windows 10
-
-Installation
-------------
-Usually the Box is installed on the same system that hosts the Tor node it shall monitor.
-
->Technically yet this isn't mandatory. The Box just needs to know how to access the ControlPort or ControlSocket of a Tor node.
-
-_The Onion Box_ depends on some additional libraries, so make sure those are installed:
-
-* [psutil](https://pypi.python.org/pypi/psutil)
-* [stem](https://pypi.python.org/pypi/stem)
-* [bottle](https://pypi.python.org/pypi/bottle)
-* [APScheduler](https://pypi.python.org/pypi/apscheduler)
-* [PySocks](https://pypi.python.org/pypi/PySocks)
-
-If you intend to use the advanced GeoIP2 functionality, you have to install as well the module [geoip2](https://pypi.python.org/pypi/geoip2).
-
-If you intend to operate The Box in SSL mode, you have to install as well the module [ssl](https://pypi.python.org/pypi/ssl).
-
-
-Those modules are usually installed using `pip`, e.g.: `pip install psutil`
-
-Please use always the latest version available for your Python release. Remember that you (usually) need to have root privileges to operate pip, e.g.: `sudo -u pip install psutil`.
-
-> Check this [Q&A](#i-receive-a-socks5h-not-supported-warning-what-shall-i-do) if your `pip` installation is broken or if you receive a `socks5h proxy not supported` warning.
-
-Basic Operation
----------------
-The Box of course provides numerous setting to customize its operational behaviours. Yet it as well has great default settings and is able to detect the usual Tor setups without further configuration. Therefore, if you are operating your node at `ControlPort 9051` (which is the default for a relay) or `ControlPort 9151` (the default for TorBrowser) just open a console, change to the directory where you installed your Box and launch it:
-```
-sudo -u debian-tor python theonionbox.py
-```
-On Windows, it's usually enough to use
-```
-python theonionbox.py
-```
-
-Your Box will perform some steps to initialize and then wait for connections at `http://127.0.0.1:8080`. A typical startup sequence looks like
-
-```
-19:23:26.590 The Onion Box: WebInterface to monitor your Tor operations.
-19:23:26.606 Version v4.0 (stamp 2017mmdd|hhmmss)
-19:23:26.700 Operating with configuration from 'config/theonionbox.cfg'
-19:23:27.381 Temperature sensor information located in file system. Expect to get a chart!
-19:23:27.383 Uptime information located. Expect to get a readout!
-19:23:28.010 Ready to listen on http://127.0.0.1:8080/
-```
-
-At that stage, just open your favourite web browser and connect to your Box. Enjoy monitoring!
-
-The Web Interface
------------------
-The web interface of _The Onion Box_ consists of a number of sections. If a section is displayed and how the section looks like, depends on the data your Box received from the Tor node monitored or knows about it from the Tor network status protocol. The web interface is generated on demand based on the latest data available.
+## The Web Interface
+_The Onion Box_ generates a 'web page' that displays information regarding your Tor node. This information is split up into a number of sections. If a section is displayed and how the section looks like, depends on the data your Box received from the Tor node monitored or knows about it from the Tor network status protocol. The web interface is generated on demand based on the latest data available.
 
 > Tip: If a dedicated section is not displayed, just reload the page. Press `F5` or `command + R` to re-run the page creation process.
 
-If you want to see _The Onion Box_ in action, just connect to myOnionBox (the system set up for the development activities). Be aware that this is an onion link providing access a Tor Hidden Service. You need [TorBrowser](https://www.torproject.org/projects/torbrowser.html.en) or a similar tool to follow this link.
+The following chapters introduce each available section and provide some further details to explain the content displayed:
+
+---
 
 ### Header
-The Header of the page displays some basic information about the Tor node monitored.
+The Header of the page shows some basic information about the Tor node monitored.
 
 ![image](docs/images/header.png)
 
-If you connected to this node via password authentication, you'll find a Logout Button in the upper right corner.
+If you connected to this node via [password authentication](#password-authentication), you'll find a Logout Button in the upper right corner.
 
 If your Box discovers that there is an update of it's code available, a button in the upper left corner is displayed, providing access to some further information - and a link to GitHub.
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ### General Information
 The section _Host | General Information_ displays information regarding the host system.
@@ -141,6 +84,8 @@ This section is only available if the Box is running at the same physical device
 _Latest Reboot_ as well as _Temperature_ are only available on supported operating systems.
 
 If the host provides several CPU cores, you may click on the _CPU Usage_ chart to get a popup window displaying a seperate usage chart for each core.
+
+---
 
 ### Configuration
 The section _Tor | Configuration_ displays the configuration parameters of the Tor node monitored:
@@ -219,8 +164,6 @@ Enter a search phrase - which should be a (part of a) nickname of a Tor node or 
 #### Controlled Hosts
 If you provided access control information for additional Tor nodes in the configuration file of your Box, those nodes are listed under _Controlled Hosts_. Click on the fingerprint and you will be connected to that Tor node.
 
-
-
 ---
 
 ### Messages
@@ -237,21 +180,205 @@ This section is only available for controlled nodes.
 
 ---
 
-Configuration file
-------------------
+## Getting Started
+This chapter leads you through the installation procedure of you own _Onion Box_.  
+The level of detail provided here should allow everyone, being a Novice or an Expert in the world of Tor, to successfully set up his personal _Box_. If you encountered any issues - due to whichever reason - drop me a line and I will try to improve this description to meet your demands.
 
-By design, _The Onion Box_ is able to detect a typical local Tor node installation and will connect without further configuration. Above that, you may configure the way of operation of your Box via a configuration file.
+### Scenario Assumption
+For the following tutorial I will assume a quite common scenario, the intension to install _The Onion Box_ on a Raspberry Pi with Raspbian running a Tor node. This makes it easier to explain the procedures given a precise use case rather than elaborating through all potentional
+shoulds and coulds.
+> If you encounter a situation that is significantly different from this scenario, let's discuss how to amend the description to cover those specialities.
+
+So we assume that you're logged in as user **pi**, operating on the **PIXEL** desktop (which is the default Raspbian desktop). Your starting point should look like this:
+
+<p  align="center"><img src='docs/images/raspbian.png' width='50%'></p>
+
+### Supported environment
+_The Onion Box_ is a Python application, developed with v2.7 and v3.6.
+
+By default, it should operate successfully on every platform providing Python support. Confirmation can be given that it works properly in following environments:
+- Bananian | [Jessie](https://github.com/ralphwetzel/theonionbox/issues/7#issuecomment-346902660)
+- Debian | Jessie
+- FreeBSD
+- macOS | Darwin
+- Raspbian | Jessie
+- Unbutu 16.04
+- Windows 10
+
+The Python version you are operating with (per default), can be verifyed via a terminal / command line by the issuing `python --version`:
+```
+~ $ python --version
+python 2.7.9
+```
+As said, this displays the version of the _default_ Python interpreter. Explicitely you may use as well `python2 --version` or `python3 --version` to ask for the version numbers of the dedicated releases.
+
+_The Onion Box_ is designed to run with either Python > 2.7.9 or Python > 3.6. If _none_ of your Python versions fit these reqirements, check [the Python page](http://www.python.org) for procedures how to upgrade your installation. On a Linux system, you could e.g. run `apt-get` like
+```
+~ $ sudo apt-get install --upgrade python
+~ $ sudo apt-get install --upgrade python3
+```
+to install the latest versions available in the repositories.
+
+### System Preparation
+I strongly recommend to run _The Onion Box_ in a [Python Virtual Environment](https://docs.python.org/3/tutorial/venv.html) . The additional effort is (almost) zero - yet you gain certainty that the environment is and stays perfect for operating your _Box_:
+
+Open a terminal and start your system preparation by installing the Python _virtualenv_ package:
+```
+~ $ sudo pip install virtualenv
+Collecting virtualenv
+  Using cached virtualenv-15.1.0-py2.py3-none-any.whl
+Installing collected packages: virtualenv
+Successfully installed virtualenv-15.1.0
+```
+After this successfully completed, create the virtual environment for your _Box_ in a dedicated directory, e.g. `./theonionbox`:
+> There is no need to exactly use `theonionbox` as the name for the directory to create the virtual environment in; thus choose whatever you like yet ensure that it is a valid directory name and not pre-occupied.
+```
+~ $ virtualenv theonionbox
+New python executable in /home/pi/theonionbox/bin/python
+Installing setuptools, pip, wheel...done.
+```
+
+As final step, activate now the virtual environment just created:
+```
+~ $ cd theonionbox
+~/theonionbox $ source bin/activate
+(theonionbox) ~/theonionbox $ 
+```
+> The fact that the virtual environment is activated is indicated by the name of the virtualenv in parentheses preceding the path info, e.g. here via `(theonionbox)`.
+
+To **later** close the Virtual Environment, issue a `deactivate` command:
+```
+(theonionbox) ~/theonionbox $ deactivate
+~/theonionbox $ 
+```
+
+### Installation
+The latest release package of [_The Onion Box_](https://testpypi.python.org/pypi/theonionbox/) is always available in [PyPi](https://testpypi.python.org), the Python Package Index. You can download and install it with `pip`. Please ensure, that you're doing this within the virtual environment created for your _Box_; (re-)activate it if necessary:
+```
+~ $ cd theonionbox
+~/theonionbox $ source bin/activate
+(theonionbox) ~/theonionbox $ pip install theonionbox
+```
+Along with the the files for _The Onion Box_, all additional [dependencies](#dependencies) will be installed into the virtual environment you created. No changes will be made to _The World Outside_ and there is no need to operate this `pip` command as `root.
+> Be aware that it might need some minutes to download and compile the requested packages and all their dependencies.
+
+Please ensure that the installation process is performed without any error. You should read a line like
+```
+[...]
+Successfully installed PySocks-1.6.8 apscheduler-2.1.2 bottle-0.12.13 certifi-2017.11.5 [...]
+(theonionbox) ~/theonionbox $
+```
+as the final message. This indicates, that your _Box_ should now be ready for testing.
+
+### First Flight
+Type `theonionbox` to launch your _Box_ for the first time:
+```
+(theonionbox) ~/theonionbox $ theonionbox
+```
+Your Box will perform some steps to initialize and then wait for connections at `http://127.0.0.1:8080`. A typical startup sequence of a fresh installation of _The Onion Box_ looks like
+
+```
+16:09:07.688 The Onion Box: WebInterface to monitor Tor node operations.
+16:09:07.692 Version v4.1 (stamp 2018....|15....)
+16:09:07.693 Running on a Linux host.
+16:09:07.695 Running with permissions of user 'pi'.
+16:09:07.696 Python version is 2.7.13 (/home/pi/theonionbox/bin/python).
+16:09:07.697 This seems to be a Python VirtualEnv.
+16:09:07.728 No (valid) configuration file found; operating with default settings.
+16:09:11.471 Temperature sensor information located in file system. Expect to get a chart!
+16:09:11.473 Uptime information located. Expect to get a readout!
+16:09:12.077 Ready to listen on http://127.0.0.1:8080/
+16:09:12.153 Press Ctrl-C to quit!
+```
+
+At that stage, open a webbrowser from the PIXEL desktop and connect to your _Box_ at the given address (here: `http://127.0.0.1:8080`).  
+
+It is yet very likely, that you'll receive an error message like this one:
+<p  align="center"><img src='docs/images/connectionerror.png' width='80%'></p>
+
+Don't be disappointed! As your _Box_ explained during it's launch procedure, it is
+```
+16:09:07.695 Running with permissions of user 'pi'.
+```
+Very likely your Tor node yet was (e.g. by default) configured to guard the access to it's `ControlPort` by `CookieAuthentication`. As user `pi` (in common scenarios) has no permission to read this cookie, your _Box_ fails to authenticate against your Tor node - and has to issue a Connection Error.
+To compensate for that error and to comply with the Tor configuration setting, just launch your _Box_ with the same user that owns & controls your Tor node - which on Debian like systems usually is `debian-tor`:
+
+> Remember: To stop the operation of your Box, press `Ctrl-C`!
+```
+(theonionbox) ~/theonionbox $ sudo -u debian-tor lib/theonionbox
+```
+> Please note that you now have to state the full (yet relative) path of `lib/theonionbox` to run the _Box_!
+
+```
+[...]
+16:33:16.543 Running on a Linux host.
+16:33:16.544 Running with permissions of user 'debian-tor'.
+16:33:16.544 Python version is 2.7.13 (/home/pi/theonionbox/bin/python).
+16:33:16.566 No (valid) configuration file found; operating with default settings.
+16:33:20.314 Temperature sensor information located in file system. Expect to get a chart!
+16:33:20.315 Uptime information located. Expect to get a readout!
+[...]
+```
+> You might notice as well, that _The Onion Box_ is now unable to detect that it's running inside a virtual environment! This is technically correct, as issueing the `sudo -u` command breaks those boundaries.
+
+As before, browse now to `http://127.0.0.1:8080` ... and enjoy monitor your Tor node!
+
+
+## Dependencies
+_The Onion Box_ depends on some libraries develloped and provided by third parties. If you follow the [installation procedure](#installation) , `pip` will care to install all necessary packages for you.  
+If you perform a non-`pip` (manual) installation (e.g. directly from the GitHub repository), you have to ensure that those dependencies are installed accordingly:
+
+* [psutil](https://pypi.python.org/pypi/psutil)
+* [stem](https://pypi.python.org/pypi/stem)
+* [bottle](https://pypi.python.org/pypi/bottle)
+* [APScheduler](https://pypi.python.org/pypi/apscheduler)
+* [PySocks](https://pypi.python.org/pypi/PySocks)
+* [tzlocal](https://pypi.python.org/pypi/tzlocal)
+
+To operate the Box in an Python 2.7 environment, you need as well the [futures](https://pypi.python.org/pypi/futures/) module.
+
+If you intend to use the advanced GeoIP2 functionality, you have to install as well the module [geoip2](https://pypi.python.org/pypi/geoip2).
+
+If you intend to operate The Box in SSL mode, you have to install as well the module [ssl](https://pypi.python.org/pypi/ssl).
+
+
+These modules are usually installed using `pip`, e.g.: `pip install psutil`
+
+Please use always the latest version available for your Python release. Remember that you (usually) need to have root privileges to operate `pip`, e.g. `sudo -u pip install psutil`.  
+My advice is yet to always operate within a [Python Virtual Environment](#system-preparation) - which eliminates the demand to run `pip` with root privileges.
+
+> Check this [Q&A](#i-receive-a-not-supported-proxy-scheme-socks5h-warning-what-shall-i-do) if your `pip` installation is broken or if you receive a `socks5h proxy not supported` warning.
+
+## Configuration by file
+
+By design, _The Onion Box_ is able to detect a typical local Tor node installation and will connect without further preparation.
+
+Therefore no configuration be necessary - if you are operating your node at `ControlPort 9051` (which is the default for a relay) or `ControlPort 9151` (the default for TorBrowser).
+
+For all other situations, you may configure the way of operation of your _Box_ via a configuration file.
 
 ### Location
 If you do not provide a dedicated `--config=<path>` to define the path to a configuration file via the [command line](#command-line-parameters), _The Onion Box_ checks for availability of a file named `theonionbox.cfg` at one of the following locations (in the given order):
+* if launched from a Python Virtual Environment, in a directory named `config` below the root directory of the virtual environment: `$VIRTUAL_ENV/config/theonionbox.cfg`
 * in the same directory as `theonionbox.py`: `./theonionbox.cfg`
 * in a directory named `config` below the directory of `theonionbox.py`: `./config/theonionbox.cfg`
 
+If you've saved your configuration file at one of those locations, yet your _Box_ still states `No (valid) configuration file found.`, you might use the [-d command line parameter](#command-line-parameters) to enable the _Debug_ mode. This will trigger _The Onion Box_ to emit the absolute search paths it's checking for the configuration files:
+
+```
+(theonionbox) ~/theonionbox $ theonionbox -d
+        17:57:10.551 The Onion Box: WebInterface to monitor Tor node operations.
+[...]
+[DEBUG] 17:57:10.590 theonionbox.py[391]: No configuration file found at '/home/pi/theonionbox/config/theonionbox.cfg'
+[DEBUG] 17:57:10.594 theonionbox.py[391]: No configuration file found at '/home/pi/theonionbox/lib/python2.7/site-packages/theonionbox/theonionbox.cfg'
+[DEBUG] 17:57:10.596 theonionbox.py[391]: No configuration file found at '/home/pi/theonionbox/lib/python2.7/site-packages/theonionbox/config/theonionbox.cfg'
+```
+
 ### Structure
-The configuration file of _The Onion Box_ is a simple text file "ini-style". A template of that file is available as [`./config/theonionbox.example`](theonionbox/config/theonionbox.example) in the directory of `theonionbox.py`.
+The configuration file of _The Onion Box_ is a simple text file "ini-style". A template of that file is available as [`./config/theonionbox.example`](./theonionbox/config/theonionbox.example) in the directory of `theonionbox.py`.
 
 #### Section `[config]`
-```ini
+```
 [config]
 ## v4.0 will only support version = 2
 protocol = 2
@@ -259,7 +386,7 @@ protocol = 2
 _The Onion Box_ as of version 4 only supports configuration file protocol `2`.
 
 #### Section `[TheOnionBox]`
-```ini
+```
 [TheOnionBox]
 ## Address of your Onion Box:
 ## This defaults to 0.0.0.0 to listen on all interfaces.
@@ -323,7 +450,7 @@ _The Onion Box_ as of version 4 only supports configuration file protocol `2`.
 
 #### Section `[Tor]`
 These are the parameters to connect and authenticate to your "primary" (or first or main) Tor node to be monitored.
-```ini
+```
 [Tor]
 ## How shall we establish the connection to your primary (controlled) Tor node?
 ## => via a ControlSocket (define additionally 'socket' parameter):
@@ -380,7 +507,7 @@ These are the parameters to connect and authenticate to your "primary" (or first
 ```
 
 #### Section `[TorProxy]`
-```ini
+```
 [TorProxy]
 ## Note: Operation via a proxy given by a unix domain socket is (as of 04/2017) not supported!
 
@@ -427,12 +554,12 @@ These are the parameters to connect and authenticate to your "primary" (or first
 ## Note: This defaults to socket = default if not defined!
 ```
 
-#### Controlled Hosts
-For each Tor node you intend to monitor - in addition to the "primary" node configured in section `[Tor]` - you have to add a dedicated section proving the access data for its `ControlPort`.
+#### One dedicated section for each additional _Controlled Host_
+For each Tor node you intend to monitor - **but not** for the  "primary" node configured already in section `[Tor]` - you have to add a dedicated section proving the access data for its `ControlPort`.
 
 > You must not name any of the following sections 'config', 'TheOnionBox', 'Tor' or 'TorProxy'.
 
-```ini
+```
 #####
 ## Those are the Tor nodes to be controlled with the control center
 ## Note: You must not name any of the following sections 'config', 'TheOnionBox', 'Tor' or 'TorProxy'.
@@ -504,12 +631,10 @@ For each Tor node you intend to monitor - in addition to the "primary" node conf
 ## Note: There is no default setting.
 ```
 
-Command line parameters
------------------------
-
+## Command line parameters
 _The Onion Box_ may be configured by a small number of commandline parameters:
 
-```ini
+```
 -c <path> | --config=<path>: Provide path & name of configuration file.
                              Note: This is only necessary when NOT using
                              './theonionbox.cfg' or './config/theonionbox.cfg'.
@@ -525,9 +650,8 @@ _The Onion Box_ may be configured by a small number of commandline parameters:
 `TRACE` additionally forwards debug level messages of `bottle` (the WSGI micro web-framework used by the Box) and trace level messages of `stem` (the Tor controller library). This mode is really noisy ... and the ultimate lever to follow the operation of _The Onion Box_ in case of problems.
 
 
-Advanced Operations: Authentication
------------------------------------
-Monitoring a Tor node in the end just demands two prerequisites: Access to an interface to control the node and a way to authenticate against the node. Therefore _Advanced Operations_ is all about the different ways to provide a [control interface](#advanced-operations-control-interfaces) and the different ways of **authentication**.
+## Advanced Operations: Authentication
+Monitoring a Tor node in the end just demands two prerequisites: Access to an interface to control the node and a way to authenticate against the node. Therefore _Advanced Operations_ is all about the different ways to provide a [control interface](#advanced-operations-control-interface) and the different ways of **authentication**.
 
 To clarify one topic upfront: You don't need to tell your Box the way of authentication it shall use. This topic will transparently be negotiated between the Tor node and the Box.
 
@@ -537,7 +661,7 @@ By default (defined in the configuration file [`torrc.default`](#configuration))
 According to the Tor manual, when using _Cookie Authentication_, the Tor node allows "connections on the control port when the connecting process knows the contents of a file named `control_auth_cookie`, which Tor will create in its data directory".  
 This implies that _Cookie Authentication_ can only be used locally - which means that this authentication method is only suitable if you have installed _The Onion Box_ on the same system that hosts the Tor node you intend to monitor.  
 To access `control_auth_cookie`, your Box needs to have the correct privileges. This can be achieved most easily by running it as the same user as the Tor node (which e.g. is _debian-tor_ on Debian systems):
-```bash
+```
 sudo -u debian-tor python theonionbox.py
 ```
 
@@ -556,12 +680,11 @@ If your Box discovers that _Password Authentication_ is required, it will ask fo
 ### No Authentication
 There might be situations, where access control to the ControlPort is not demanded or even obstructive.
 In that case it may be necessary to explicitely turn off _Cookie Authentication_ in your `torrc` - as it might be enabled by default:
-```ini
+```
 CookieAuthentication 0
 ```
 
-Advanced Operations: Control Interface
---------------------------------------
+## Advanced Operations: Control Interface
 Monitoring a Tor node in the end just demands two prerequisites: Access to an interface to control the node and a way to authenticate against the node. Therefore _Advanced Operations_ is all about the different ways to provide a **control interface** and the different ways of [authentication](#advanced-operations-authentication) .
 
 ### Caution
@@ -585,7 +708,6 @@ socket = /var/run/tor/control
 ```
 
 You can use the same parameter language - if applicable - in `[TorProxy]` or when defining the connection settings of a _Controlled Host_.
-
 
 ### ControlPort
 Configuring a `ControlPort` as controlling interface for a Tor node is as simple as defining
@@ -633,13 +755,12 @@ Be aware that this kind of setup is only limited useful, as the monitoring traff
 You yet can unfold the full potential of this feature if you use it with a Tor node providing access to it's controlling interface by a [hidden service](#hidden-service-operations).
 
 
-Hidden Service Operations
--------------------------
+## Hidden Service Operations
 _The Onion Box_ supports remote monitoring of a Tor node via the Tor notwork services. While it might be a bit more effort to set up such a connection, it provides the advantage that the whole traffic circulates only within the Tor eco system; there is no footprint of the monitoring activity in the open internet, adding a further layer of security to your operations.
 
 ### Basic configuration
 To create that kind of connection, you have to prepare a hidden service that allows connection to the ControlPort of the Tor node to be monitored - by adding
-```ini
+```
 HiddenServiceDir /var/lib/tor/theonionbox/
 HiddenServicePort 9876 /var/run/tor/control
 ```
@@ -650,7 +771,7 @@ The second parameter of `HiddenServicePort` is the local controlling interface o
 After a restart of the Tor node by `sudo service tor restart`, you will find the onion address of your Hidden Service in `<HiddenServiceDir>/hostname`. The address usually is a 16 character string followed by `.onion`, e.g. _7an5onionad2res2.onion_.
 
 To monitor this Tor node, add a dedicated section to the configuration file of your Box.
-```ini
+```
 [MyProxyNode]
 control=proxy
 host=7an5onionad2res2.onion
@@ -669,7 +790,7 @@ The first option is to enable [_Password Authentication_](#password-authenticati
 Alternatively you could take advantage of Tor's _Hidden Service Client Authorization_ feature. In short, it restricts access to the Hidden Service to those clients that are able to provide the correct _Authorization Cookie_.
 
 To enable this feature, edit again your Tor node's `torrc`. Alter the Hidden Service section to
-```ini
+```
 HiddenServiceDir /var/lib/tor/theonionbox/
 HiddenServicePort 9876 /var/run/tor/control
 HiddenServiceAuthorizeClient stealth myBoxConnector
@@ -679,7 +800,7 @@ The second parameter of `HiddenServiceAuthorizeClient` is the **unique** usernam
 
 After another restart of Tor via `sudo service tor restart`, you will find the authorization cookie for the given username in `<HiddenServiceDir>/hostname`.  
 Take this cookie - a 22 character string, e.g. _xa3NyourCookY6herexTOB_ - and add it to the settings you defined for this connection in the configuration file of your Box:
-```ini
+```
 [MyProxyNode]
 control=proxy
 host=7an5onionad2res2.onion
@@ -689,13 +810,12 @@ cookie=xa3NyourCookY6herexTOB
 Your Box will ensure that the configuration cookie will be registered prior to a connection attempt.
 
 As this procedure limits the use of the Hidden Service - and thus the access to the control port of the node - to only those (trusted) users that are able to provide the right authorization cookie, you might consider switching off the standard authentication functionality of the node's control port via it's `torrc`:
-```ini
+```
 CoookieAuthentication 0
 # HashedControlPassword
 ```
 
-_The Onion Box_ as system service (aka daemon)
-----------------------------------------------
+## _The Onion Box_ as system service (aka daemon)
 After you've ensured that your Box operates without issues, you can set it up to operate as a background application, which is the same as a system service or daemon. The steps to perform this differ depending on the technology used by your operating derivate.
 
 When operated as a service, **log files** are per default stored into `<theonionbox-root-path>/log/theonionbox.log` and rotated regularly. If you create the directory `/var/log/theonionbox` and set the propper access rights for the user running `theonionbox.py`, the log files will be written there.
@@ -748,7 +868,7 @@ Let's assume, you've stored your OnionBox files in a directory called `/home/pi/
 - Edit `~theonionbox/config/theonionbox.cfg`to your needs
 - Create service file with `sudo vi /etc/systemd/system/theonionbox.service` with the following content:
 
-```ini
+```
 # Run The Onion Box as background service
 # https://github.com/ralphwetzel/theonionbox/
 
@@ -772,8 +892,7 @@ WantedBy=multi-user.target
 - Start the new service with `sudo systemctl start theonionbox.service`
 - If everything is okay, start the service on next boot with `sudo systemctl enable theonionbox.service`
 
-Usage Monitoring
-----------------
+## Usage Monitoring
 To create a small survey of its usage, _The Onion Box_ sends the following information to `t527moy64zwxsfhb.onion`, the hidden service acting as _The Onion Box Update Service_ when requesting the latest version information of Tor and the Box:
 
 - An UUID created newly each time during launch of the Box.
@@ -811,10 +930,9 @@ except Exception as exc:
 
 ```
 
-
-Q&A
----
-### I receive a _Not supported proxy scheme socks5h_  warning. What shall I do?
+# Troubleshooting
+## Q&A
+### I receive a _Not supported proxy scheme socks5h_ warning. What shall I do?
 If you receive this message, your `requests` module installation most probably is outdated - and not supporting _socks5h_ proxy operations.
 
 If you do the obvious thing and try to `pip install requests --upgrade`, you risk to destroy your `pip` functionality.
@@ -829,8 +947,7 @@ to install the latest `pip` version **together with a very recent version of `re
 
 After that, you could `pip install requests --upgrade` if you like, yet usually it shouldn't be necessary any more.
 
-Acknowledgments
----------------
+## Acknowledgments
 Day by day it is a repetitive pleasure to learn from uncountable people who share their knowledge, their time and their work with the world. This section shall express my gratefulness to those who supported me solving issues I encountered during the last years. **Thank You!**
 
 Łukasz Dziedzic (and his friends) for creating and publishing the great [Lato](https://latofonts.com) font family.
@@ -850,7 +967,7 @@ who taught me Python by example.
     </td>
     <td>
 
-The [JetBrains](www.jetbrains.com) team for their support to _The Onion Box_ providing an Open Source license of their gorgeous PyCharm IDE. If you run your own personal Open Source project, you may as well apply for a license [here](https://www.jetbrains.com/buy/opensource/?product=pycharm) (non affiliated link).
+The [JetBrains](http://www.jetbrains.com) team for their support to _The Onion Box_ providing an Open Source license of their gorgeous PyCharm IDE. If you run your own personal Open Source project, you may as well apply for a license [here](https://www.jetbrains.com/buy/opensource/?product=pycharm) (non affiliated link).
 </td>
 </tr>
   </tbody>
