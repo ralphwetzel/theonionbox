@@ -321,7 +321,7 @@ To compensate for that error and to comply with the Tor configuration setting, j
 ```
 > You might notice as well, that _The Onion Box_ is now unable to detect that it's running inside a virtual environment! This is technically correct, as issueing the `sudo -u` command breaks those boundaries.
 
-As before, browse now to `http://127.0.0.1:8080` ... and enjoy monitor your Tor node!
+As before, browse now to `http://127.0.0.1:8080` ... and enjoy monitoring your Tor node!
 
 
 ## Dependencies
