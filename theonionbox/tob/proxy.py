@@ -41,7 +41,7 @@ class Proxy(object):
 
     def assure_cookie(self, host, cookie):
 
-        from tob.controller import create_controller
+        from controller import create_controller
         boxLog = logging.getLogger('theonionbox')
 
         if host is None or cookie is None:

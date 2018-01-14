@@ -2,10 +2,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-__version__ = '4.0.3'
-__stamp__ = None    # stamp will be added later
-__description__ = 'The Onion Box: WebInterface to monitor your Tor operations.'
-
+import site
 
 #####
 # Standard Imports
@@ -41,21 +38,37 @@ def get_script_dir(follow_symlinks=True):
 # to ensure that our directory structure works as expected!
 os.chdir(get_script_dir())
 
+#####
+# Patching the import system to allow usage as module as well as stand alone
+# https://www.python.org/dev/peps/pep-0366/
+if __package__ is None:
+    # sys.path.append(get_script_dir())
+    # __package__ = 'theonionbox'
+    pass
+
+# print(get_script_dir())
+# site.addsitedir(get_script_dir())
+
+for (dirpath, dirnames, filenames) in os.walk(get_script_dir()):
+    init_path = os.path.join(dirpath, '__init__.py')
+    # print(dirpath)
+    if os.path.isfile(init_path):
+        # print("adding {}".format(dirpath))
+        site.addsitedir(dirpath)
+
+# print(sys.path)
+
 
 #####
-# Version Stamping
-stamped_version = str(__version__)
-if os.path.exists('stamp.txt'):
-    with open('stamp.txt', 'r') as f:
-        lines = f.readlines()
-        if len(lines) == 1 and lines[0][8] == '|':
-            __stamp__ = lines[0]
-            stamped_version += ' (stamp {})'.format(__stamp__)
+# Version & Stamping
+from stamp import __description__, __version__, __stamp__
+stamped_version = '{} (stamp {})'.format(__version__, __stamp__)
 
 
 #####
 # TOR manpage Index Information
 from tob.manpage import ManPage
+# from tob.manpage import ManPage
 
 box_manpage = ManPage('tor/tor.1.ndx')
 
@@ -123,9 +136,17 @@ boxHost = {
     'release': platform.release(),
     'version': platform.version(),
     'machine': platform.machine(),
-    'processor': platform.processor()
+    'processor': platform.processor(),
     # Memory info will be ammended once we can ensure that the required modules are available.
+    'venv': os.getenv('VIRTUAL_ENV', None)
 }
+
+# The user running this script
+import getpass
+try:
+    boxHost['user'] = getpass.getuser()
+except:
+    pass
 
 #####
 # The Logging Infrastructure
@@ -135,6 +156,8 @@ import logging
 from logging.handlers import TimedRotatingFileHandler, MemoryHandler
 from tob.log import addLoggingLevel, LoggingManager, ForwardHandler
 from tob.log import ConsoleFormatter, FileFormatter
+
+# logging.basicConfig()
 
 # Add Level to be inline with the Tor levels (DEBUG - INFO - NOTICE - WARN(ing) - ERROR)
 addLoggingLevel('NOTICE', logging.INFO + 5)
@@ -177,11 +200,12 @@ boxLog.addHandler(boxFwrd)
 boxLogHandler = None
 
 # This is the Handler to connect stem with boxLog
-# from stem.util.log import get_logger as get_stem_logger,logging_level, Runlevel
-# stemFwrd = ForwardHandler(level=logging_level(Runlevel.TRACE), tag='stem')
-# stemLog = get_stem_logger()
-# stemLog.addHandler(stemFwrd)
-# stemFwrd.setTarget(boxLog)
+if box_cmdline['trace'] is True:
+    from stem.util.log import get_logger as get_stem_logger,logging_level, Runlevel
+    stemFwrd = ForwardHandler(level=logging_level(Runlevel.TRACE), tag='stem')
+    stemLog = get_stem_logger()
+    stemLog.addHandler(stemFwrd)
+    stemFwrd.setTarget(boxLog)
 
 box_cmdline_modes = [None, 'service']
 
@@ -246,10 +270,20 @@ def log_encoder(string):
 
 boxLog.notice(__description__)
 boxLog.notice('Version v{}'.format(stamped_version))
-boxLog.notice('Running on a {} Host.'.format(boxHost['system']))
-boxLog.notice('Python version is {}.{}.{}.'.format(sys.version_info.major,
-                                                 sys.version_info.minor,
-                                                 sys.version_info.micro))
+boxLog.notice('Running on a {} host.'.format(boxHost['system']))
+if 'user' in boxHost:
+    boxLog.notice("Running with permissions of user '{}'.".format(boxHost['user']))
+if sys.executable:
+    boxLog.notice('Python version is {}.{}.{} ({}).'.format(sys.version_info.major,
+                                                      sys.version_info.minor,
+                                                      sys.version_info.micro,
+                                                      sys.executable))
+else:
+    boxLog.notice('Python version is {}.{}.{}.'.format(sys.version_info.major,
+                                                      sys.version_info.minor,
+                                                      sys.version_info.micro))
+if boxHost['venv'] is not None:
+    boxLog.notice('This seems to be a Python VirtualEnv.')
 
 if box_cmdline['trace'] is True:
     boxLog.setLevel('TRACE')
@@ -267,10 +301,6 @@ if box_cmdline['mode'] is 'WrongOS':
 
 # The config file object
 box_cfg_data = None
-
-# Location and name of config files
-box_config_path = 'config'
-box_config_file = 'theonionbox.cfg'
 
 # Supported protocol
 box_supported_protocol = [2]      # 20170416 RDW: We no longer support version 1.
@@ -318,62 +348,73 @@ box_cc = {}
 
 #####
 # Configuration file management
-from tob.configobj import ConfigObj, Section, DuplicateError
+from tob.ini import INIParser, DuplicateSectionError
 
-
-def getboolean(self, key, default=None):
-    try:
-        retval = self.as_bool(key)
-    except (ValueError, KeyError) as e:
-        retval = default
-    return retval
-
-Section.getboolean = getboolean
+# def getboolean(self, key, default=None):
+#     try:
+#         retval = self.as_bool(key)
+#     except (ValueError, KeyError) as e:
+#         retval = default
+#     return retval
+#
+# Section.getboolean = getboolean
 
 # Read the config file(s)
 config_found = False
-config_files = [box_config_file, box_config_path + '/' + box_config_file]
+
+# Location and name of config files
+box_config_path = 'config'
+box_config_file = 'theonionbox.cfg'
+
+if boxHost['venv'] is not None:
+    config_files = [os.path.join(boxHost['venv'], box_config_path, box_config_file)]
+else:
+    config_files = []
+
+config_files.extend([
+    box_config_file,
+    os.path.join(box_config_path, box_config_file)
+])
 
 if box_cmdline['config'] is not None:
     config_files = [box_cmdline['config']] + config_files
 
 for config_file in config_files:
-    try:
-        box_cfg_data = ConfigObj(config_file, file_error=True, encoding='UTF8')
-        boxLog.notice("Operating with configuration from '{}'".format(config_file))
-        break
-    except DuplicateError as exc:
-        boxLog.warning("While parsing '{}': {}".format(config_file, exc))
-    except:
-        boxLog.debug("No configuration file found at '{}'".format(config_file))
+    if os.path.exists(config_file):
+        try:
+            box_cfg_data = INIParser(config_file)
+            boxLog.notice("Operating with configuration from '{}'".format(os.path.abspath(config_file)))
+            break
+        except DuplicateSectionError as exc:
+            boxLog.warning("While parsing '{}': {}".format(config_file, exc))
+    else:
+        boxLog.debug("No configuration file found at '{}'".format(os.path.abspath(config_file)))
 
 if box_cfg_data is None:
     boxLog.notice('No (valid) configuration file found; operating with default settings.')
 else:
 
-    if 'config' in box_cfg_data:
-        box_protocol = int(box_cfg_data['config'].get('protocol', box_protocol))
+    if 'config' in box_cfg_data.keys():
+        box_protocol = box_cfg_data('config').getint('protocol', box_protocol)
 
     if box_protocol in box_supported_protocol:
 
-        for key in box_cfg_data:
+        for section in box_cfg_data.sections():
 
-            if key == 'TheOnionBox':
-                box_config = box_cfg_data['TheOnionBox']
+            if section.key() == 'TheOnionBox':
+                box_host = section.get('host', box_host)
+                box_port = section.getint('port', box_port)
+                box_session_ttl = section.getint('session_ttl', box_session_ttl)
 
-                box_host = box_config.get('host', box_host)
-                box_port = int(box_config.get('port', box_port))
-                box_session_ttl = int(box_config.get('session_ttl', box_session_ttl))
+                box_ntp_server = section.get('ntp_server', box_ntp_server)
+                box_message_level = section.get('message_level', box_message_level).upper()
+                box_basepath = section.get('base_path', box_basepath)
 
-                box_ntp_server = box_config.get('ntp_server', box_ntp_server)
-                box_message_level = box_config.get('message_level', box_message_level).upper()
-                box_basepath = box_config.get('base_path', box_basepath)
-
-                box_ssl_certificate = box_config.get('ssl_certificate', box_ssl_certificate)
-                box_ssl_key = box_config.get('ssl_key', box_ssl_key)
+                box_ssl_certificate = section.get('ssl_certificate', box_ssl_certificate)
+                box_ssl_key = section.get('ssl_key', box_ssl_key)
                 box_ssl = box_ssl_certificate is not None and box_ssl_key is not None
 
-                box_geoip_db = box_config.get('geoip2_city', box_geoip_db)
+                box_geoip_db = section.get('geoip2_city', box_geoip_db)
 
                 # Nothing currently deprecated in v2
                 box_config_deprecated = [
@@ -381,63 +422,62 @@ else:
 
                 for option in box_config_deprecated:
                     try:
-                        test = box_config[option]
+                        test = section.get(option)
                     except:
                         pass
                     else:
                         boxLog.warning("Configuration: Parameter '{}' is deprecated and will be ignored.".format(option))
 
-            elif key == 'Tor':
-                tor_config = box_cfg_data['Tor']
-                tor_control = tor_config.get('control', tor_control)
-                tor_host = tor_config.get('host', tor_host)
-                tor_port = tor_config.get('port', tor_port)
-                tor_socket = tor_config.get('socket', tor_socket)
-                tor_timeout = int(tor_config.get('timeout', tor_timeout))
-                tor_ttl = int(tor_config.get('ttl', tor_ttl))
+            elif section.key() == 'Tor':
+                tor_control = section.get('control', tor_control)
+                tor_host = section.get('host', tor_host)
+                tor_port = section.get('port', tor_port)
+                tor_socket = section.get('socket', tor_socket)
+                tor_timeout = section.getint('timeout', tor_timeout)
+                tor_ttl = section.getint('ttl', tor_ttl)
                 # tor_proxy = tor_config.get('proxy', tor_proxy)
-                tor_ERR = tor_config.getboolean('tor_preserve_ERR', tor_ERR)
-                tor_WARN = tor_config.getboolean('tor_preserve_WARN', tor_WARN)
-                tor_NOTICE = tor_config.getboolean('tor_preserve_NOTICE', tor_NOTICE)
+                tor_ERR = section.getboolean('tor_preserve_ERR', tor_ERR)
+                tor_WARN = section.getboolean('tor_preserve_WARN', tor_WARN)
+                tor_NOTICE = section.getboolean('tor_preserve_NOTICE', tor_NOTICE)
 
-            elif key == 'TorProxy':
-                cfg = box_cfg_data['TorProxy']
-
-                proxy_config['control'] = cfg.get('control', proxy_config['control'])
-                proxy_config['host'] = cfg.get('host', proxy_config['host'])
-                proxy_config['port'] = cfg.get('port', proxy_config['port'])
-                proxy_config['socket'] = cfg.get('socket', proxy_config['socket'])
-                proxy_config['proxy'] = cfg.get('proxy', proxy_config['proxy'])
+            elif section.key() == 'TorProxy':
+                proxy_config['control'] = section.get('control', proxy_config['control'])
+                proxy_config['host'] = section.get('host', proxy_config['host'])
+                proxy_config['port'] = section.get('port', proxy_config['port'])
+                proxy_config['socket'] = section.get('socket', proxy_config['socket'])
+                proxy_config['proxy'] = section.get('proxy', proxy_config['proxy'])
 
                 if proxy_config['control'] not in ['port', 'socket']:
                     proxy_config['control'] = 'port'
 
             else:
-                cc_node = box_cfg_data[key]
+                cc_key = section.key()
                 node = {}
-                node['name'] = key
-                node['control'] = cc_node.get('control', None)
-                node['host'] = cc_node.get('host', None)
-                node['port'] = cc_node.get('port', None)
-                node['socket'] = cc_node.get('socket', None)
-                node['cookie'] = cc_node.get('cookie', None)
-                node['nick'] = cc_node.get('nick', None)
+                node['name'] = cc_key
+                node['control'] = section.get('control', None)
+                node['host'] = section.get('host', None)
+                node['port'] = section.get('port', None)
+                node['socket'] = section.get('socket', None)
+                node['cookie'] = section.get('cookie', None)
+                node['nick'] = section.get('nick', None)
                 if node['nick'] is None:
-                    if key[0] == '#':
-                        node['nick'] = key.split(':')[0]
-                node['fp'] = cc_node.get('fp', None)
+                    if cc_key[0] == '#':
+                        node['nick'] = cc_key.split(':')[0]
+                node['fp'] = section.get('fp', None)
                 if node['fp'] is None:
-                    if len(key) == 41 and key[0] == '$':
-                        node['fp'] = key
+                    if len(cc_key) == 41 and cc_key[0] == '$':
+                        node['fp'] = cc_key
     
-                if key in box_cc:
-                    boxLog.warning("Configuration: Parameters to control host '{}' defined several times. Initial definition preserved.".format(key))
+                if cc_key in box_cc:
+                    boxLog.warning("Configuration: Parameters to control host '{}' defined several times. "
+                                   "Initial definition preserved.".format(cc_key))
                 elif node['control'] in ['port', 'socket', 'proxy']:
                     box_cc[uuid.uuid4().hex] = node
 
     else:
-        boxLog.warning("Configuration file shows protocol version not supported: {}. Please verify your settings and use version {} protocol."
-                       .format(box_protocol, box_supported_protocol))
+        boxLog.warning("Configuration file shows protocol version not supported: {}. Please verify "
+                       "your settings and use version {} protocol."
+                    .format(box_protocol, box_supported_protocol))
 
 #####
 # These are the modules necessary for basic operation.
@@ -460,6 +500,9 @@ required_modules = {
     'requests': {
         'version': ['2.18.0']
     },
+    'tzlocal': {
+        'version': ['1.5']
+    },
     # be aware that the module is named 'PySocks' yet the loader looks for 'socks'
     'pysocks': {
         'loader': 'socks',
@@ -467,6 +510,12 @@ required_modules = {
         'info': "Required python module 'PySocks' is missing. You have to install it via '{} install pysocks'.".format(pip_version)
     }
 }
+
+if not py30:
+    required_modules['futures'] = {
+        'loader': 'concurrent',
+        'version': ['3.2']
+    }
 
 #####
 # Configuration data verification
@@ -556,6 +605,11 @@ if find_loader('stem') is None or box_cmdline['debug'] is True or box_cmdline['t
                     tor_port = 9151
                 except:
                     out('Failed to connect to Tor.')
+        else:
+            try:
+                simple_tor = SimplePort(tor_host, tor_port)
+            except:
+                out('Failed to connect to Tor.')
 
     elif tor_control == 'socket':
         out("Trying to connect to Tor via socket @ '{}'.".format(tor_socket))
@@ -1090,8 +1144,7 @@ bottle_stdout = boxLog.trace
 jQuery_lib = "jquery-3.1.1.min.js"
 
 # Bootstrap
-bootstrapVersion = '3.3.7'
-bootstrapDir = 'bootstrap-' + bootstrapVersion
+bootstrapDir = 'bootstrap'
 bootstrapJS = "bootstrap.min.js"
 bootstrapCSS = "bootstrap.min.css"
 
@@ -1751,8 +1804,16 @@ def get_index(session_id):
     session['sections'] = sections
     # node.sections = sections
 
-    session['stylesheets'] = ['bootstrap.css', 'fonts.css', 'box.css']
-    session['scripts'] = ['jquery.js', 'bootstrap.js', 'smoothie.js', 'chart.js', 'box.js', 'scrollMonitor.js']
+    session['stylesheets'] = ['bootstrap.css', 'fonts.css', 'glide.core.css', 'glide.theme.css']
+    session['scripts'] = ['jquery.js', 'bootstrap.js', 'smoothie.js', 'chart.js', 'scrollMonitor.js', 'glide.js']
+
+    #session['stylesheets'] = ['bootstrap.css', 'fonts.css']
+    #session['scripts'] = ['jquery.js', 'bootstrap.js', 'smoothie.js', 'chart.js', 'scrollMonitor.js']
+    #session['scripts'] = ['jquery.js', 'bootstrap.js', 'smoothie.js']
+
+    # to ensure, that 'box.xxx' is the latest element...
+    session['stylesheets'].append('box.css')
+    session['scripts'].append('box.js')
 
     import socket
 
@@ -2318,6 +2379,7 @@ def send_css(session_id, filename):
                 return HTTPResponse(file, **headers)
 
         elif filename == 'bootstrap.css':
+            # print(bootstrapCSS, bootstrapDir+'/css')
             return static_file(bootstrapCSS, root=bootstrapDir + '/css', mimetype='text/css')
         else:
             return static_file(filename, root='css', mimetype='text/css')
@@ -2440,8 +2502,8 @@ def record_cpu_data(timestamp=None, compensate_deviation=True):
 # https://fgallaire.github.io/wsgiserver/
 class HTTPServer(bottle.ServerAdapter):
     def run(self, handler):
-        import tob.server
-        self.server = tob.server.Server(handler, self.host, self.port, **self.options)
+        from tob.server import Server
+        self.server = Server(handler, self.host, self.port, **self.options)
         self.server.start()
 
     def shutdown(self):
@@ -2532,6 +2594,7 @@ def session_housekeeping():
 
 box_cron.add_job(session_housekeeping, 'interval', seconds=housekeeping_interval)
 
+tob_server = None
 
 def exit_procedure(quit=True):
     try:
@@ -2592,7 +2655,66 @@ def exit_procedure(quit=True):
         sys.exit(0)
 
 
+update_time_deviation()
+
+
+if box_ssl is True:
+    # SSL enabled
+    tob_server = HTTPServer(host=box_host, port=box_port, certfile=box_ssl_certificate, keyfile=box_ssl_key)
+    # boxLog.notice("Operating with WSGIserver in SSL mode!")
+    boxLog.notice('Operating in SSL mode!')
+else:
+    # Standard
+    # tob_server_options = {'handler_class': box_FixedDebugHandler}
+    tob_server = HTTPServer(host=box_host, port=box_port)
+    # boxLog.notice('Operating with WSGIserver!')
+
+
+def main(run_debug=False, open_browser=True):
+
+    # print(__package__)
+
+    log = logging.getLogger('theonionbox')
+
+    # if we're here ... almost everything is setup and running
+    # good time to launch the housekeeping for the first time!
+    session_housekeeping()
+
+    http_or_https = 'http' if box_ssl is False else 'https'
+    log.notice('Ready to listen on {}://{}:{}/'.format(http_or_https, tob_server.host, tob_server.port))
+    log.notice('Press Ctrl-C to quit!')
+
+    # getuser() will be != 'SUDO_USER', if script is run with sudo
+    # if in sudo, launch of webbrowser will fail - so we skip it!
+
+    import getpass
+    import os
+
+    if box_cmdline['mode'] != 'service':
+        try:
+            if os.getenv('SUDO_USER') == getpass.getuser():
+                import webbrowser
+                wb = webbrowser.get()
+                wb.open('http://127.0.0.1:8080')
+        except:
+            pass
+
+    try:
+        if run_debug is True:
+            run(theonionbox, server=tob_server, host=box_host, port=box_port)
+        else:
+            run(theonionbox, server=tob_server, host=box_host, port=box_port, quiet=True)
+    except KeyboardInterrupt:
+        pass
+    except Exception as exc:
+        raise exc
+    finally:
+        exit_procedure(False)
+
+
 if __name__ == '__main__':
+
+
 
     # try:
     #     tor = connect2tor()
@@ -2605,36 +2727,40 @@ if __name__ == '__main__':
     # and enable the Forwarder
     # boxFwrd.setTarget(torLog)
 
-    update_time_deviation()
+    # update_time_deviation()
+    #
+    # tob_server = None
+    #
+    # if box_ssl is True:
+    #     # SSL enabled
+    #     tob_server = HTTPServer(host=box_host, port=box_port, certfile=box_ssl_certificate, keyfile=box_ssl_key)
+    #     # boxLog.notice("Operating with WSGIserver in SSL mode!")
+    #     boxLog.notice('Operating in SSL mode!')
+    # else:
+    #     # Standard
+    #     # tob_server_options = {'handler_class': box_FixedDebugHandler}
+    #     tob_server = HTTPServer(host=box_host, port=box_port)
+    #     # boxLog.notice('Operating with WSGIserver!')
+    #
+    # # if we're here ... almost everything is setup and running
+    # # good time to launch the housekeeping for the first time!
+    # session_housekeeping()
+    #
+    # http_or_https = 'http' if box_ssl is False else 'https'
+    # boxLog.notice('Ready to listen on {}://{}:{}/'.format(http_or_https, tob_server.host, tob_server.port))
+    #
+    # try:
+    #     if box_debug is True:
+    #         run(theonionbox, server=tob_server, host=box_host, port=box_port)
+    #     else:
+    #         run(theonionbox, server=tob_server, host=box_host, port=box_port, quiet=True)
+    # except KeyboardInterrupt:
+    #     pass
+    # except Exception as exc:
+    #     raise exc
+    # finally:
+    #     exit_procedure(False)
 
-    tob_server = None
+    main(box_debug)
 
-    if box_ssl is True:
-        # SSL enabled
-        tob_server = HTTPServer(host=box_host, port=box_port, certfile=box_ssl_certificate, keyfile=box_ssl_key)
-        # boxLog.notice("Operating with WSGIserver in SSL mode!")
-        boxLog.notice('Operating in SSL mode!')
-    else:
-        # Standard
-        # tob_server_options = {'handler_class': box_FixedDebugHandler}
-        tob_server = HTTPServer(host=box_host, port=box_port)
-        # boxLog.notice('Operating with WSGIserver!')
-
-    # if we're here ... almost everything is setup and running
-    # good time to launch the housekeeping for the first time!
-    session_housekeeping()
-
-    http_or_https = 'http' if box_ssl is False else 'https'
-    boxLog.notice('Ready to listen on {}://{}:{}/'.format(http_or_https, tob_server.host, tob_server.port))
-
-    try:
-        if box_debug is True:
-            run(theonionbox, server=tob_server, host=box_host, port=box_port)
-        else:
-            run(theonionbox, server=tob_server, host=box_host, port=box_port, quiet=True)
-    except KeyboardInterrupt:
-        pass
-    except Exception as exc:
-        raise exc
-    finally:
-        exit_procedure(False)
+# __all__ = ['main']

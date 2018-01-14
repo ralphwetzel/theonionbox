@@ -1,5 +1,7 @@
 # coding=UTF-8
 
+import logging
+
 #####
 # Class to support APScheduler v3 (default) and v2
 # despite their interfaces are incompatible!
@@ -11,17 +13,21 @@ class Scheduler(object):
 
     def __init__(self):
 
+        # to compensate for 'No handlers could be found for logger "apscheduler.scheduler"' message
+        # log = logging.getLogger('apscheduler.scheduler')
+        # log.addHandler(logging.NullHandler())
+
         #####
         # ApScheduler version detection
         try:
             # APScheduler 3.x implementation
             from apscheduler.schedulers.background import BackgroundScheduler
-            self.schedulr = BackgroundScheduler()
+            self.schedulr = BackgroundScheduler(logger='theonionbox')
             self.aps3 = True
         except:
             # APScheduler 2.x implementation
             from apscheduler.scheduler import Scheduler
-            self.schedulr = Scheduler()
+            self.schedulr = Scheduler(logger='theonionbox')
             self.aps3 = False
 
     def start(self):
@@ -101,7 +107,7 @@ class Scheduler(object):
         except ImportError:
             # https://github.com/ralphwetzel/theonionbox/issues/31
             # APScheduler 2.x
-            import six
+            # import six
             from pytz import timezone, utc
             from datetime import tzinfo
 
@@ -116,7 +122,8 @@ class Scheduler(object):
                 :rtype: tzinfo
 
                 """
-                if isinstance(obj, six.string_types):
+                # if isinstance(obj, six.string_types):
+                if isinstance(obj, (str, unicode)):
                     return timezone(obj)
                 if isinstance(obj, tzinfo):
                     if not hasattr(obj, 'localize') or not hasattr(obj, 'normalize'):

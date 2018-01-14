@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 # from stem.control import Controller, with_default, UNDEFINED, LOG_CACHE_FETCHES, _case_insensitive_lookup
 from stem.util import str_type, log
-from tob.deviation import getTimer
+from deviation import getTimer
 
 # from stem.socket import ControlPort, ControlSocketFile
 # import stem
@@ -38,10 +38,13 @@ class BaseController(stem.control.Controller):
         self.callback = callback
 
     def _post_authentication(self):
-        if self.callback is not None:
-            self.callback()
+        log = logging.getLogger('theonionbox')
+        log.debug('BaseController._post_authentication()!')
 
         super(BaseController, self)._post_authentication()
+
+        if self.callback is not None:
+            self.callback()
 
 
 class ControlPort(stem.socket.ControlPort):

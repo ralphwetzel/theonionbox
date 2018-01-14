@@ -1,4 +1,4 @@
-from tob.wsgiserver import WSGIServer
+from wsgiserver import WSGIServer
 import sys
 
 

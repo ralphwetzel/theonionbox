@@ -11,7 +11,7 @@ import uuid
 import logging
 from logging.handlers import MemoryHandler, BufferingHandler
 import functools
-from tob.deviation import getTimer
+from deviation import getTimer
 import sys
 
 from threading import RLock
@@ -500,7 +500,7 @@ class ConsoleFormatter(logging.Formatter):
 
             # add propper line breaks for nice output:
             try:
-                from tob.terminalsize import get_terminal_size
+                from terminalsize import get_terminal_size
 
                 # Try to get the size of the terminal
                 sx, sy = get_terminal_size()
