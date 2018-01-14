@@ -1,7 +1,0 @@
-include README.md
-include theonionbox/config/theonionbox.cfg
-recursive-include theonionbox/css *.css
-recursive-include theonionbox/pages *.html
-recursive-include theonionbox/scripts *.js
-
-
