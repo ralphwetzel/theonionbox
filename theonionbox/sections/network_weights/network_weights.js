@@ -62,7 +62,7 @@ var ooweights_style = {
         fillStyle: '#000000',
         disabled: false,
         fontSize: 10,
-        fontFamily: 'monospace',
+        fontFamily: 'LatoLatinWebLight',
         precision: 2
         }
     };
@@ -85,8 +85,8 @@ cw_handler.prototype.process = function(data, timedelta) {
         }
 
         value *= 100;
-        var unfixed = -Math.floor(Math.log10(Math.abs(value)));
-        return value.toFixed(unfixed + 1);
+        // var unfixed = -Math.floor(Math.log10(Math.abs(value)));
+        return sigFigs(value, 2);
     };
 
     txt = "Currently: <span style='color: #EDC240'>" + 'Middle ' + to_percent(data.data.mp) + '%</span>';
@@ -143,6 +143,7 @@ cw_handler.prototype.process = function(data, timedelta) {
             }
 
             if (data.cwf[key] && data.cwf[key].length > 0) {
+                //console.log("cwf: " + data.cwf[key].length)
 
                 var result = [];
 
@@ -385,10 +386,14 @@ function set_consensus_display(selector)
 
     consensus_weight_fraction.setDisplay(style_cwf);
     consensus_weight_fraction.options.yMaxFormatter = function(data, precision) {
-        if (data === 0) { return "0 %"; }
+
+        if (data === 0) { return "0%"; }
+
+        // https://stackoverflow.com/questions/894860/set-a-default-parameter-value-for-a-javascript-function
+        precision = typeof precision !== 'undefined' ? precision : 2;
         data *= 100;
-        var retval = data.toFixed(-Math.floor(Math.log10(Math.abs(data))) + 1);
-        return retval + " %";
+
+        return sigFigs(data, precision) + "%";
     };
     consensus_weight_fraction.options.grid.fillStyle = '#FFFFFF';
     oo_weights_shows = selector;
