@@ -41,7 +41,7 @@ class CompileREADMECommand(setuptools.command.sdist.sdist):
         current_rst_hash = 'doit'
 
         try:
-            with open('docs/README.hash', 'r') as f:
+            with open('readme/README.hash', 'r') as f:
                 lines = f.readlines()
                 if len(lines) == 3:
                     old_md_hash = lines[0].strip()
@@ -53,8 +53,8 @@ class CompileREADMECommand(setuptools.command.sdist.sdist):
 
         try:
             current_md_hash = get_hash('README.md')
-            current_html_hash = get_hash('docs/README.html')
-            current_rst_hash = get_hash('docs/README.rst')
+            current_html_hash = get_hash('readme/README.html')
+            current_rst_hash = get_hash('readme/README.rst')
         except Exception as e:
             # raise e
             pass
@@ -63,7 +63,7 @@ class CompileREADMECommand(setuptools.command.sdist.sdist):
 
         if (old_md_hash != current_md_hash) or (old_html_hash != current_html_hash):
             from grip import export
-            export(path='README.md', out_filename='docs/README.html', title='The Onion Box v{}'.format(__version__))
+            export(path='README.md', out_filename='readme/README.html', title='The Onion Box v{}'.format(__version__))
             hash_changed = True
         else:
             print('Skiping generation of README.html; files unchanged!')
@@ -75,7 +75,7 @@ class CompileREADMECommand(setuptools.command.sdist.sdist):
                 # os.environ.setdefault('PYPANDOC_PANDOC', '/usr/local/Cellar/pandoc/2.1')
                 from pypandoc import convert_file
                 print('Generating README.rst')
-                convert_file('README.md', 'rst', outputfile="docs/README.rst")
+                convert_file('README.md', 'rst', outputfile="readme/README.rst")
                 hash_changed = True
             else:
                 print('Skiping generation of README.rst; files unchanged!')
@@ -83,7 +83,7 @@ class CompileREADMECommand(setuptools.command.sdist.sdist):
             print('Generation of README.rst intentionally deactivated!')
 
         if hash_changed is True:
-            with open('docs/README.hash', 'w') as f:
+            with open('readme/README.hash', 'w') as f:
                 f.write(current_md_hash+'\n'+current_html_hash+'\n'+current_rst_hash)
 
         # continue with standard staff...
@@ -212,7 +212,7 @@ package_data = {
 
 data_files = [
     ('docs', ['docs/*.*']),
-    ('', ['README.html', 'theonionbox/run.py']),
+    ('', ['readme/README.html']),
     ('config', ['theonionbox/config/*.*']),
     ('service', []),
     ('service/FreeBSD', ['FreeBSD/theonionbox.sh']),
@@ -236,7 +236,7 @@ setup(
     author='Ralph Wetzel',
     author_email='theonionbox@gmx.com',
     description=__description__,
-    long_description=open('docs/README_Intro.rst').read(),
+    long_description=open('docs/description.rst').read(),
     entry_points={
         'console_scripts': [
             'theonionbox = theonionbox.__main__:main']
