@@ -27,6 +27,7 @@ Above that, _The Onion Box_ is able to display Tor network status protocol data 
     - [Supported environment](#supported-environment)
     - [System Preparation](#system-preparation)
     - [Installation](#installation)
+    - [Verification of the installation](#verification-of-the-installation)
     - [First Flight](#first-flight)
 - [Dependencies](#dependencies)
 - [Configuration by file](#configuration-by-file)
@@ -201,8 +202,8 @@ By default, it should operate successfully on every platform providing Python su
 - Debian | Jessie
 - FreeBSD
 - macOS | Darwin
-- Raspbian | Jessie
-- Unbutu 16.04
+- Raspbian | Jessie, Stretch
+- Ubuntu 16.04
 - Windows 10
 
 The Python version you are operating with (per default), can be verifyed via a terminal / command line by the issuing `python --version`:
@@ -237,10 +238,20 @@ After this successfully completed, create the virtual environment for your _Box_
 New python executable in /home/pi/theonionbox/bin/python
 Installing setuptools, pip, wheel...done.
 ```
-
-As final step, activate now the virtual environment just created:
+To verify the installation, change into the directory created (`cd theonionbox`) and list its content with `ls -l`:
 ```
 ~ $ cd theonionbox
+~/theonionbox $ ls -l
+total 20
+drwxr-xr-x 2 pi pi 4096 Jan 18 19:21 bin
+drwxr-xr-x 2 pi pi 4096 Jan 18 19:21 include
+drwxr-xr-x 3 pi pi 4096 Jan 18 19:21 lib
+drwxr-xr-x 2 pi pi 4096 Jan 18 19:21 local
+-rw-r--r-- 1 pi pi   60 Jan 18 19:21 pip-selfcheck.json
+~/theonionbox $
+```
+If your's looks equivalent / similar, you've successfully created this virtual environment. As final step, activate it now:
+```
 ~/theonionbox $ source bin/activate
 (theonionbox) ~/theonionbox $ 
 ```
@@ -253,7 +264,7 @@ To **later** close the Virtual Environment, issue a `deactivate` command:
 ```
 
 ### Installation
-The latest release package of [_The Onion Box_](https://testpypi.python.org/pypi/theonionbox/) is always available in [PyPi](https://testpypi.python.org), the Python Package Index. You can download and install it with `pip`. Please ensure, that you're doing this within the virtual environment created for your _Box_; (re-)activate it if necessary:
+The latest release package of [_The Onion Box_](https://testpypi.python.org/pypi/theonionbox/) is always available in [PyPi](https://testpypi.python.org), the Python Package Index. You can download and install it with `pip install theonionbox`. Please ensure, that you're doing this within the virtual environment created for your _Box_; (re-)activate it if necessary:
 ```
 ~ $ cd theonionbox
 ~/theonionbox $ source bin/activate
@@ -268,18 +279,48 @@ Please ensure that the installation process is performed without any error. You 
 Successfully installed PySocks-1.6.8 apscheduler-2.1.2 bottle-0.12.13 certifi-2017.11.5 [...]
 (theonionbox) ~/theonionbox $
 ```
-as the final message. This indicates, that your _Box_ should now be ready for testing.
+as the final message.
+
+### Verification of the installation
+To verify this `pip`ed installation, list (`ls -l`) the files in the directory of your virtual environment again, now:
+```
+(theonionbox) ~/theonionbox $ ls -l
+total 668
+drwxr-xr-x 2 pi pi   4096 Jan 18 19:37 bin
+drwxr-xr-x 2 pi pi   4096 Jan 18 19:37 config
+drwxr-xr-x 3 pi pi   4096 Jan 18 19:37 docs
+drwxr-xr-x 2 pi pi   4096 Jan 18 19:21 include
+drwxr-xr-x 3 pi pi   4096 Jan 18 19:21 lib
+drwxr-xr-x 2 pi pi   4096 Jan 18 19:21 local
+-rw-r--r-- 1 pi pi     60 Jan 18 19:21 pip-selfcheck.json
+-rw-r--r-- 1 pi pi 650924 Jan 18 19:37 README.html
+drwxr-xr-x 5 pi pi   4096 Jan 18 19:37 service
+(theonionbox) ~/theonionbox $ 
+
+```
+
+First finding: This file, `README.html`, was placed into the root of your virtual environment - to always be at your hand if necessary.
+
+Second finding: There were three additional subdirectories created:
+* `config`, where to place a [configuration file](#configuration-by-file) - if you need one. You'll find there as well an example for such a configuration file.
+* `docs`, that holds the images used in this document.
+* `service`, to provide the launchers if you intend to run your _Box_ as a [system service / daemon](#the-onion-box-as-system-service-aka-daemon).
+
+The python packages - for the _Box_ and all it's dependencies - are located in `lib/python2.7/site-packages/`. Be aware, that the `python ` path segment might be different (e.g. `lib/python3.6/site-packages/`) if your virtual environment operates with another version of python!  
+_The Box Launcher_ (named as well `theonionbox`) is located in `bin/`, next to the executables of the python version used in your virtual environment.
+
+If the structure of your installation looks equivalent, your _Box_ is now cleared for takeoff:
 
 ### First Flight
 Type `theonionbox` to launch your _Box_ for the first time:
 ```
 (theonionbox) ~/theonionbox $ theonionbox
 ```
-Your Box will perform some steps to initialize and then wait for connections at `http://127.0.0.1:8080`. A typical startup sequence of a fresh installation of _The Onion Box_ looks like
+Your Box will perform some steps to initialize and then wait for connections at `http://127.0.0.1:8080`. A typical startup sequence of a fresh installation of _The Onion Box_ looks like this:
 
 ```
 16:09:07.688 The Onion Box: WebInterface to monitor Tor node operations.
-16:09:07.692 Version v4.1 (stamp 2018....|15....)
+16:09:07.692 Version v4.x (stamp 2018....|15....)
 16:09:07.693 Running on a Linux host.
 16:09:07.695 Running with permissions of user 'pi'.
 16:09:07.696 Python version is 2.7.13 (/home/pi/theonionbox/bin/python).
@@ -305,9 +346,9 @@ To compensate for that error and to comply with the Tor configuration setting, j
 
 > Remember: To stop the operation of your Box, press `Ctrl-C`!
 ```
-(theonionbox) ~/theonionbox $ sudo -u debian-tor lib/theonionbox
+(theonionbox) ~/theonionbox $ sudo -u debian-tor ./bin/theonionbox
 ```
-> Please note that you now have to state the full (yet relative) path of `lib/theonionbox` to run the _Box_!
+> Please note that you now have to state the full path - either relative or absolute - to [_The Box Launcher_](#verification-of-the-installation) script (`theonionbox`) to run the _Box_! For our scenario, I've chosen to use the relative path of `./bin/theonionbox`!
 
 ```
 [...]
@@ -319,13 +360,13 @@ To compensate for that error and to comply with the Tor configuration setting, j
 16:33:20.315 Uptime information located. Expect to get a readout!
 [...]
 ```
-> You might notice as well, that _The Onion Box_ is now unable to detect that it's running inside a virtual environment! This is technically correct, as issueing the `sudo -u` command breaks those boundaries.
+> You might notice as well, that _The Onion Box_ is now unable to detect that it's running inside a virtual environment! This is technically correct, as issueing the `sudo -u` command breaks those boundaries. Be assured, that this is ok!
 
 As before, browse now to `http://127.0.0.1:8080` ... and enjoy monitoring your Tor node!
 
 
 ## Dependencies
-_The Onion Box_ depends on some libraries develloped and provided by third parties. If you follow the [installation procedure](#installation) , `pip` will care to install all necessary packages for you.  
+_The Onion Box_ depends on some libraries developed and provided by third parties. If you follow the [installation procedure](#installation) , `pip` will care to install all necessary packages for you.  
 If you perform a non-`pip` (manual) installation (e.g. directly from the GitHub repository), you have to ensure that those dependencies are installed accordingly:
 
 * [psutil](https://pypi.python.org/pypi/psutil)
