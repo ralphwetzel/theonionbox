@@ -2763,4 +2763,4 @@ if __name__ == '__main__':
 
     main(box_debug)
 
-# __all__ = ['main']
+__all__ = ['main']

@@ -264,13 +264,12 @@ To **later** close the Virtual Environment, issue a `deactivate` command:
 ```
 
 ### Installation
-The latest release package of [_The Onion Box_](https://testpypi.python.org/pypi/theonionbox/) is always available in [PyPi](https://testpypi.python.org), the Python Package Index. You can download and install it with `pip install theonionbox`. Please ensure, that you're doing this within the virtual environment created for your _Box_; (re-)activate it if necessary:
+The latest release package of [_The Onion Box_](https://testpypi.python.org/pypi/theonionbox/) is always available in [PyPi](https://testpypi.python.org), the Python Package Index. You can download and install it with `pip install theonionbox`. Please ensure, that you're doing this within the virtual environment created for your _Box_; (re-)activate it if necessary with:
 ```
-~ $ cd theonionbox
 ~/theonionbox $ source bin/activate
 (theonionbox) ~/theonionbox $ pip install theonionbox
 ```
-Along with the the files for _The Onion Box_, all additional [dependencies](#dependencies) will be installed into the virtual environment you created. No changes will be made to _The World Outside_ and there is no need to operate this `pip` command as `root.
+Along with the files for _The Onion Box_, all additional [dependencies](#dependencies) will be installed into the virtual environment you created. No changes will be made to _The World Outside_ and there is no need to operate this `pip` command as `root.
 > Be aware that it might need some minutes to download and compile the requested packages and all their dependencies.
 
 Please ensure that the installation process is performed without any error. You should read a line like
@@ -301,7 +300,7 @@ drwxr-xr-x 5 pi pi   4096 Jan 18 19:37 service
 
 First finding: This file, `README.html`, was placed into the root of your virtual environment - to always be at your hand if necessary.
 
-Second finding: There were three additional subdirectories created:
+Second finding! There were three additional subdirectories created:
 * `config`, where to place a [configuration file](#configuration-by-file) - if you need one. You'll find there as well an example for such a configuration file.
 * `docs`, that holds the images used in this document.
 * `service`, to provide the launchers if you intend to run your _Box_ as a [system service / daemon](#the-onion-box-as-system-service-aka-daemon).
@@ -309,7 +308,7 @@ Second finding: There were three additional subdirectories created:
 The python packages - for the _Box_ and all it's dependencies - are located in `lib/python2.7/site-packages/`. Be aware, that the `python ` path segment might be different (e.g. `lib/python3.6/site-packages/`) if your virtual environment operates with another version of python!  
 _The Box Launcher_ (named as well `theonionbox`) is located in `bin/`, next to the executables of the python version used in your virtual environment.
 
-If the structure of your installation looks equivalent, your _Box_ is now cleared for takeoff:
+If the structure of your installation looks equivalent, your _Box_ is now cleared for takeoff!
 
 ### First Flight
 Type `theonionbox` to launch your _Box_ for the first time:
@@ -987,6 +986,24 @@ to install the latest `pip` version **together with a very recent version of `re
 > This works even if your `pip` installation is already broken and issuing e.g. an _IncompleteRead_ error.
 
 After that, you could `pip install requests --upgrade` if you like, yet usually it shouldn't be necessary any more.
+
+### I get a _Memory Error_ when trying to install via pip
+
+If your system answers a `pip install theonionbox` command with a lengthy error message ending like
+```
+[...]
+File "/usr/local/lib/python2.7/dist-packages/pip/_vendor/cachecontrol/controller.py", line 205, in cache_response
+self.serializer.dumps(request, response, body=body),
+File "/usr/local/lib/python2.7/dist-packages/pip/_vendor/cachecontrol/serialize.py", line 81, in dumps
+).encode("utf8"),
+MemoryError"
+```
+it is time to reboot your system.  
+If the problem still persists after the reboot, you could try to perform the installation process via
+```
+pip --no-cache-dir install theonionbox
+```
+to reduce the memory demand of `pip` when installing _The Onion Box_.
 
 ## Acknowledgments
 Day by day it is a repetitive pleasure to learn from uncountable people who share their knowledge, their time and their work with the world. This section shall express my gratefulness to those who supported me solving issues I encountered during the last years. **Thank You!**
