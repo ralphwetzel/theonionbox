@@ -22,9 +22,9 @@ class Scheduler(object):
         try:
             # APScheduler 3.x implementation
             from apscheduler.schedulers.background import BackgroundScheduler
-            self.schedulr = BackgroundScheduler(logger='theonionbox')
+            self.schedulr = BackgroundScheduler() #(logger='theonionbox')
             self.aps3 = True
-        except:
+        except ImportError:
             # APScheduler 2.x implementation
             from apscheduler.scheduler import Scheduler
             self.schedulr = Scheduler(logger='theonionbox')
