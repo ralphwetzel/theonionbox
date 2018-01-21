@@ -293,13 +293,13 @@ drwxr-xr-x 2 pi pi   4096 Jan 18 19:37 config
 drwxr-xr-x 3 pi pi   4096 Jan 18 19:37 docs
 drwxr-xr-x 2 pi pi   4096 Jan 18 19:21 include
 drwxr-xr-x 3 pi pi   4096 Jan 18 19:21 lib
-drwxr-xr-x 2 pi pi   4096 Jan 18 19:21 local
 -rw-r--r-- 1 pi pi     60 Jan 18 19:21 pip-selfcheck.json
 -rw-r--r-- 1 pi pi 650924 Jan 18 19:37 README.html
 drwxr-xr-x 5 pi pi   4096 Jan 18 19:37 service
 (theonionbox) ~/theonionbox $ 
 
 ```
+> As already mentioned, there might be an additional folder named `local` if you operate your virtual environment with Python 2.7.
 
 First finding: This file, `README.html`, was placed into the root of your virtual environment - to always be at your hand if necessary.
 
