@@ -10,8 +10,8 @@ A single instance of _The Onion Box_ is able to provide monitoring functionality
 
 Above that, _The Onion Box_ is able to display Tor network status protocol data for any Tor node known by [Onionoo](http://onionoo.torproject.org).
 
-
 [TOC levels=3 markdown bullet formatted hierarchy]: # "## Table of Contents"
+
 ## Table of Contents
 - [The Web Interface](#the-web-interface)
     - [Header](#header)
@@ -54,7 +54,10 @@ Above that, _The Onion Box_ is able to display Tor network status protocol data 
 - [Q&A](#qa)
     - [I receive a _Not supported proxy scheme socks5h_ warning. What shall I do?](#i-receive-a-not-supported-proxy-scheme-socks5h-warning-what-shall-i-do)
     - [I get a _Memory Error_ when trying to install via pip](#i-get-a-memory-error-when-trying-to-install-via-pip)
+- [Shorttrack](#shorttrack)
 - [Acknowledgments](#acknowledgments)
+
+
 
 ## The Web Interface
 _The Onion Box_ generates a 'web page' that displays information regarding your Tor node. This information is split up into a number of sections. If a section is displayed and how the section looks like, depends on the data your box received from the Tor node monitored or knows about it from the Tor network status protocol. The web interface is generated on demand based on the latest data available.
@@ -222,6 +225,61 @@ _The Onion Box_ is designed to run with either Python > 2.7.9 or Python > 3.6. I
 to install the latest versions available in the repositories.
 
 ### System Preparation
+#### sudo
+There is a prerequisite you should check prior to anything else: Is your `sudo` setup working? Is `sudo` installed and has your account adequate `sudo` privileges?
+
+To verify those aspects, open a terminal and just type `sudo`:
+```
+~ $ sudo
+usage: sudo -h | -K | -k | -V
+usage: sudo -v [-AknS] [-g group] [-h host] [-p prompt] [-u user]
+usage: sudo -l [-AknS] [-g group] [-h host] [-p prompt] [-U user] [-u user]
+            [command]
+usage: sudo [-AbEHknPS] [-r role] [-t type] [-C num] [-g group] [-h host] [-p
+            prompt] [-u user] [VAR=value] [-i|-s] [<command>]
+usage: sudo -e [-AknS] [-r role] [-t type] [-C num] [-g group] [-h host] [-p
+            prompt] [-u user] file ...
+~ $ 
+```
+If `sudo` is installed, it should answer with it's help message.  
+If not, you need an **account with root privileges** to install it:
+```
+root@raspberrypi:/# apt-get install sudo
+```
+The `sudo` system grants `sudo` rights to the members of the group `sudo`. To verify this for your current account, use the `getent` command. Working with user `pi`, you would issue a
+```
+~ $ getent group | grep pi
+[...]
+cdrom:x:24:pi
+sudo:x:27:pi
+audio:x:29:pi
+video:x:44:pi
+[...]
+```
+The line
+```
+sudo:x:27:pi
+```
+tells you that `pi` is member of the `sudo` group.  
+If you don't get such a feedback, you have to grant your account membership of this group. Again, you need an **account with root privileges**:
+```
+root@raspberrypi:/# usermod -g sudo pi
+```
+> Alternatively you could log in with another account who already has sudo privileges to issue a `sudo usermod -g sudo pi`.
+
+For verification, use again the `getent` command!
+```
+~ $ getent group | grep pi
+[...]
+cdrom:x:24:pi
+sudo:x:27:pi
+audio:x:29:pi
+video:x:44:pi
+[...]
+```
+
+
+#### virtualenv
 I strongly recommend to run _The Onion Box_ in a [Python Virtual Environment](https://docs.python.org/3/tutorial/venv.html) . The additional effort is (almost) zero - yet you gain certainty that the environment is and stays perfect for operating your box:
 
 Open a terminal and start your system preparation by installing the Python _virtualenv_ package:
@@ -1008,17 +1066,33 @@ pip --no-cache-dir install theonionbox
 ```
 to reduce the memory demand of `pip` when installing _The Onion Box_.
 
+## Shorttrack
+The straightest procedure to run _The Onion Box_, if the `sudo` system is installed and the Tor node is owned by user `debian-tor`:
+
+- `sudo useradd -m user1`
+- `sudo passwd user1`; enter password
+- `sudo usermod -s /bin/bash user1`
+- to be safe: `sudo usermod -g users user1`
+- `sudo usermod -g sudo user1` grants `sudo` rights
+- `su - user1`; enter password
+- `virtualenv -p python3 theonionbox`
+- `cd theonionbox`
+- `source bin/activate`
+- `pip install theonionbox`
+- `sudo -u debian-tor bin/theonionbox`; enter password
+
+Enjoy!
+
 ## Acknowledgments
 Day by day it is a repetitive pleasure to learn from uncountable people who share their knowledge, their time and their work with the world. This section shall express my gratefulness to those who supported me solving issues I encountered during the last years. **Thank You!**
 
-Łukasz Dziedzic (and his friends) for creating and publishing the great [Lato](https://latofonts.com) font family.
+Łukasz Dziedzic (and his friends) - for creating and publishing the great [Lato](https://latofonts.com) font family.
 
-[SC. Phillips](http://www.scphillips.com) whose [Blog](http://blog.scphillips.com/posts/2013/07/getting-a-python-script-to-run-in-the-background-as-a-service-on-boot/) gave a perfect starting point when I tried to operate _The Onion Box_ as a background service.
+[SC. Phillips](http://www.scphillips.com) - whose [Blog](http://blog.scphillips.com/posts/2013/07/getting-a-python-script-to-run-in-the-background-as-a-service-on-boot/) gave a perfect starting point when I tried to operate _The Onion Box_ as a background service.
 
-All the people contributing to [StackOverflow](https://stackoverflow.com/)
-who taught me Python by example.
+All the people contributing to [StackOverflow](https://stackoverflow.com/) - who taught me Python by example.
 
-[svengo](https://github.com/svengo) who [contributed](https://github.com/ralphwetzel/theonionbox/issues/24) the [procedure](#-using-systemd) to operate _The Onion Box_ as a daemon with systemd.
+[svengo](https://github.com/svengo) - who [contributed](https://github.com/ralphwetzel/theonionbox/issues/24) the [procedure](#-using-systemd) to operate _The Onion Box_ as a daemon with systemd.
 
 <table>
   <tbody>
@@ -1028,12 +1102,13 @@ who taught me Python by example.
     </td>
     <td>
 
-The [JetBrains](http://www.jetbrains.com) team for their support to _The Onion Box_ providing an Open Source license of their gorgeous PyCharm IDE. If you run your own personal Open Source project, you may as well apply for a license [here](https://www.jetbrains.com/buy/opensource/?product=pycharm) (non affiliated link).
+The [JetBrains](http://www.jetbrains.com) team - for their support to _The Onion Box_ providing an Open Source license of their gorgeous PyCharm IDE. If you run your own personal Open Source project, you may as well apply for a license [here](https://www.jetbrains.com/buy/opensource/?product=pycharm) (non affiliated link).
 </td>
 </tr>
   </tbody>
 </table>
 
+Olaf - who provided great support and endless patience while testing the `pip` installation system and its dedicated documentation.
 
 > I apologize sincerely being convinced it is impossible to mention everyone who gave me the opportunity to participate from his or her experience.  
 Please raise your hand if you think someone should be added to this list!
