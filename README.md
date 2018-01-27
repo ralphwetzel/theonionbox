@@ -318,6 +318,10 @@ As final step, activate the environment now:
 ```
 > The fact that the virtual environment is activated is indicated by the name of the virtualenv in parentheses preceding the path info, e.g. here via `(theonionbox)`.
 
+> If you're working with the `csh` or `fish` shell, you have to use a dedicated file / command to activate the virtual environment:  
+For `csh`, use `source bin/activate.csh`  
+For `fish`, use `source bin/activate.fish`
+
 To **later** close the Virtual Environment, issue a `deactivate` command:
 ```
 (theonionbox) ~/theonionbox $ deactivate
