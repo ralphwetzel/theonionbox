@@ -1,4 +1,12 @@
 # The Onion Box
+[![Latest PyPi](https://img.shields.io/pypi/v/theonionbox.svg?style=flat-square)](https://pypi.org/project/theonionbox)
+![Supported Python versions](https://img.shields.io/pypi/pyversions/theonionbox.svg?style=flat-square)
+![Status](https://img.shields.io/pypi/status/theonionbox.svg?style=flat-square)
+![License](https://img.shields.io/pypi/l/theonionbox.svg?style=flat-square)
+
+[![GitHub tag](https://img.shields.io/github/tag/ralphwetzel/theonionbox.svg?style=flat-square&label=GitHub)](https://github.com/ralphwetzel/theonionbox/releases/latest)
+![Github commits (since latest release)](https://img.shields.io/github/commits-since/ralphwetzel/theonionbox/latest.svg?style=flat-square)
+
 _The Onion Box_ provides a web interface to monitor the operation of
 a [Tor](https://www.torproject.org) node. It is able to monitor any Tor node operated as relay, as bridge and even as client - as long as it can establish a connection to the node and authenticate successfully.
 
