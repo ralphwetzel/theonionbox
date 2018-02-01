@@ -1,11 +1,11 @@
 # The Onion Box
 [![GitHub tag](https://img.shields.io/github/tag/ralphwetzel/theonionbox.svg?style=flat-square&label=GitHub)](https://github.com/ralphwetzel/theonionbox/releases/latest)
 ![Github commits (since latest release)](https://img.shields.io/github/commits-since/ralphwetzel/theonionbox/latest.svg?style=flat-square)
+[![License](https://img.shields.io/pypi/l/theonionbox.svg?style=flat-square)](https://github.com/ralphwetzel/theonionbox/blob/master/LICENSE)
 
 [![Latest PyPi](https://img.shields.io/pypi/v/theonionbox.svg?style=flat-square)](https://pypi.org/project/theonionbox)
 ![Supported Python versions](https://img.shields.io/pypi/pyversions/theonionbox.svg?style=flat-square)
 ![Status](https://img.shields.io/pypi/status/theonionbox.svg?style=flat-square)
-![License](https://img.shields.io/pypi/l/theonionbox.svg?style=flat-square)
 
 
 _The Onion Box_ provides a web interface to monitor the operation of
@@ -287,7 +287,6 @@ video:x:44:pi
 [...]
 ```
 
-
 #### virtualenv
 I strongly recommend to run _The Onion Box_ in a [Python Virtual Environment](https://docs.python.org/3/tutorial/venv.html) . The additional effort is (almost) zero - yet you gain certainty that the environment is and stays perfect for operating your box:
 
@@ -437,6 +436,48 @@ To compensate for that error and to comply with the Tor configuration setting, j
 
 As before, browse now to `http://127.0.0.1:8080` ... and enjoy monitoring your Tor node!
 
+### If it doesn't fly...
+There have been issues reported that the box is unable to connect to the [ControlPort](#controlport) of your Tor node even when started using the `sudo -u` command. The reasons for this might be obscure - the solution is straight forward: Add the user you're operating with to the same group that owns the Tor node process.
+
+Start this procedure by querying for the Tor node process with `ps -aux | grep tor`:
+```
+~ $ ps -aux | grep tor
+root       112  0.0  0.0      0     0 ?        S    Jan28   0:38 [usb-storage]
+debian-+   692 21.7 18.0 216520 171668 ?       Ssl  Jan28 1240:02 /usr/bin/tor --defaults-torrc /usr/share/tor/tor-service-defaults-torrc -f /etc/tor/torrc --RunAsDaemon 0
+pi         697  0.0  1.1  74696 10684 ?        Ssl  Jan28   0:00 /usr/lib/gvfs/gvfs-udisks2-volume-monitor
+[...]
+~ $
+```
+The line
+```
+debian-+   692 21.7 18.0 216520 171668 ?       Ssl  Jan28 1240:02 /usr/bin/tor --defaults-torrc /usr/share/tor/tor-service-defaults-torrc -f /etc/tor/torrc --RunAsDaemon 0
+```
+tells you that the process ID (PID) of the Tor node (`/usr/bin/tor`) is _692_ and that the user owning it starts with `debian-` - yet, as the `+` indicates, the name is truncated.
+
+If necessary - to get the full name - issue then a `ps -o user= -p <PIDHERE>`:
+```
+~ $ ps -o user= -p 692
+debian-tor
+~ $
+```
+Next - check which group this user belongs to:
+```
+~ $ groups debian-tor
+debian-tor : debian-tor
+~ $
+```
+As a final step, add now your current user (which is `pi` in our scenario) to that group (indicated as `debian-tor`):
+```
+~ $ sudo usermod -a -G debian-tor pi
+~ $
+```
+Verification:
+```
+~ $ groups pi
+pi : pi [...] debian-tor
+~ $
+```
+That achieved, you should be able to smoothly [run your box](#first-flight) now - and get no Connection Error.
 
 ## Dependencies
 _The Onion Box_ depends on some libraries developed and provided by third parties. If you follow the [installation procedure](#installation) , `pip` will care to install all necessary packages for you.  
