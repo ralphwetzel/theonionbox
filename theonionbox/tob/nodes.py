@@ -1,8 +1,9 @@
+from __future__ import absolute_import
 import logging
-from log import LoggingManager
-from livedata import LiveDataManager
-from scheduler import Scheduler
-from controller import Controller
+from .log import LoggingManager, ForwardHandler
+import livedata
+from .scheduler import Scheduler
+from .controller import Controller
 from stem import SocketError
 from stem.control import EventType
 import functools
@@ -30,15 +31,13 @@ class TorNode(object):
     
     id = None
 
-    def __init__(self, controller, livedata=None, notice=True, warn=True, err=True):
+    def __init__(self, controller, livedatamanager=None, listener=None, notice=True, warn=True, err=True):
         self.tor = controller
-
 
         self.cron = Scheduler()
         self.cron.start()
 
         # this will manage all MessageHandlers to receive Tor's events
-        ### it will be instantiated later as soon as we've a contact to the Tor process
         self.torLogMgr = LoggingManager(controller, notice=notice, warn=warn, err=err)
 
         # This is the logger for Tor related messages.
@@ -47,19 +46,33 @@ class TorNode(object):
         self.torLog.setLevel('DEBUG')
         self.torLog.addHandler(logging.NullHandler())
 
+        # now listen to the 'theonionbox' logging stream
         self.boxLog = logging.getLogger('theonionbox')
+        if listener is None:
+            self.boxLogListener = ForwardHandler(level=logging.NOTICE, tag='box')
+            self.boxLog.addHandler(self.boxLogListener)
+        else:
+            self.boxLogListener = listener
+        self.boxLogListener.setTarget(self.torLog)
+        self.boxLogListener.flush()
 
-        if livedata is None:
+        if livedatamanager is None:
             # we need a new LiveDataHandler
-            self.livedata = LiveDataManager()
+            self.livedata = livedata.Manager()
             # as soon as the controller is authenticated, we collect the latest BW data and initialize the LiveData
             self.tor.register_post_auth_callback(self._init_livedata)
         else:
+            self.boxLog.debug("Re-using!!")
             # We reuse the provided LiveData
-            self.livedata = livedata
+            self.livedata = livedatamanager
 
         # start the event handler for the Bandwidth data
         self.tor.add_event_listener(functools.partial(self._handle_livedata), EventType.BW)
+
+        # start the event handler for the connection data
+        self.tor.add_event_listener(functools.partial(self._handle_connection_events), EventType.ORCONN)
+        self.tor.add_event_listener(functools.partial(self._handle_circuit_events), EventType.CIRC)
+        self.tor.add_event_listener(functools.partial(self._handle_stream_events), EventType.STREAM)
 
         self.bwdata = {'upload': 0, 'download': 0, 'limit': 0, 'burst': 0, 'measure': 0}
         self.refresh_bw()
@@ -71,6 +84,13 @@ class TorNode(object):
         self.shutdown()
 
     def shutdown(self):
+        if self.boxLogListener is not None and self.boxLog is not None:
+            self.boxLogListener.setTarget(None)
+            self.boxLogListener.close()
+            self.boxLog.removeHandler(self.boxLogListener)
+        if self.torLogMgr is not None:
+            self.torLogMgr.shutdown()
+        # self.torLog.addHandler(logging.NullHandler())
         if self.tor is not None:
             self.tor.close()
         if self.cron is not None:
@@ -111,12 +131,12 @@ class TorNode(object):
         if event is None:
             return False
 
-        # print(self, event)
+        # print(self, self.livedata, event.arrived_at, event.read, event.written)
 
         # now manage the bandwidth data
-        self.livedata.record_bandwidth(time_stamp=event.arrived_at
-                                      , bytes_read=event.read
-                                      , bytes_written=event.written)
+        self.livedata.record_bandwidth(time_stamp=event.arrived_at,
+                                       bytes_read=int(event.read),
+                                       bytes_written=int(event.written))
         return True
 
     def _init_livedata(self):
@@ -139,12 +159,12 @@ class TorNode(object):
             counter = 0
             for ev in bwevc:
                 read, written = ev.split(',')
-                self.livedata.record_bandwidth(time_stamp=its_now - bwevc_len + counter
-                                               , bytes_read=int(read)
-                                               , bytes_written=int(written))
+                self.livedata.record_bandwidth(time_stamp=its_now - bwevc_len + counter,
+                                               bytes_read=int(read),
+                                               bytes_written=int(written))
                 counter += 1
         except Exception as e:
-            log.warning('Failed to erstablish LiveData connection: {}'.format(e))
+            log.warning('Failed to establish LiveData connection: {}'.format(e))
             pass
 
 
@@ -222,43 +242,59 @@ class TorNode(object):
 
             return retval
 
+    def _handle_connection_events(self, event):
+        #print(type(event), event.arrived_at)
+        #print(event)
 
-class RelayNode(TorNode):
+        pass
 
-    def __init__(self, controller, livedata=None, notice=True, warn=True, err=True):
-        super(RelayNode, self).__init__(controller, livedata, notice, warn, err)
+    def _handle_circuit_events(self, event):
+        # print(event)
+        pass
+
+    def _handle_stream_events(self, event):
+        # print(event)
+        pass
 
 
-class BridgeNode(TorNode):
+# class RelayNode(TorNode):
+#
+#     def __init__(self, controller, livedata=None, listener=None, notice=True, warn=True, err=True):
+#         super(RelayNode, self).__init__(controller, livedata, listener, notice, warn, err)
+#
+#
+# class BridgeNode(TorNode):
+#
+#     def __init__(self, controller, livedata=None, listener=None, notice=True, warn=True, err=True):
+#         super(BridgeNode, self).__init__(controller, livedata, listener, notice, warn, err)
+#
+#
+# class ClientNode(TorNode):
+#
+#     def __init__(self, controller, livedata=None, listener=None, notice=True, warn=True, err=True):
+#         super(ClientNode, self).__init__(controller, livedata, listener, notice, warn, err)
+#
+#
+# class NodesFactory(object):
+#
+#     def __init__(self, timeout=5):
+#         self.nodes = {}
+#         self.timeout = timeout
+#         self.logger = logging.getLogger('theonionbox')
+#
+#     def __del__(self):
+#         self.shutdown()
+#
+#     def shutdown(self):
+#         for node in self.nodes.items():
+#             node.shutdown()
+#
+#     def from_port(self, host, port):
+#         try:
+#             contrl = Controller.from_port_timeout(host, port, self.timeout)
+#         except SocketError as err:
+#             self.logger.warning('Failed to connect: {}'.format(err))
+#             raise err
+#
+#         node = RelayNode(contrl)
 
-    def __init__(self, controller, livedata=None, notice=True, warn=True, err=True):
-        super(BridgeNode, self).__init__(controller, livedata, notice, warn, err)
-
-
-class ClientNode(TorNode):
-
-    def __init__(self, controller, livedata=None, notice=True, warn=True, err=True):
-        super(ClientNode, self).__init__(controller, livedata, notice, warn, err)
-
-class NodesFactory(object):
-
-    def __init__(self, timeout=5):
-        self.nodes = {}
-        self.timeout = timeout
-        self.logger = logging.getLogger('theonionbox')
-
-    def __del__(self):
-        self.shutdown()
-
-    def shutdown(self):
-        for node in self.nodes.items():
-            node.shutdown()
-
-    def from_port(self, host, port):
-        try:
-            contrl = Controller.from_port_timeout(host, port, self.timeout)
-        except SocketError as err:
-            self.logger.warning('Failed to connect: {}'.format(err))
-            raise err
-
-        node = RelayNode(contrl)

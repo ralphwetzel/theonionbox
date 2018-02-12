@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 #####
 # This script is based on a great tutorial of SC Phillips
@@ -11,32 +11,49 @@
 # Required-Stop:     $remote_fs $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: The Onion Box: Web Interface for Tor Relays
-# Description:       The Onion Box: www.theonionbox.com
+# Short-Description: The Onion Box: WebInterface to monitor Tor node operations
+# Description:       http://www.theonionbox.com
 ### END INIT INFO
 
-# Change the next 3 lines to suit where you install your script and what you want to call it
-DIR=/your/path/to/theonionbox
-DAEMON=$DIR/theonionbox.py
+# Adapt this to provide the path to the root directory of the virtual environment you created for your box
+DIR=/the/path/to/your/virtual_env
+# usually no need to change the next two lines!
+DAEMON=$DIR/bin/theonionbox
 DAEMON_NAME=theonionbox
 
-# Add any command line options for your daemon here
-DAEMON_OPTS="--mode=service"
-
 # This next line determines what user the script runs as.
-# Root generally not recommended but necessary if you are using the Raspberry Pi GPIO from Python.
-DAEMON_USER=pi
+DAEMON_USER=debian-tor
+
+# Add any command line options for your daemon here:
+# If you e.g. want your box to create additional log files, enable this here!
+# DAEMON_OPTS="--log=$DIR"
+# HeadsUp! You then have to ensure that DAEMON_USER has write privileges to $DIR!
+DAEMON_OPTS=""
+
+#####
+# *** No need to change anything below this line! ***
+#
 
 # The process ID of the script when it runs is stored here:
 PIDFILE=/var/run/$DAEMON_NAME.pid
 
 . /lib/lsb/init-functions
 
+# Redirecting to syslog!
+# http://urbanautomaton.com/blog/2014/09/09/redirecting-bash-script-output-to-syslog/
+
+# Notice the '--id=\$\$"? This ensures that the PID of the daemon
+# (which is the PPID of the launching bash) is appended to the syslog identifier!
+
 do_start () {
     log_daemon_msg "Starting system $DAEMON_NAME daemon"
-    start-stop-daemon --start --background --pidfile $PIDFILE --make-pidfile --user $DAEMON_USER --chuid $DAEMON_USER --startas $DAEMON -- $DAEMON_OPTS
+    start-stop-daemon --start --background --pidfile $PIDFILE --make-pidfile --user $DAEMON_USER \
+                      --chuid $DAEMON_USER \
+                      --startas /bin/bash \
+                      -- -c "exec $DAEMON $DAEMON_OPTS 1> >( logger -t $DAEMON_NAME --id=\$\$) 2>&1"
     log_end_msg $?
 }
+
 do_stop () {
     log_daemon_msg "Stopping system $DAEMON_NAME daemon"
     start-stop-daemon --stop --pidfile $PIDFILE --retry 10
@@ -49,7 +66,7 @@ case "$1" in
         do_${1}
         ;;
 
-    restart|reload|force-reload)
+    restart)
         do_stop
         do_start
         ;;

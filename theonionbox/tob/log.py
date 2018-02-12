@@ -1,35 +1,31 @@
-# from stem.control import EventType
-
 from __future__ import absolute_import
-
-from datetime import datetime
-from time import time
+from time import time, strftime, mktime, localtime
 from collections import deque
-import itertools
 import uuid
-
 import logging
-from logging.handlers import MemoryHandler, BufferingHandler
+from logging.handlers import MemoryHandler
 import functools
-from deviation import getTimer
 import sys
-
 from threading import RLock
+from stem import ProtocolError
 
+from .deviation import getTimer
 
-from json import dumps
-
-# level_tor_to_box = {'DEBUG': 'DEBUG',
-#                     'INFO': 'INFO',
-#                     'NOTICE': 'NOTICE',
-#                     'WARN': 'WARNING',
-#                     'ERR': 'ERROR'}
+normalize_level = {'DEBUG': 'DEBUG',
+                   'INFO': 'INFO',
+                   'NOTICE': 'NOTICE',
+                   'WARNING': 'WARNING',
+                   'ERROR': 'ERROR',
+                   'WARN': 'WARNING',
+                   'ERR': 'ERROR'
+}
 
 level_box_to_tor = {'DEBUG': logging.DEBUG,
                     'INFO': logging.INFO,
                     'NOTICE': 25,
                     'WARN': logging.WARNING,
-                    'ERR': logging.ERROR}
+                    'ERR': logging.ERROR
+}
 
 py = sys.version_info
 py32 = py >= (3, 2, 0)
@@ -119,14 +115,11 @@ class LoggingManager(object):
                 return len(sfl) == 1
 
             # else if status is False:
-            if session_id in sfl:
-
-                # remove session_id from list
-                self.sessions_for_level[level][:] = [session for session in sfl if not (session == session_id)]
-                return len(self.sessions_for_level[level]) == 0
-
-            # else:
-            return False
+            try:
+                sfl.remove(session_id)
+                return len(sfl) == 0
+            except ValueError:
+                return False
 
     class _EventHandler(logging.Handler):
 
@@ -161,7 +154,9 @@ class LoggingManager(object):
 
         def switch(self, level, status=True):
             # set the information for filtering
+            s = self.levels[level] if level in self.levels else None
             self.levels[level] = status
+            return s != status
 
         def _filter(self, record):
             level = record.levelname
@@ -223,7 +218,13 @@ class LoggingManager(object):
     preserved_handler = None
 
     # the levels and their default value
-    levels = {'DEBUG': False, 'INFO': False, 'NOTICE': True, 'WARNING': True, 'ERROR': True, 'BOX': True}
+    levels = {'DEBUG': False,
+              'INFO': False,
+              'NOTICE': True,
+              'WARNING': True,
+              'ERROR': True,
+              # 'BOX': True,
+              }
 
     def __init__(self, controller, notice=True, warn=True, err=True):
 
@@ -286,20 +287,12 @@ class LoggingManager(object):
 
     def remove_client(self, session_id):
 
-        # I know, this is a hack...
-        # ... yet it's better than to duplicate the code!
-        if session_id == 'shutdown':
-            try:
-                session_id, mh = self.clients.popitem()
-                # print('Shutdown: Removing Client ID {}.'.format(session_id))
-            except Exception:
-                return False
-        else:
-            # check if we know this id
-            if session_id not in self.clients:
-                return False
+        try:
             # get the MessageHandler
             mh = self.clients[session_id]
+        except KeyError:
+            # we don't know it. No problem...
+            return False
 
         # switch 'OFF' the event handling for this id
         for level in self.levels:
@@ -321,55 +314,82 @@ class LoggingManager(object):
             return False
 
         lgr = logging.getLogger('theonionbox')
-        lgr.debug('Switching {} | {} | {}'. format(session_id, level, status))
 
-        # check if we know this id
-        if session_id not in self.clients:
-            return
+        try:
+            level = normalize_level[level.upper()]
+        except KeyError:
+            lgr.warning("LoggingManager: Received request to switch unknown event level '{}'.".format(level))
+            return False
 
-        # get the MessageHandler
-        mh = self.clients[session_id]
+        try:
+            # get the MessageHandler
+            mh = self.clients[session_id]
+        except KeyError:
+            # return if we don't know it
+            return False
+
         # and switch the filter accordingly!
-        mh.switch(level, status)
+        if mh.switch(level, status) is True:
 
-        # switch the monitor; if the monitor returns 'True'...
-        if self.monitor.switch(session_id, level, status) is True:
+            lgr.debug("Switching '{}' for {} to {}".format(level, session_id, status))
 
-            # check if we have an event_handler for this, then ...
-            if level in self.event_handlers:
+            # switch the monitor; if the monitor returns 'True'...
+            if self.monitor.switch(session_id, level, status) is True:
+    
+                # check if we have an event_handler for this, then ...
+                if level in self.event_handlers:
+    
+                    # ... add or remove the event_listener
+                    if status is True:
+    
+                        # translate to Tor's events
+                        if level == 'WARNING':
+                            tor_level = 'WARN'
+                        elif level == 'ERROR':
+                            tor_level = 'ERR'
+                        else:
+                            tor_level = level
 
-                handler = self.event_handlers[level]
+                        lgr.debug(
+                            "Adding event_listener for Tor's runlevel '{}': {}".format(tor_level,
+                                                                                       self.event_handlers[level]))
+                        try:
+                            self.tor.add_event_listener(self.event_handlers[level], tor_level)
+                        except ProtocolError as pe:
+                            lgr.debug("Failed to add event_listener for runlevel '{}': {}".format(level, pe))
 
-                # ... add or remove the event_listener
-                if status is True:
+                    if status is False:
+                        lgr.debug(
+                            "Removing event_listener for runlevel '{}': {}".format(level, self.event_handlers[level]))
+                        try:
+                            self.tor.remove_event_listener(self.event_handlers[level])
+                        except ProtocolError as pe:
+                            lgr.debug("Failed to remove event_listener for runlevel '{}': {}".format(level, pe))
 
-                    # translate to Tor's events
-                    if level == 'WARNING':
-                        tor_level = 'WARN'
-                    elif level == 'ERROR':
-                        tor_level = 'ERR'
-                    else:
-                        tor_level = level
-
-                    lgr.debug("Adding event_listener for Tor's runlevel '{}': {}".format(tor_level, self.event_handlers[level]))
-                    self.tor.add_event_listener(self.event_handlers[level], tor_level)
-                if status is False:
-                    lgr.debug("Removing event_listener for runlevel '{}': {}".format(level, self.event_handlers[level]))
-                    self.tor.remove_event_listener(self.event_handlers[level])
+        return True
 
     def shutdown(self):
-        loop = True
-        while loop:
-            loop = self.remove_client('shutdown')
+
+        for session_id, handler in self.clients.items():
+
+            # switch 'OFF' the event handling for this id
+            for level in self.levels:
+                self.switch(session_id, level, False)
+
+            # remove & close the MessageHandler
+            logging.getLogger(self.logger_name).removeHandler(handler)
+            handler.close()
+
+        self.clients = {}
 
     def get_events(self, session_id, encode=None):
 
-        # check if we know this id
-        if session_id not in self.clients:
+        try:
+            # get the MessageHandler
+            mh = self.clients[session_id]
+        except KeyError:
             return None
 
-        # get the MessageHandler
-        mh = self.clients[session_id]
         # and return the stored messages!
         return mh.flush(encode=encode)
 
@@ -470,121 +490,8 @@ class WhitespaceRemovingFormatter(logging.Formatter):
         return super(WhitespaceRemovingFormatter, self).format(record)
 
 
-from time import strftime, mktime, localtime
 
 
-class ConsoleFormatter(logging.Formatter):
-
-    def __init__(self):
-        import os
-        # Disable console line breaking when inside the development environment
-        self.pycharm = (os.getenv('PYCHARM_RUNNING_TOB', None) == '1')
-        super(self.__class__, self).__init__()
-
-    def format(self, record):
-        msg = str(record.msg).strip()
-
-        # if DEBUG: prepend special info to message
-        lvlname = record.levelname
-
-        if msg != '' and lvlname == 'DEBUG':
-            premsg = '{}[{}'.format(record.filename, record.lineno)
-            if record.funcName != '<module>':
-                premsg += '|{}'.format(record.funcName)
-            premsg += ']: '
-
-            msg = premsg + msg
-
-        # only if not in PyCharm
-        if self.pycharm is False:
-
-            # add propper line breaks for nice output:
-            try:
-                from terminalsize import get_terminal_size
-
-                # Try to get the size of the terminal
-                sx, sy = get_terminal_size()
-                # we need 8 chars for the lvlname
-                sx -= 21
-
-                # only if the line is long 'enough'...
-                if sx > 10:
-
-                    # split multiline msg to keep the newline seperators
-                    lines = msg.splitlines()
-                    out = []
-
-                    # for any line
-                    for aline in lines:
-                        terms = aline.split()
-
-                        # check if term still fitls in this line
-                        new_line = ''
-                        for aterm in terms:
-                            lnl = len(new_line)
-                            # max length defined by terminal window
-                            if sx - lnl > len(aterm):
-                                if lnl > 0:
-                                    new_line += ' '
-                                new_line += aterm
-                            else:
-                                out.append(new_line)
-                                # There is one special case here:
-                                # If the length of aterm is larger then 59,
-                                # it will create an ugly linebreak if output.
-                                # We accept this to ensure that all data is shown.
-                                new_line = aterm
-
-                        out.append(new_line)
-
-                    # put it together again!
-                    msg = ('\r\n' + ' ' * 21).join(out)
-
-            except:
-                # if it fails: don't care!
-                pass
-
-        out_lvlname = lvlname
-        if lvlname == 'WARNING':
-            out_lvlname = 'WARN'
-        elif lvlname == 'NOTICE':
-            out_lvlname = ''
-
-        # https://en.wikipedia.org/wiki/ANSI_escape_code
-        colorcodes = {
-            'TRACE': '\033[35m',      # magenta
-            'DEBUG': '\033[37m',      # light gray
-            'INFO': '\033[94m',       # light blue
-            'NOTICE': '',             # default
-            'WARNING': '\033[91m',    # light red
-            'ERROR': '\033[93;1m'     # yellow (bold)
-        }
-
-        out = ' ' * 8
-        if out_lvlname != '':
-            out = ('[{}]' + out).format(out_lvlname)[:8]
-
-        if msg != '':
-            out += strftime('%H:%M:%S', localtime(record.created)) + '.{:0=3d} '.format(int(record.msecs))
-
-            try:
-                if record.source != 'box':
-                    out += '{} | '.format(record.source)
-            except:
-                pass
-
-            # if lvlname == 'DEBUG':
-            #     out += '{}[{}'.format(record.filename, record.lineno)
-            #     if record.funcName != '<module>':
-            #         out += '|{}'.format(record.funcName)
-            #     out += ']: '
-
-            out += msg
-
-            if lvlname in colorcodes:
-                out = colorcodes[lvlname] + out + '\033[0m'
-
-        return out
 
 # 20170409 RDW: Not used?
 class ClientFormatter(logging.Formatter):
@@ -623,23 +530,195 @@ class ClientFormatter(logging.Formatter):
         return out
 
 
-class FileFormatter(logging.Formatter):
-    def format(self, record):
-        msg = str(record.msg).strip()
-        lvlname = record.levelname
+def as_single_line(msg):
+    return ' '.join(str(msg).split())
 
-        out_lvlname = lvlname
-        if lvlname == 'WARNING':
-            out_lvlname = 'WARN'
-        elif lvlname == 'NOTICE':
-            out_lvlname = ''
 
+def colorize(msg, record):
+
+    # https://en.wikipedia.org/wiki/ANSI_escape_code
+    colorcodes = {
+        'TRACE': '\033[35m',      # magenta
+        'DEBUG': '\033[37m',      # light gray
+        'INFO': '\033[94m',       # light blue
+        'NOTICE': '',             # default
+        'WARNING': '\033[91m',    # light red
+        'ERROR': '\033[93;1m'     # yellow (bold)
+    }
+
+    level = record.levelname.upper()
+    if level in colorcodes:
+        return colorcodes[level] + msg + '\033[0m'
+
+
+def preprend_error_level(msg, record, normalize=True):
+
+    level = record.levelname.upper()
+    levels = ['TRACE', 'DEBUG', 'INFO', 'NOTICE', 'WARNING', 'ERROR']
+
+    if level not in levels:
+        level = '*****'
+    elif level == 'WARNING':
+        level = 'WARN'
+    elif level == 'NOTICE':
+        level = ''
+
+    if normalize is True:
         out = ' ' * 8
-        if out_lvlname != '':
-            out = ('[{}]' + out).format(out_lvlname)[:8]
+        if level != '':
+            out = ('[{}]' + out).format(level)[:8]
+    else:
+        out = '[{}] '.format(level) if level != '' else ''
 
-        if msg != '':
-            out += strftime('%H:%M:%S', localtime(record.created)) + '.{:0=3d} '.format(int(record.msecs))
-            out += msg
+    return out + msg
 
-        return out
+
+def prepend_timestamp(msg, record):
+
+    return strftime('%H:%M:%S', localtime(record.created)) + '.{:0=3d} {}'.format(int(record.msecs), msg)
+
+
+def prepend_generated_at(msg, record):
+
+    premsg = '{}[{}'.format(record.filename, record.lineno)
+    if record.funcName != '<module>':
+        premsg += '|{}'.format(record.funcName)
+    premsg += ']: '
+
+    return premsg + msg
+
+
+class FileFormatter(logging.Formatter):
+
+    def format(self, record):
+
+        msg = record.msg
+        if msg is None or len(msg) < 1:
+            return ""
+
+        msg = as_single_line(msg)
+
+        # if DEBUG: prepend special info to message
+        lvlname = record.levelname.upper()
+        if lvlname in ['DEBUG', 'TRACE']:
+            msg = prepend_generated_at(msg, record)
+
+        msg = prepend_timestamp(msg, record)
+        msg = preprend_error_level(msg, record)
+
+        return msg
+
+
+class PyCharmFormatter(FileFormatter):
+
+    def format(self, record):
+
+        msg = FileFormatter.format(self, record)
+        msg = colorize(msg, record)
+        
+        return msg
+
+
+class ConsoleFormatter(logging.Formatter):
+
+    def format(self, record):
+
+        msg = record.msg
+        if msg is None or len(msg) < 1:
+            return ""
+
+        pre_msg = prepend_timestamp("", record)
+        pre_msg = preprend_error_level(pre_msg, record)
+
+        # if DEBUG: prepend special info to message
+        lvlname = record.levelname.upper()
+        if lvlname in ['DEBUG', 'TRACE']:
+            msg = prepend_generated_at(msg, record)
+
+        # add propper line breaks for nice output:
+        try:
+            from terminalsize import get_terminal_size
+
+            # Try to get the size of the terminal
+            sx, sy = get_terminal_size()
+            # we need space for the Level and the TimeStamp
+            sx -= len(pre_msg)
+
+            # only if relevant space left
+            if sx > 10:
+
+                # split multiline msg to keep the newline seperators
+                lines = msg.splitlines()
+                out = []
+
+                # for any line
+                for aline in lines:
+                    terms = aline.split()
+                    terms.reverse() # ... so that we can pop() later
+
+                    # check if term still fits in this line
+                    new_line = ''
+                    while terms:
+                        aterm = terms.pop()
+                        lnl = len(new_line)
+                        # max length defined by terminal window
+                        if sx - lnl > len(aterm):
+                            if lnl > 0:
+                                new_line += ' '
+                            new_line += aterm
+                        else:
+                            out.append(new_line)
+                            # There is one special case here:
+                            # If the length of aterm is larger than sx,
+                            # it would create an ugly linebreak if output.
+                            # Therefore add max the length of the line
+                            new_line = aterm[:sx]
+                            # if aterm was longer than sx, put the rest back on the stack:
+                            if len(aterm) > sx:
+                                terms.append(aterm[sx:])
+
+                    out.append(new_line)
+
+                # put it together again!
+                msg = ('\r\n' + ' ' * len(pre_msg)).join(out)
+
+            else:
+                msg = as_single_line(msg)
+
+        except:
+            msg = as_single_line(msg)
+
+        return colorize(pre_msg + msg, record)
+
+
+class LogFormatter(logging.Formatter):
+
+    def format(self, record):
+
+        msg = record.msg
+        if msg is None or len(msg) < 1:
+            return ""
+
+        msg = as_single_line(msg)
+
+        # if DEBUG: prepend special info to message
+        lvlname = record.levelname.upper()
+        if lvlname in ['DEBUG', 'TRACE']:
+            msg = prepend_generated_at(msg, record)
+
+        # msg = prepend_timestamp(msg, record)
+        msg = preprend_error_level(msg, record, normalize=False)
+        # msg = colorize(msg, record)
+
+        return msg
+
+
+# Sanitizer - especially to ensure that error messages can be displayed in the client log correctly
+def sanitize_for_html(string):
+    # removes all whitespace including new lines:
+    string = ' '.join(string.split())
+    # Escape HTML special characters ``&<>``, slashes '\/' and quotes ``'"``
+    return string.replace('&', '&amp;').replace("\\", '&#92;').replace("/", '&#47;') \
+        .replace('<', '&lt;').replace('>', '&gt;') \
+        .replace('"', '&quot;').replace("'", '&#039;')
+

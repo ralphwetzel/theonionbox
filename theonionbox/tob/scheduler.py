@@ -1,6 +1,9 @@
 # coding=UTF-8
 
+# to compensate for 'No handlers could be found for logger "apscheduler.scheduler"' message
 import logging
+log = logging.getLogger('apscheduler.scheduler')
+log.addHandler(logging.NullHandler())
 
 #####
 # Class to support APScheduler v3 (default) and v2
@@ -13,21 +16,17 @@ class Scheduler(object):
 
     def __init__(self):
 
-        # to compensate for 'No handlers could be found for logger "apscheduler.scheduler"' message
-        # log = logging.getLogger('apscheduler.scheduler')
-        # log.addHandler(logging.NullHandler())
-
         #####
         # ApScheduler version detection
         try:
             # APScheduler 3.x implementation
             from apscheduler.schedulers.background import BackgroundScheduler
-            self.schedulr = BackgroundScheduler() #(logger='theonionbox')
+            self.schedulr = BackgroundScheduler()
             self.aps3 = True
         except ImportError:
             # APScheduler 2.x implementation
             from apscheduler.scheduler import Scheduler
-            self.schedulr = Scheduler(logger='theonionbox')
+            self.schedulr = Scheduler()
             self.aps3 = False
 
     def start(self):

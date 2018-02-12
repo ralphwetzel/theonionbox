@@ -11,7 +11,7 @@ from threading import RLock, Semaphore
 
 from concurrent.futures import ThreadPoolExecutor
 
-from proxy import Proxy
+from .proxy import Proxy
 
 #####
 # Python version detection

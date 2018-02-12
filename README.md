@@ -38,11 +38,13 @@ Above that, _The Onion Box_ is able to display Tor network status protocol data 
     - [Installation](#installation)
     - [Verification of the installation](#verification-of-the-installation)
     - [First Flight](#first-flight)
+    - [If it doesn't fly...](#if-it-doesnt-fly)
 - [Dependencies](#dependencies)
 - [Configuration by file](#configuration-by-file)
     - [Location](#location)
     - [Structure](#structure)
 - [Command line parameters](#command-line-parameters)
+    - [Deprecated parameters](#deprecated-parameters)
 - [Advanced Operations: Authentication](#advanced-operations-authentication)
     - [Cookie Authentication](#cookie-authentication)
     - [Password Authentication](#password-authentication)
@@ -56,6 +58,8 @@ Above that, _The Onion Box_ is able to display Tor network status protocol data 
     - [Basic configuration](#basic-configuration)
     - [Access control](#access-control)
 - [_The Onion Box_ as system service (aka daemon)](#the-onion-box-as-system-service-aka-daemon)
+    - [Logging to syslog](#logging-to-syslog)
+    - [Prepared launcher scripts](#prepared-launcher-scripts)
     - [... on FreeBSD](#-on-freebsd)
     - [... using init.d](#-using-initd)
     - [... using systemd](#-using-systemd)
@@ -367,7 +371,6 @@ drwxr-xr-x 3 pi pi   4096 Jan 18 19:21 lib
 -rw-r--r-- 1 pi pi 650924 Jan 18 19:37 README.html
 drwxr-xr-x 5 pi pi   4096 Jan 18 19:37 service
 (theonionbox) ~/theonionbox $ 
-
 ```
 > As already mentioned, there might be an additional folder named `local` if you operate your virtual environment with Python 2.7.
 
@@ -796,13 +799,22 @@ _The Onion Box_ may be configured by a small number of commandline parameters:
 -d | --debug: Switch on DEBUG mode.
 -t | --trace: Switch on TRACE mode (which is more verbose than DEBUG mode).
 -h | --help: Prints this information.
--m <mode> | --mode=<mode>: Configure The Box to run as 'service'.
+-l <directory> | --log=<directory>: Define directory to additionally
+                                    emit log messages to. Please assure
+                                    correct access privileges!
 
 ```
 
 `DEBUG` mode only affects the _Box_' core code. It forwards the debug messages of _The Onion Box_ to the console or the log file. If you encounter any problems, you may enable `DEBUG` mode to check what's happing.
 
 `TRACE` additionally forwards debug level messages of `bottle` (the WSGI micro web-framework used by the _Box_) and trace level messages of `stem` (the Tor controller library). This mode is really noisy ... and the ultimate lever to follow the operation of _The Onion Box_ in case of problems.
+
+### Deprecated parameters
+Prior to version 4.1.3 you had to define the command line parameter
+```
+-m <mode> | --mode=<mode>
+```
+to `Configure The Box to run as 'service'`. This parameter meanwhile is obsolete. Using `-m` or `--mode` will trigger a `DeprecationWarning`.
 
 
 ## Advanced Operations: Authentication
@@ -971,11 +983,66 @@ CoookieAuthentication 0
 ```
 
 ## _The Onion Box_ as system service (aka daemon)
-After you've ensured that your box operates without issues, you can set it up to operate as a background application, which is the same as a system service or daemon. The steps to perform this differ depending on the technology used by your operating derivate.
+After you've ensured that your box operates without issues, you can set it up to operate as a background application, which is the same as a system service or daemon. The steps to perform this differ depending on the technology used by your operating system derivate.
 
-When operated as a service, **log files** are per default stored into `<theonionbox-root-path>/log/theonionbox.log` and rotated regularly. If you create the directory `/var/log/theonionbox` and set the propper access rights for the user running `theonionbox.py`, the log files will be written there.
+### Logging to syslog
+When operating as a service, The Onion Box emits messages per default to [syslog](https://en.wikipedia.org/wiki/Syslog). To read those messages, which are usually saved to `/var/log/syslog`, use e.g. `tail`:
+```
+~ $ tail -n 100 /var/log/syslog | grep theonionbox
+Feb 12 17:54:49 raspberrypi theonionbox[15716]: The Onion Box: WebInterface to monitor Tor node operations.
+Feb 12 17:54:49 raspberrypi theonionbox[15716]: Version v4.2.xx (stamp 201802dd|hhmmss)
+Feb 12 17:54:49 raspberrypi theonionbox[15716]: Running on a Linux host.
+Feb 12 17:54:49 raspberrypi theonionbox[15716]: Running with permissions of user 'debian-tor'.
+Feb 12 17:54:49 raspberrypi theonionbox[15716]: Python version is 2.7.13 (/home/pi/theonionbox/bin/python).
+Feb 12 17:54:49 raspberrypi theonionbox[15716]: No (valid) configuration file found; operating with default settings.
+Feb 12 17:54:53 raspberrypi theonionbox[15716]: Temperature sensor information located in file system. Expect to get a chart!
+Feb 12 17:54:53 raspberrypi theonionbox[15716]: Uptime information located. Expect to get a readout!
+Feb 12 17:54:58 raspberrypi theonionbox[15716]: Ready to listen on http://127.0.0.1:8080/
+~ $
+```
+> Piping the `tail` output to `grep` allows you to get just the lines you're interested in, in our scenario those mentioning `theonionbox`.
+> The `-n` command line parameter of `tail` limits the output to the number of lines defined.
+
+If you are interested in getting the same messages additionally sent to a log file, you may enable this feature via a [command line parameter](#command-line-parameters).
+
+### Prepared launcher scripts
+If you followed the [installation procedure](#installation), the following directory structure was created in your virtual environment:
+```
+(theonionbox) ~/theonionbox $ ls -l
+total 668
+drwxr-xr-x 2 pi pi   4096 Jan 18 19:37 bin
+drwxr-xr-x 2 pi pi   4096 Jan 18 19:37 config
+drwxr-xr-x 3 pi pi   4096 Jan 18 19:37 docs
+drwxr-xr-x 2 pi pi   4096 Jan 18 19:21 include
+drwxr-xr-x 3 pi pi   4096 Jan 18 19:21 lib
+-rw-r--r-- 1 pi pi     60 Jan 18 19:21 pip-selfcheck.json
+-rw-r--r-- 1 pi pi 650924 Jan 18 19:37 README.html
+drwxr-xr-x 5 pi pi   4096 Jan 18 19:37 service
+(theonionbox) ~/theonionbox $ 
+```
+As already mentioned, the scripts prepared to run a box as system service are provided in `service`:
+```
+(theonionbox) ~/theonionbox $ cd service/
+(theonionbox) ~/theonionbox/service $ ls -l
+insgesamt 12
+drwxr-xr-x 2 pi pi 4096 Feb 12 08:23 FreeBSD
+drwxr-xr-x 2 pi pi 4096 Feb 12 08:23 init.d
+drwxr-xr-x 2 pi pi 4096 Feb 12 08:23 systemd
+```
+The next steps differ based on your operating system:
+* For FreeBSD, continue with the [next chapter](#-on-freebsd) .
+* For systems using _SystemV_, jump forward to the section detailing [init.d](#-using-initd).
+* For systems using _systemd_, go to the [systemd](#-using-systemd) section.
+* If you're using another operating system: There's currently _no support_ to run The Onion Box as a service. This yet _does not mean it's impossible_. If you managed to setup such a configuration, drop me a line to implement a procedure here!
+
+> Some hints:  
+> A) Your system is operating with _systemd_, if the directory `/run/systemd/system` exists.  
+> B) If you're really unsure: [This site](https://unix.stackexchange.com/questions/18209/detect-init-system-using-the-shell) provides some means to detect (or identify) the initialisation method used by your system.
+
 
 ### ... on FreeBSD
+> This description is a bit outdated! Use with caution.
+
 Let's assume, you've stored your OnionBox files in a directory called `/usr/home/pi/theonionbox`. Your intension is to run your box as user `pi` (which is by far better then operating it as `root`!).
 
 * Change to the directory where you stored the OnionBox files: `cd /usr/home/pi/theonionbox`
@@ -999,53 +1066,173 @@ Let's assume, you've stored your OnionBox files in a directory called `/usr/home
 * `/usr/local/bin/python` should be defined as well being a symbolic link to the python version you intend to operate with.
 
 ### ... using init.d
-Let's assume, you've stored your OnionBox files in a directory called `/home/pi/theonionbox`. Your intension is to run The Box as user `pi` (which is by far better then operating it as `root`!).
+Change to the `init.d` directory within `service`:
+```
+(theonionbox) ~/theonionbox/service $ cd init.d/
+(theonionbox) ~/theonionbox/service/init.d $ ls
+theonionbox.sh
+```
+The launcher script is `theonionbox.sh`. Open it with a text editor to adapt it to your installation. We're using `nano` here:
+```
+(theonionbox) ~/theonionbox/service/init.d $ nano theonionbox.sh
+```
+These are the first lines of `theonionbox.sh` - those relevant for configuration:
 
-* Change to the directory where you stored the OnionBox files: `cd /home/pi/theonionbox`
-* Ensure that `theonionbox.py` is executable: `sudo chmod 755 ./theonionbox.py`
-* Change to the `init.d` directory within `/home/pi/theonionbox`: `cd init.d`
-* Within this directory you'll find the init script [`theonionbox.sh`](init.d/theonionbox.sh) prepared to launch your OnionBox as a background service.
-* Ensure that you set the path to the OnionBox files and the user to run the service as intended. Therefore open the file with an editor (here we use _nano_): `nano theonionbox.sh`
-* According to our assumptions above, set line 19 to `DIR=/home/pi/theonionbox`.
-* Additionally set line 28 to `DAEMON_USER=pi`.
-* Close _nano_ and save the changes to `theonionbox.sh`. (Press _Strg+X_ then follow the instructions given!)
+```bash
+#!/bin/bash
+
+#####
+# This script is based on a great tutorial of SC Phillips
+# http://blog.scphillips.com/posts/2013/07/getting-a-python-script-to-run-in-the-background-as-a-service-on-boot/
+#
+
+
+### BEGIN INIT INFO
+# Provides:          theonionbox
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: The Onion Box: WebInterface to monitor Tor node operations
+# Description:       http://www.theonionbox.com
+### END INIT INFO
+
+# Adapt this to provide the path to the root directory of the virtual environment you created for your box
+DIR=/the/path/to/your/virtual_env
+# usually no need to change the next two lines!
+DAEMON=$DIR/bin/theonionbox
+DAEMON_NAME=theonionbox
+
+# This next line determines what user the script runs as.
+DAEMON_USER=debian-tor
+
+# Add any command line options for your daemon here:
+# If you e.g. want your box to create additional log files, enable this here!
+# DAEMON_OPTS="--log=$DIR"
+# HeadsUp! You then have to ensure that DAEMON_USER has write privileges to $DIR!
+DAEMON_OPTS=""
+
+#####
+# *** No need to change anything below this line! ***
+#
+[...]
+```
+Alter the line starting with `DIR=` to provide the path to the root directory of the virtual environment you created for your box. For our scenario, this is `/home/pi/theonionbox`:
+```bash
+[...]
+# Adapt this to provide the path to the root directory of the virtual environment you created for your box
+DIR=/home/pi/theonionbox
+# usually no need to change the next lines!
+[...]
+```
+Next you should verify that `DAEMON_USER=` is naming the _correct_ user to run your Onion Box. On Debian, this is usually `debian-tor` and thus already set accordingly.
+```bash
+[...]
+# This next line determines what user the script runs as.
+DAEMON_USER=debian-tor
+[...]
+```
+> Refer to the chapter [First Flight](#first-flight) if you're unsure what to use here.
+
+Finally there is `DAEMON_OPTS=` to provide command line parameters to the launching script - if you need those.
+```bash
+[...]
+# Add any command line options for your daemon here:
+# If you e.g. want your box to create additional log files, enable this here!
+# DAEMON_OPTS="--log=$DIR"
+# HeadsUp! You then have to ensure that DAEMON_USER has write privileges to $DIR!
+DAEMON_OPTS=""
+[...]
+```
+Refer to the chapter discussing the [command line parameters](#command-line-parameters) for details.
+
+That completed, close `nano` and save the changes to `theonionbox.sh`: Press _Strg+X_, then follow the instructions given!
+
+The next steps are straight forward:
 * Copy the altered init script to `/etc/init.d`: `sudo cp ./theonionbox.sh /etc/init.d`
 * Change to `/etc/init.d`: `cd /etc/init.d`
 * Make sure the script you've copied before to `/etc/init.d` is executable: `sudo chmod 755 ./theonionbox.sh`
-* Register this service to the system: `sudo system daemon-reload`
+* Register this service to the system: `sudo systemctl daemon-reload`
 * Check that everything works so far: Launch your Onion Box for the first time as a service `sudo ./theonionbox.sh start`. This should give you no error messages but feedback a nice \[OK\].
 * Check that your Onion Box is active: `sudo ./theonionbox.sh status` should tell you `active (running)`.
-* Finally run `sudo update-rc.d theonionbox.sh defaults` to link `theonionbox.sh` into init's default launch sequence.
+* Finally run `sudo update-rc.d theonionbox.sh defaults` to link `theonionbox.sh` into `init.d`'s default launch sequence.
+
+Done.
+
 
 ### ... using systemd
-- Create user `theonionbox`
-- Install _The Onion Box_ to `~theonionbox` and `sudo chmod 755 ./theonionbox.py`
-- Edit `~theonionbox/config/theonionbox.cfg`to your needs
-- Create service file with `sudo vi /etc/systemd/system/theonionbox.service` with the following content:
-
+Change to the `systemd` directory within `service`:
 ```
+(theonionbox) ~/theonionbox/service $ cd systemd/
+(theonionbox) ~/theonionbox/service/systemd $ ls
+theonionbox.service
+```
+The launcher script is `theonionbox.service`. Open it with a text editor to adapt it to your installation. We're using `nano` here:
+```
+(theonionbox) ~/theonionbox/service/systemd $ nano theonionbox.service
+```
+This is `theonionbox.service` - in full length:
+``` bash
+# Based on a contribution by svengo
+# https://github.com/ralphwetzel/theonionbox/issues/24
+
 # Run The Onion Box as background service
 # https://github.com/ralphwetzel/theonionbox/
 
 [Unit]
 Description=The Onion Box
-Documentation=https://github.com/ralphwetzel/theonionbox/wiki
+Documentation=https://github.com/ralphwetzel/theonionbox
 After=network.target
 
 [Service]
 Type=simple
-User=theonionbox
-WorkingDirectory=~
-ExecStart=/srv/theonionbox/theonionbox.py --mode=service
+WorkingDirectory=/home/pi/theonionbox
+ExecStart=/home/pi/theonionbox/bin/theonionbox
+User=debian-tor
+SyslogIdentifier=theonionbox
+StandardOutput=syslog
+StandardError=syslog
 Restart=on-failure
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
 ```
-> Alternatively you could copy the file from [here](systemd/theonionbox.service).
+Alter the line starting with `WorkingDirectory=` to provide the absolute path to the root directory of the virtual environment you created for your box. For our scenario, this is `/home/pi/theonionbox`:
+```bash
+[...]
+WorkingDirectory=/home/pi/theonionbox
+[...]
+```
+Next provide the (absolute) path to [_The Box Launcher_](#verification-of-the-installation) to parameter `ExecStart=`. This path usually is a concatenation of the path already defined for `WorkingDirectory=` (which names the root directory of the virtual environment of your box) and `bin/theonionbox`:
+```bash
+[...]
+ExecStart=/home/pi/theonionbox/bin/theonionbox
+[...]
+```
+If you need to define [command line parameters](#command-line-parameters), append those as well to `ExecStart=`; e.g. to enable the Debug mode, add a `-d`:
+```bash
+[...]
+ExecStart=/home/pi/theonionbox/bin/theonionbox -d
+[...]
+```
+Finally you should verify that `User=` is naming the _correct_ user to run your Onion Box. On Debian, this is usually `debian-tor` and thus already set accordingly.
+```bash
+[...]
+User=debian-tor
+[...]
+```
+> Refer to the chapter [First Flight](#first-flight) if you're unsure what to use here.
 
-- Start the new service with `sudo systemctl start theonionbox.service`
-- If everything is okay, start the service on next boot with `sudo systemctl enable theonionbox.service`
+That completed, close `nano` and save the changes to `theonionbox.service`: Press _Strg+X_, then follow the instructions given!
+
+The next steps are straight forward:
+* Copy the altered script to `/etc/systemd/system`: `sudo cp ./theonionbox.service /etc/systemd/system`
+* Start the new service with `sudo systemctl start theonionbox`
+* Check that your Onion Box is active: `systemctl status theonionbox` should tell you `active (running)`.
+* If everything is okay, link `theonionbox.service` into `systemd`'s start sequence to auto-launch it when booting the system: `sudo systemctl enable theonionbox`.
+
+Done.
 
 ## Usage Monitoring
 To create a small survey of its usage, _The Onion Box_ sends the following information to `t527moy64zwxsfhb.onion`, the hidden service acting as _The Onion Box Update Service_ when requesting the latest version information of Tor and _The Onion Box_:

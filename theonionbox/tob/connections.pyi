@@ -1,0 +1,6 @@
+from typing import Optional, List
+
+class connections(object):
+    ...
+    def initialize(self, status: Optional[str] = None) -> bool:
+        ...

@@ -187,6 +187,7 @@ packages = [
     'theonionbox',
     'theonionbox.tob',
     'theonionbox.tob.external',
+    'theonionbox.tob.livedata',
     # 'theonionbox.tob.external.tzlocal'
 ]
 
@@ -194,6 +195,7 @@ package_dir = {
     'theonionbox': 'theonionbox',
     'theonionbox.tob': 'theonionbox/tob',
     'theonionbox.tob.external': 'theonionbox/tob/external',
+    'theonionbox.tob.livedata': 'theonionbox/tob/livedata',
     # 'theonionbox.tob.external.tzlocal:': 'theonionbox/tob/external/tzlocal'
 }
 

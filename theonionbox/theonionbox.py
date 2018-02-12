@@ -11,7 +11,8 @@ import json
 import os
 import sys
 import uuid
-
+import signal
+import logging
 
 #####
 # Python version detection
@@ -89,21 +90,24 @@ def print_usage():
      -d | --debug: Switch on 'DEBUG' mode.
      -t | --trace: Switch on 'TRACE' mode (which is more verbose than DEBUG mode).
      -h | --help: Prints this information.
-     -m <mode> | --mode=<mode>: Configure The Box to run as 'service'.
+     -l <directory> | --log=<directory>: Define directory to additionally emit log
+                                         messages to. Please assure correct access
+                                         privileges!
     """)
 
 
 box_cmdline = {'config': None,
                'debug': False,
                'trace': False,
-               'mode': None}
+               'log': None,
+               'warn': []}
 
 argv = sys.argv[1:]
 opts = None
 
 if argv:
     try:
-        opts, args = getopt(argv, "c:dthm:", ["config=", "debug", "trace", "help", 'mode='])
+        opts, args = getopt(argv, "c:dthl:m:", ["config=", "debug", "trace", "help", 'log=', 'mode='])
     except GetoptError as err:
         print(err)
         print_usage()
@@ -115,16 +119,14 @@ if argv:
             box_cmdline['debug'] = True
         elif opt in ("-t", "--trace"):
             box_cmdline['trace'] = True
-        elif opt in ("-h", "--help"):
+        elif opt in ('-l', '--log'):
+            box_cmdline['log'] = arg
+        elif opt in ('-m', '--mode'):
+            # '--mode' deprecated since 20180210
+            box_cmdline['warn'] = "Command line parameter '-m' or '--mode' is no more necessary and thus DEPRECATED."
+        else:   # == ('-h','--help')
             print_usage()
             sys.exit(0)
-        elif opt in ('-m', '--mode'):
-            if arg == 'service':
-                box_cmdline['mode'] = 'service'
-            else:
-                print_usage()
-                sys.exit(0)
-
 
 #####
 # Host System data
@@ -152,10 +154,10 @@ except:
 # The Logging Infrastructure
 # TODO: Check pre40!
 
-import logging
+# import logging
 from logging.handlers import TimedRotatingFileHandler, MemoryHandler
 from tob.log import addLoggingLevel, LoggingManager, ForwardHandler
-from tob.log import ConsoleFormatter, FileFormatter
+
 
 # logging.basicConfig()
 
@@ -195,10 +197,6 @@ boxLog.addHandler(logging.NullHandler())
 boxFwrd = ForwardHandler(level=logging.NOTICE, tag='box')
 boxLog.addHandler(boxFwrd)
 
-# This is the handler to either output messages on commandline of the host
-# or to a file (if operated as a service)
-boxLogHandler = None
-
 # This is the Handler to connect stem with boxLog
 if box_cmdline['trace'] is True:
     from stem.util.log import get_logger as get_stem_logger,logging_level, Runlevel
@@ -207,56 +205,40 @@ if box_cmdline['trace'] is True:
     stemLog.addHandler(stemFwrd)
     stemFwrd.setTarget(boxLog)
 
-box_cmdline_modes = [None, 'service']
+# This is the handler to output messages to stdout on the host
+# If daemonized, stdout will be re-routed to syslog.
+# Optionally messages will be sent to a directory (if advised to do so via command line)
+boxLogHandler = logging.StreamHandler(sys.stdout)
 
-if box_cmdline['mode'] not in box_cmdline_modes:
-    box_cmdline['mode'] = None
+from tob.log import PyCharmFormatter, ConsoleFormatter, LogFormatter
 
-if box_cmdline['mode'] == 'service':
-    if boxHost['system'] == 'Linux' or boxHost['system'] == 'FreeBSD':
-        # I would prefer to write to /var/log/theonionbox ... yet someone with 'root' privileges has to create that
-        # directory first and then set the proper rights. We test if this was done:
-        boxLogPath = '/var/log/theonionbox'
-        if os.access(boxLogPath, os.F_OK | os.W_OK | os.X_OK) is False:
-            boxLogPath = 'log'
+if os.getenv('PYCHARM_RUNNING_TOB', None) == '1':
+    boxLogHandler.setFormatter(PyCharmFormatter())
+elif sys.stdout.isatty():
+    boxLogHandler.setFormatter(ConsoleFormatter())
+else:
+    boxLogHandler.setFormatter(LogFormatter())
 
-            # ensure that the 'log' directory exists
-            # reasoning: if it doesn't, TimedRotatingFileHandler below will raise an exception!
-            try:
-                if py34:
-                    os.makedirs(boxLogPath, exist_ok=True)
-                else:
-                    os.makedirs(boxLogPath)
-            except OSError:
-                if not os.path.isdir(boxLogPath):
-                    raise
+boxLog.addHandler(boxLogHandler)
 
-        boxLogPath += '/theonionbox.log'
-        boxLogHandler = TimedRotatingFileHandler(boxLogPath, when='midnight', backupCount=5)
-        ff = FileFormatter()
-        boxLogHandler.setFormatter(ff)
-        boxLog.addHandler(boxLogHandler)
+
+# Optional LogFile handler; can be invoked (only) from command line
+from tob.log import FileFormatter
+
+if box_cmdline['log'] is not None:
+    boxLogPath = box_cmdline['log']
+    if os.access(boxLogPath, os.F_OK | os.W_OK | os.X_OK) is True:
+        try:
+            boxLogPath = os.path.join(boxLogPath, 'theonionbox.log')
+            boxLogFileHandler = TimedRotatingFileHandler(boxLogPath, when='midnight', backupCount=5)
+        except Exception as exc:
+            box_cmdline['warn'].append('Failed to create LogFile handler: {}'.format(exc))
+        else:
+            boxLogFileHandler.setFormatter(FileFormatter())
+            boxLog.addHandler(boxLogFileHandler)
     else:
-        # we'll emit this message later!
-        # boxLog.warning('Running as --mode=service currently not supported on Windows Operating System.')
-        box_cmdline['mode'] = 'WrongOS'
+        box_cmdline['warn'].append("Failed to establish LogFile handler for directory '{}'.".format(box_cmdline['log']))
 
-if box_cmdline['mode'] != 'service':
-    # Log to console
-    boxLogHandler = logging.StreamHandler(sys.stdout)
-    cf = ConsoleFormatter()
-    boxLogHandler.setFormatter(cf)
-    boxLog.addHandler(boxLogHandler)
-
-
-# Sanitizer - especially to ensure that error messages can be displayed in the client log correctly
-def log_encoder(string):
-    # removes all whitespace including new lines:
-    string = ' '.join(string.split())
-    # Escape HTML special characters ``&<>``, slashes '\/' and quotes ``'"``
-    return string.replace('&', '&amp;').replace("\\", '&#92;').replace("/", '&#47;') \
-        .replace('<', '&lt;').replace('>', '&gt;') \
-        .replace('"', '&quot;').replace("'", '&#039;')
 
 
 #####
@@ -292,9 +274,8 @@ elif box_cmdline['debug'] is True:
     boxLog.setLevel('DEBUG')
     boxLog.notice('Debug Mode activated from command line.')
 
-if box_cmdline['mode'] is 'WrongOS':
-    boxLog.warning('Running as --mode=service currently not supported on {} Operating Systems.'
-                   .format(boxHost['system']))
+for warning in box_cmdline['warn']:
+    boxLog.warning(warning)
 
 #####
 # Default Configuration
@@ -1285,7 +1266,7 @@ def get_open(session_id):
 def connect_session_to_node(session, node_id):
     from stem import SocketError
     from stem.connection import MissingPassword, IncorrectPassword
-    from tob.nodes import RelayNode
+    from tob.nodes import TorNode
     from tob.controller import create_controller
 
     if session is None:
@@ -1315,7 +1296,7 @@ def connect_session_to_node(session, node_id):
             node_data = box_cc[node_id]
 
             # new
-            boxToNode = ForwardHandler(level=logging.NOTICE, tag='box')
+            boxToNode = None
             # boxLog.addHandler(boxToNode)
 
         else:
@@ -1331,12 +1312,12 @@ def connect_session_to_node(session, node_id):
 
         else:
             try:
-                node = RelayNode(contrl)
+                node = TorNode(controller=contrl, listener=boxToNode)
                 node.id = node_id
 
                 # connect the message handling system!
-                boxLog.addHandler(boxToNode)
-                boxToNode.setTarget(node.torLog)
+                # boxLog.addHandler(boxToNode)
+                # boxToNode.setTarget(node.torLog)
 
                 boxLog.info('Connected!')
 
@@ -1345,6 +1326,7 @@ def connect_session_to_node(session, node_id):
 
         finally:
             if display_error is not None:
+                # print(display_error)
                 return create_error_page(session, display_error)
 
         if session_id not in boxNodes:
@@ -1425,6 +1407,7 @@ def connect_session_to_node(session, node_id):
         return template("pages/index.html", **params)
 
     except Exception as exc:
+        #print(exc)
         return create_error_page(session, exc)
 
     # owning_pid = node.tor.get_conf('__OwningControllerProcess', None)
@@ -1706,8 +1689,6 @@ def get_index(session_id):
     #
     # onionoo.refresh(True)
 
-
-
     # reset the time flags!
     del session['cpu']
     del session['accounting']
@@ -1726,7 +1707,8 @@ def get_index(session_id):
     node.torLogMgr.add_client(session_id)
 
     # prepare the preserved events for hardcoded transfer
-    p_ev = node.torLogMgr.get_events(session_id, encode=log_encoder)
+    from tob.log import sanitize_for_html
+    p_ev = node.torLogMgr.get_events(session_id, encode=sanitize_for_html)
 
     accounting_stats = {}
     try:
@@ -1781,10 +1763,11 @@ def get_index(session_id):
     if accounting_switch is True:
         sections += ['accounting']
 
-    sections += ['monitor']
+    sections += ['monitor', 'transport']
 
     # if fingerprint:
     #     sections.append('family')
+
 
     sh = {}
     if len(box_cc) > 0:
@@ -1872,6 +1855,19 @@ def get_index(session_id):
 
             section_config['header']['achtung'] = {'title': update_title, 'content': update_content}
 
+    def get_lines(info):
+        info_lines = info.split('\n')
+        return len(info_lines)
+
+    transport = {
+        'or': get_lines(node.tor.get_info('orconn-status')),
+        'stream': get_lines(node.tor.get_info('stream-status')),
+        'circ': get_lines(node.tor.get_info('circuit-status')),
+    }
+
+    # print(node.tor.get_info('orconn-status'))
+
+
     params = {
         'session': session
         , 'read_bytes': node.bwdata['download']
@@ -1899,7 +1895,9 @@ def get_index(session_id):
         , 'oo_factory': onionoo
         , 'geoip': tor_geoip
         , 'family_fp': fingerprint
-        , 'controlled_nodes': box_cc
+        , 'controlled_nodes': box_cc,
+        'transport_status': transport
+
     }
 
     # Test
@@ -2084,7 +2082,7 @@ def get_search(session_id):
         if nodata < 3:
             session['nodata'] = nodata
             redirect_url = box_basepath + '/' + session_id + '/search.html?search={}'.format(search_id)
-            print(redirect_url)
+            # print(redirect_url)
             redirect(redirect_url)
         else:
             del session['search']
@@ -2223,10 +2221,13 @@ def post_data(session_id):
 
             rl_dict = json.JSONDecoder().decode(runlevel)
 
+            # boxLog.debug('Levels from the client @ {}: {}'.format(session_id, rl_dict))
+
             for key in rl_dict:
                 node.torLogMgr.switch(session_id, key, rl_dict[key])
 
-        log_list = node.torLogMgr.get_events(session_id, encode=log_encoder)
+        from tob.log import sanitize_for_html
+        log_list = node.torLogMgr.get_events(session_id, encode=sanitize_for_html)
 
         if len(log_list) > 0:
             return_data_dict['msg'] = log_list
@@ -2234,17 +2235,18 @@ def post_data(session_id):
     # operations monitoring
     if 'monitor' in box_sections:
 
-        # print(node.live())
+        # print(node.livedata)
 
         if ('monitor' not in session) or (session['monitor'] == 0):
-            hd_list = node.livedata.get_data_hd()
-            ld_list = node.livedata.get_data_ld()
+            hd_list = node.livedata.get_data(interval='1s')
+            ld_list = node.livedata.get_data(interval='1m')
         else:
             last_ts = session['monitor']
-            hd_list = node.livedata.get_data_hd_since(since_timestamp=last_ts)
-            ld_list = node.livedata.get_data_ld_since(since_timestamp=last_ts)
+            hd_list = node.livedata.get_data(interval='1s', since_timestamp=last_ts)
+            ld_list = node.livedata.get_data(interval='1m', since_timestamp=last_ts)
 
         return_data_dict['mon'] = {'hd': hd_list, 'ld': ld_list}
+        # print("{} -> HD: {} / LD: {}".format(node.livedata, len(hd_list), len(ld_list)))
         
         # this little hack ensures, that we deliver data on the
         # first *two* calls after launch!
@@ -2594,69 +2596,12 @@ def session_housekeeping():
 
 box_cron.add_job(session_housekeeping, 'interval', seconds=housekeeping_interval)
 
-tob_server = None
-
-def exit_procedure(quit=True):
-    try:
-        # Python 3.x
-        from threading import active_count
-    except ImportError:
-        # Python 2.x
-        from threading import activeCount
-        active_count = activeCount
-
-    from threading import enumerate
-
-    boxLog.debug('ShutDown Initiated...')
-    if tor_geoip is not None:
-        tor_geoip.close()
-
-    boxLog.debug('Shutting down webserver...')
-    try:
-        tob_server.shutdown()
-    except Exception as exc:
-        boxLog.warning("During ShutDown of WebServer: {}".format(exc))
-
-    boxLog.debug('Shutting down the connection to the proxy...')
-    try:
-        boxProxy.shutdown()
-    except Exception as exc:
-        boxLog.warning("During ShutDown of the proxy connection: {}".format(exc))
-
-    for session, nodes in boxNodes.items():
-        if nodes is not None:
-            for key, node in nodes.items():
-                if node is not None:
-                    boxLog.debug('Shutting down controller to {}...'.format(key))
-                    node.shutdown()
-
-    boxLog.debug('Terminating cron jobs...')
-    try:
-        box_cron.shutdown()
-    except Exception as exc:
-        boxLog.warning("During ShutDown of Cron: {}".format(exc))
-
-    boxLog.debug('Terminating onionoo management...')
-    try:
-        onionoo.shutdown()
-    except Exception as exc:
-        boxLog.warning("During ShutDown of onionoo: {}".format(exc))
-
-    # List of running Threads
-    lort = ''
-    for th in enumerate():
-        if len(lort) > 0:
-            lort += ', '
-        lort += th.name
-
-    boxLog.debug("List of threads still running (should only be 'MainThread'): {}".format(lort))
-
-    if quit:
-        sys.exit(0)
-
 
 update_time_deviation()
 
+#####
+# Our Web Server
+tob_server = None
 
 if box_ssl is True:
     # SSL enabled
@@ -2668,6 +2613,90 @@ else:
     # tob_server_options = {'handler_class': box_FixedDebugHandler}
     tob_server = HTTPServer(host=box_host, port=box_port)
     # boxLog.notice('Operating with WSGIserver!')
+
+
+def exit_procedure():
+
+    log = logging.getLogger('theonionbox')
+    log.propagate = False
+
+    try:
+        # Python 3.x
+        from threading import active_count
+    except ImportError:
+        # Python 2.x
+        from threading import activeCount
+        active_count = activeCount
+
+    from threading import enumerate
+
+    log.debug('ShutDown Initiated...')
+    if tor_geoip is not None:
+        tor_geoip.close()
+
+    log.debug('Shutting down webserver...')
+    try:
+        tob_server.shutdown()
+    except Exception as exc:
+        log.warning("During ShutDown of WebServer: {}".format(exc))
+
+    log.debug('Shutting down the connection to the proxy...')
+    try:
+        boxProxy.shutdown()
+    except Exception as exc:
+        log.warning("During ShutDown of the proxy connection: {}".format(exc))
+
+    boxFwrd.setTarget(None)
+    boxFwrd.close()
+
+    for session, nodes in boxNodes.items():
+        if nodes is not None:
+            for key, node in nodes.items():
+                if node is not None:
+                    log.debug("Shutting down controller to '{}'...".format(key))
+                    node.shutdown()
+        nodes = {}
+
+    log.debug('Terminating cron jobs...')
+    try:
+        box_cron.shutdown()
+    except Exception as exc:
+        log.warning("During ShutDown of Cron: {}".format(exc))
+
+    log.debug('Terminating onionoo management...')
+    try:
+        onionoo.shutdown()
+    except Exception as exc:
+        log.warning("During ShutDown of onionoo: {}".format(exc))
+
+    # List of running Threads
+    lort = ''
+    for th in enumerate():
+        if len(lort) > 0:
+            lort += ', '
+        lort += th.name
+
+    log.debug("List of threads still running (should only be 'MainThread'): {}".format(lort))
+
+
+#####
+# Procedure to answer SIGTERM
+
+def sigterm_handler(_signo, _stack_frame):
+    log = logging.getLogger('theonionbox')
+    log.warning("Received SIGTERM signal.")
+    # this will trigger the shutdown process in main()
+    if tob_server is not None:
+        # log.warning("... via Server")
+        tob_server.shutdown()
+        sys.exit(0)
+    else:
+        # log.warning("... via exit")
+        exit_procedure()
+        sys.exit(0)
+
+
+signal.signal(signal.SIGTERM, sigterm_handler)
 
 
 def main(run_debug=False, open_browser=True):
@@ -2682,22 +2711,8 @@ def main(run_debug=False, open_browser=True):
 
     http_or_https = 'http' if box_ssl is False else 'https'
     log.notice('Ready to listen on {}://{}:{}/'.format(http_or_https, tob_server.host, tob_server.port))
-    log.notice('Press Ctrl-C to quit!')
-
-    # getuser() will be != 'SUDO_USER', if script is run with sudo
-    # if in sudo, launch of webbrowser will fail - so we skip it!
-
-    import getpass
-    import os
-
-    if box_cmdline['mode'] != 'service':
-        try:
-            if os.getenv('SUDO_USER') == getpass.getuser():
-                import webbrowser
-                wb = webbrowser.get()
-                wb.open('http://127.0.0.1:8080')
-        except:
-            pass
+    if sys.stdout.isatty():
+        log.notice('Press Ctrl-C to quit!')
 
     try:
         if run_debug is True:
@@ -2705,11 +2720,14 @@ def main(run_debug=False, open_browser=True):
         else:
             run(theonionbox, server=tob_server, host=box_host, port=box_port, quiet=True)
     except KeyboardInterrupt:
-        pass
+        # SIGINT consumed before ...
+        # ... so this never emits!!
+        log.notice("Received SIGINT signal.")
     except Exception as exc:
         raise exc
     finally:
-        exit_procedure(False)
+        exit_procedure()
+        sys.exit(0)
 
 
 if __name__ == '__main__':

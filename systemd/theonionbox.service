@@ -1,4 +1,4 @@
-# Contribution by svengo
+# Based on a contribution by svengo
 # https://github.com/ralphwetzel/theonionbox/issues/24
 
 # Run The Onion Box as background service
@@ -6,15 +6,19 @@
 
 [Unit]
 Description=The Onion Box
-Documentation=https://github.com/ralphwetzel/theonionbox/wiki
+Documentation=https://github.com/ralphwetzel/theonionbox
 After=network.target
 
 [Service]
 Type=simple
-User=theonionbox
-WorkingDirectory=~
-ExecStart=/srv/theonionbox/theonionbox.py --mode=service
+WorkingDirectory=/home/pi/theonionbox
+ExecStart=/home/pi/theonionbox/bin/theonionbox
+User=debian-tor
+SyslogIdentifier=theonionbox
+StandardOutput=syslog
+StandardError=syslog
 Restart=on-failure
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
