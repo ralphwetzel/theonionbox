@@ -59,6 +59,7 @@ Above that, _The Onion Box_ is able to display Tor network status protocol data 
     - [Access control](#access-control)
 - [_The Onion Box_ as system service (aka daemon)](#the-onion-box-as-system-service-aka-daemon)
     - [Logging to syslog](#logging-to-syslog)
+    - [Optional syslog configuration](#optional-syslog-configuration)
     - [Prepared launcher scripts](#prepared-launcher-scripts)
     - [... on FreeBSD](#-on-freebsd)
     - [... using init.d](#-using-initd)
@@ -1003,7 +1004,65 @@ Feb 12 17:54:58 raspberrypi theonionbox[15716]: Ready to listen on http://127.0.
 > Piping the `tail` output to `grep` allows you to get just the lines you're interested in, in our scenario those mentioning `theonionbox`.
 > The `-n` command line parameter of `tail` limits the output to the number of lines defined.
 
-If you are interested in getting the same messages additionally sent to a log file, you may enable this feature via a [command line parameter](#command-line-parameters).
+If you are interested in your box sending the same messages additionally to a dedicated log file, you may enable this feature via a [command line parameter](#command-line-parameters).
+
+### Optional syslog configuration
+As stated above, the messages your box emits are (always) saved to `/var/log/syslog` - and mingled there with a multitude of messages from other programs running. You yet can easily configure syslog to put them as well in a seperate file (e.g. `/var/log/theonionbox.log`) and advise to rotate this file continously (which allows you e.g. to keep the size of the file(s) under control):
+
+Append the following line at the end of the syslog configuration file `/etc/rsyslog.conf`:
+```
+:programname,isequal,"theonionbox"         /var/log/theonionbox.log
+```
+and restart the syslog daemon:
+```
+(theonionbox) ~/theonionbox $ sudo systemctl restart rsyslog
+(theonionbox) ~/theonionbox $
+```
+To establish the rotation of `/var/log/theonionbox.log`, create a configuration file with the following content as `/etc/logrotate.d/theonionbox`:
+
+```
+/var/log/theonionbox.log { 
+    daily
+    rotate 5
+    compress
+    delaycompress
+    missingok
+    postrotate
+        systemctl restart rsyslog > /dev/null
+        # invoke-rc.d rsyslog reload > /dev/null  
+    endscript    
+}
+```
+This will rotate the files daily (at midnight), keep five (5) files and compress them as necessary.
+
+> The `postrotate` command has to be adapted to the way your operating system uses to restart a background process (aka daemon). `systemctl ...` is for _systemd_ operations, `invoke-rc.d` to be used with _init.d_ / _SysVInit_ systems. Check [this site](https://unix.stackexchange.com/questions/18209/detect-init-system-using-the-shell) if unsure...
+
+If a quick test of your setup ...
+```
+(theonionbox) ~/theonionbox $ logrotate -d /etc/logrotate.d/theonionbox
+reading config file /etc/logrotate.d/theonionbox
+Reading state from file: /var/lib/logrotate/status
+Allocating hash table for state file, size 64 entries
+Creating new state
+[...]
+
+Handling 1 logs
+
+rotating pattern: /var/log/theonionbox.log  after 1 days (5 rotations)
+empty log files are rotated, old logs are removed
+considering log /var/log/theonionbox.log
+Creating new state
+  Now: 2018-02-14 09:30
+  Last rotated at 2018-02-14 09:00
+  log does not need rotating (log has been already rotated)
+(theonionbox) ~/theonionbox $
+```
+... shows no errors, you may force `logrotate` once to run the rotation...
+```
+(theonionbox) ~/theonionbox $ sudo logrotate --force /etc/logrotate.d/theonionbox
+(theonionbox) ~/theonionbox $
+```
+... to assure everything works as intended - and you're done.
 
 ### Prepared launcher scripts
 If you followed the [installation procedure](#installation), the following directory structure was created in your virtual environment:
