@@ -1711,13 +1711,13 @@ forward slash (/) in the configuration file and on the command line.</p></div>
 </p>
 </dd>
 <dt class="hdlist1">
-<a id="SocksSocketsGroupWritable"></a> <strong>SocksSocketsGroupWritable</strong> <strong>0</strong>|<strong>1</strong>
+<a id="UnixSocksGroupWritable"></a> <strong>UnixSocksGroupWritable</strong> <strong>0</strong>|<strong>1</strong>
 </dt>
 <dd>
 <p>
     If this option is set to 0, don&#8217;t allow the filesystem group to read and
-    write unix sockets (e.g. SocksSocket). If the option is set to 1, make
-    the SocksSocket socket readable and writable by the default GID. (Default: 0)
+    write unix sockets (e.g. SocksPort unix:). If the option is set to 1, make
+    the Unix socket readable and writable by the default GID. (Default: 0)
 </p>
 </dd>
 <dt class="hdlist1">
@@ -3267,6 +3267,110 @@ is preferable since it reduces the chances for an attacker to guess the
 <br />
     If no nodes in Tor2webRendezvousPoints are currently available for
     use, Tor will choose a random node when building HS circuits.
+</p>
+</dd>
+<dt class="hdlist1">
+<a id="_HSLayer2Nodes"></a> <strong>_HSLayer2Nodes</strong> <em>node</em>,<em>node</em>,<em>&#8230;</em>
+</dt>
+<dd>
+<p>
+    A list of identity fingerprints, nicknames, country codes, and
+    address patterns of nodes that are allowed to be used as the
+    second hop in all client or service-side Onion Service circuits.
+    This option mitigates attacks where the adversary runs middle nodes
+    and induces your client or service to create many circuits, in order
+    to discover your primary guard node.
+    (Default: Any node in the network may be used in the second hop.)
+<br />
+    (Example:
+    _HSLayer2Nodes ABCD1234CDEF5678ABCD1234CDEF5678ABCD1234, {cc}, 255.254.0.0/8)<br />
+<br />
+    When this is set, the resulting hidden service paths will
+    look like:
+<br />
+        C - G - L2 - M - Rend<br />
+        C - G - L2 - M - HSDir<br />
+        C - G - L2 - M - Intro<br />
+        S - G - L2 - M - Rend<br />
+        S - G - L2 - M - HSDir<br />
+        S - G - L2 - M - Intro<br />
+<br />
+    where C is this client, S is the service, G is the Guard node,
+    L2 is a node from this option, and M is a random middle node.
+    Rend, HSDir, and Intro point selection is not affected by this
+    option.
+<br />
+    This option may be combined with _HSLayer3Nodes to create
+    paths of the form:
+<br />
+        C - G - L2 - L3 - Rend<br />
+        C - G - L2 - L3 - M - HSDir<br />
+        C - G - L2 - L3 - M - Intro<br />
+        S - G - L2 - L3 - M - Rend<br />
+        S - G - L2 - L3 - HSDir<br />
+        S - G - L2 - L3 - Intro<br />
+<br />
+    ExcludeNodes have higher priority than _HSLayer2Nodes,
+    which means that nodes specified in ExcludeNodes will not be
+    picked.
+<br />
+    This option is meant to be managed by a Tor controller such as
+    <a href="https://github.com/mikeperry-tor/vanguards">https://github.com/mikeperry-tor/vanguards</a> that selects and
+    updates this set of nodes for you. Hence it does not do load
+    balancing if fewer than 20 nodes are selected, and if no nodes in
+    _HSLayer2Nodes are currently available for use, Tor will not work.
+    Please use extreme care if you are setting this option manually.
+</p>
+</dd>
+<dt class="hdlist1">
+<a id="_HSLayer3Nodes"></a> <strong>_HSLayer3Nodes</strong> <em>node</em>,<em>node</em>,<em>&#8230;</em>
+</dt>
+<dd>
+<p>
+    A list of identity fingerprints, nicknames, country codes, and
+    address patterns of nodes that are allowed to be used as the
+    third hop in all client and service-side Onion Service circuits.
+    This option mitigates attacks where the adversary runs middle nodes
+    and induces your client or service to create many circuits, in order
+    to discover your primary or Layer2 guard nodes.
+    (Default: Any node in the network may be used in the third hop.)
+<br />
+    (Example:
+    _HSLayer3Nodes ABCD1234CDEF5678ABCD1234CDEF5678ABCD1234, {cc}, 255.254.0.0/8)<br />
+<br />
+    When this is set by itself, the resulting hidden service paths
+    will look like:<br />
+        C - G - M - L3 - Rend<br />
+        C - G - M - L3 - M - HSDir<br />
+        C - G - M - L3 - M - Intro<br />
+        S - G - M - L3 - M - Rend<br />
+        S - G - M - L3 - HSDir<br />
+        S - G - M - L3 - Intro<br />
+    where C is this client, S is the service, G is the Guard node,
+    L2 is a node from this option, and M is a random middle node.
+    Rend, HSDir, and Intro point selection is not affected by this
+    option.
+<br />
+    While it is possible to use this option by itself, it should be
+    combined with _HSLayer2Nodes to create paths of the form:
+<br />
+        C - G - L2 - L3 - Rend<br />
+        C - G - L2 - L3 - M - HSDir<br />
+        C - G - L2 - L3 - M - Intro<br />
+        S - G - L2 - L3 - M - Rend<br />
+        S - G - L2 - L3 - HSDir<br />
+        S - G - L2 - L3 - Intro<br />
+<br />
+    ExcludeNodes have higher priority than _HSLayer3Nodes,
+    which means that nodes specified in ExcludeNodes will not be
+    picked.
+ <br />
+    This option is meant to be managed by a Tor controller such as
+    <a href="https://github.com/mikeperry-tor/vanguards">https://github.com/mikeperry-tor/vanguards</a> that selects and
+    updates this set of nodes for you. Hence it does not do load
+    balancing if fewer than 20 nodes are selected, and if no nodes in
+    _HSLayer3Nodes are currently available for use, Tor will not work.
+    Please use extreme care if you are setting this option manually.
 </p>
 </dd>
 <dt class="hdlist1">
@@ -4900,7 +5004,7 @@ AuthDirHasIPv6Connectivity 1.)</code></pre>
 </p>
 </dd>
 <dt class="hdlist1">
-<a id="HiddenServiceVersion"></a> <strong>HiddenServiceVersion</strong> <em>version</em>,<em>version</em>,<em>&#8230;</em>
+<a id="HiddenServiceVersion"></a> <strong>HiddenServiceVersion</strong> <strong>2</strong>|<strong>3</strong>
 </dt>
 <dd>
 <p>
@@ -4943,7 +5047,7 @@ AuthDirHasIPv6Connectivity 1.)</code></pre>
 <p>
    The maximum number of simultaneous streams (connections) per rendezvous
    circuit. The maximum value allowed is 65535. (Setting this to 0 will allow
-   an unlimited number of simultanous streams.) (Default: 0)
+   an unlimited number of simultaneous streams.) (Default: 0)
 </p>
 </dd>
 <dt class="hdlist1">
@@ -5029,6 +5133,152 @@ AuthDirHasIPv6Connectivity 1.)</code></pre>
     you need to disable all client-side services on your Tor instance,
     including setting SOCKSPort to "0". Can not be changed while tor is
     running. (Default: 0)
+</p>
+</dd>
+</dl></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_denial_of_service_mitigation_options">DENIAL OF SERVICE MITIGATION OPTIONS</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>The following options are useful only for a public relay. They control the
+Denial of Service mitigation subsystem.</p></div>
+<div class="dlist"><dl>
+<dt class="hdlist1">
+<a id="DoSCircuitCreationEnabled"></a> <strong>DoSCircuitCreationEnabled</strong> <strong>0</strong>|<strong>1</strong>|<strong>auto</strong>
+</dt>
+<dd>
+<p>
+    Enable circuit creation DoS mitigation. If enabled, tor will cache client
+    IPs along with statistics in order to detect circuit DoS attacks. If an
+    address is positively identified, tor will activate defenses against the
+    address. See the DoSCircuitCreationDefenseType option for more details.
+    This is a client to relay detection only. "auto" means use the consensus
+    parameter. If not defined in the consensus, the value is 0.
+    (Default: auto)
+</p>
+</dd>
+<dt class="hdlist1">
+<a id="DoSCircuitCreationMinConnections"></a> <strong>DoSCircuitCreationMinConnections</strong> <em>NUM</em>
+</dt>
+<dd>
+<p>
+    Minimum threshold of concurrent connections before a client address can be
+    flagged as executing a circuit creation DoS. In other words, once a client
+    address reaches the circuit rate and has a minimum of NUM concurrent
+    connections, a detection is positive. "0" means use the consensus
+    parameter. If not defined in the consensus, the value is 3.
+    (Default: 0)
+</p>
+</dd>
+<dt class="hdlist1">
+<a id="DoSCircuitCreationRate"></a> <strong>DoSCircuitCreationRate</strong> <em>NUM</em>
+</dt>
+<dd>
+<p>
+    The allowed circuit creation rate per second applied per client IP
+    address. If this option is 0, it obeys a consensus parameter. If not
+    defined in the consensus, the value is 3.
+    (Default: 0)
+</p>
+</dd>
+<dt class="hdlist1">
+<a id="DoSCircuitCreationBurst"></a> <strong>DoSCircuitCreationBurst</strong> <em>NUM</em>
+</dt>
+<dd>
+<p>
+    The allowed circuit creation burst per client IP address. If the circuit
+    rate and the burst are reached, a client is marked as executing a circuit
+    creation DoS. "0" means use the consensus parameter. If not defined in the
+    consensus, the value is 90.
+    (Default: 0)
+</p>
+</dd>
+<dt class="hdlist1">
+<a id="DoSCircuitCreationDefenseType"></a> <strong>DoSCircuitCreationDefenseType</strong> <em>NUM</em>
+</dt>
+<dd>
+<p>
+    This is the type of defense applied to a detected client address. The
+    possible values are:
+</p>
+<div class="literalblock">
+<div class="content">
+<pre><code>1: No defense.
+2: Refuse circuit creation for the DoSCircuitCreationDefenseTimePeriod period of time.</code></pre>
+</div></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>"0" means use the consensus parameter. If not defined in the consensus,
+the value is 2.
+(Default: 0)</code></pre>
+</div></div>
+</dd>
+<dt class="hdlist1">
+<a id="DoSCircuitCreationDefenseTimePeriod"></a> <strong>DoSCircuitCreationDefenseTimePeriod</strong> <em>N</em> <strong>seconds</strong>|<strong>minutes</strong>|<strong>hours</strong>
+</dt>
+<dd>
+<p>
+    The base time period in seconds that the DoS defense is activated for. The
+    actual value is selected randomly for each activation from N+1 to 3/2 * N.
+    "0" means use the consensus parameter. If not defined in the consensus,
+    the value is 3600 seconds (1 hour).  (Default: 0)
+</p>
+</dd>
+<dt class="hdlist1">
+<a id="DoSConnectionEnabled"></a> <strong>DoSConnectionEnabled</strong> <strong>0</strong>|<strong>1</strong>|<strong>auto</strong>
+</dt>
+<dd>
+<p>
+    Enable the connection DoS mitigation. For client address only, this allows
+    tor to mitigate against large number of concurrent connections made by a
+    single IP address. "auto" means use the consensus parameter. If not
+    defined in the consensus, the value is 0.
+    (Default: auto)
+</p>
+</dd>
+<dt class="hdlist1">
+<a id="DoSConnectionMaxConcurrentCount"></a> <strong>DoSConnectionMaxConcurrentCount</strong> <em>NUM</em>
+</dt>
+<dd>
+<p>
+    The maximum threshold of concurrent connection from a client IP address.
+    Above this limit, a defense selected by DoSConnectionDefenseType is
+    applied. "0" means use the consensus parameter. If not defined in the
+    consensus, the value is 100.
+    (Default: 0)
+</p>
+</dd>
+<dt class="hdlist1">
+<a id="DoSConnectionDefenseType"></a> <strong>DoSConnectionDefenseType</strong> <em>NUM</em>
+</dt>
+<dd>
+<p>
+    This is the type of defense applied to a detected client address for the
+    connection mitigation. The possible values are:
+</p>
+<div class="literalblock">
+<div class="content">
+<pre><code>1: No defense.
+2: Immediately close new connections.</code></pre>
+</div></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>"0" means use the consensus parameter. If not defined in the consensus,
+the value is 2.
+(Default: 0)</code></pre>
+</div></div>
+</dd>
+<dt class="hdlist1">
+<a id="DoSRefuseSingleHopClientRendezvous"></a> <strong>DoSRefuseSingleHopClientRendezvous</strong> <strong>0</strong>|<strong>1</strong>|<strong>auto</strong>
+</dt>
+<dd>
+<p>
+    Refuse establishment of rendezvous points for single hop clients. In other
+    words, if a client directly connects to the relay and sends an
+    ESTABLISH_RENDEZVOUS cell, it is silently dropped. "auto" means use the
+    consensus parameter. If not defined in the consensus, the value is 0.
+    (Default: auto)
 </p>
 </dd>
 </dl></div>
@@ -5681,7 +5931,7 @@ A short history of bandwidth usage, as produced in the server
     Directory cache only. Holds older consensuses, and diffs from older
     consensuses to the most recent consensus of each type, compressed
     in various ways. Each file contains a set of key-value arguments
-    decribing its contents, followed by a single NUL byte, followed by the
+    describing its contents, followed by a single NUL byte, followed by the
     main file contents.
 </p>
 </dd>
@@ -6077,7 +6327,7 @@ A short history of bandwidth usage, as produced in the server
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2018-01-13 19:37:19 CET
+Last updated 2018-02-17 22:28:06 CET
 </div>
 </div>
 </body>
