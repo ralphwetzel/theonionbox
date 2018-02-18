@@ -16,7 +16,7 @@ monitor_handler.prototype.process = function(data, timedelta) {
             read_data_hd.append(timestamp, data_points[data_point].r);
             written_data_hd.append(timestamp, data_points[data_point].w);
 
-            %# // to prepare for the playback!
+            // to prepare for the playback!
             data_points[data_point].s = timestamp;
         }
 
@@ -100,7 +100,7 @@ var bandwidth_style = {
     millisPerPixel: 500,
     maxValueScale: 1.1,
     minValueScale: 1.1,
-    maxDataSetLength: screen.width,     // TBC: is this ok for all use cases??
+    maxDataSetLength: Math.max(screen.width, screen.height),     // TBC: is this ok for all use cases??
     interpolation: 'step',
     yMaxFormatter: function(data, precision) {
         if (!precision) {
@@ -320,11 +320,11 @@ $(document).ready(function() {
 
     var client_time = new Date().getTime();
 
-    read_data_hd.append(client_time - 5000, 0);
-    written_data_hd.append(client_time - 5000, 0);
+    // read_data_hd.append(client_time - 5000, 0);
+    // written_data_hd.append(client_time - 5000, 0);
 
-    read_data_ld.append(client_time - 5000, 0);
-    written_data_ld.append(client_time - 5000, 0);
+    // read_data_ld.append(client_time - 5000, 0);
+    // written_data_ld.append(client_time - 5000, 0);
 
     var canvas = document.getElementById('monitor-bw-read');
     bandwidth_read.prepare(canvas, 5000);
