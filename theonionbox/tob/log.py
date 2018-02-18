@@ -33,6 +33,64 @@ py34 = py >= (3, 4, 0)
 py342 = py >= (3, 4, 2)
 
 
+# Thanks to 'Mad Physicist'
+# http://stackoverflow.com/questions/2183233/how-to-add-a-custom-loglevel-to-pythons-logging-facility
+def addLoggingLevel(levelName, levelNum, methodName=None):
+    """
+    Comprehensively adds a new logging level to the `logging` module and the
+    currently configured logging class.
+
+    `levelName` becomes an attribute of the `logging` module with the value
+    `levelNum`. `methodName` becomes a convenience method for both `logging`
+    itself and the class returned by `logging.getLoggerClass()` (usually just
+    `logging.Logger`). If `methodName` is not specified, `levelName.lower()` is
+    used.
+
+    To avoid accidental clobberings of existing attributes, this method will
+    raise an `AttributeError` if the level name is already an attribute of the
+    `logging` module or if the method name is already present
+
+    Example
+    -------
+    >>> addLoggingLevel('TRACE', logging.DEBUG - 5)
+    >>> logging.getLogger(__name__).setLevel("TRACE")
+    >>> logging.getLogger(__name__).trace('that worked')
+    >>> logging.trace('so did this')
+    >>> logging.TRACE
+    5
+
+    """
+    if not methodName:
+        methodName = levelName.lower()
+
+    if hasattr(logging, levelName):
+       raise AttributeError('{} already defined in logging module'.format(levelName))
+    if hasattr(logging, methodName):
+       raise AttributeError('{} already defined in logging module'.format(methodName))
+    if hasattr(logging.getLoggerClass(), methodName):
+       raise AttributeError('{} already defined in logger class'.format(methodName))
+
+    # This method was inspired by the answers to Stack Overflow post
+    # http://stackoverflow.com/q/2183233/2988730, especially
+    # http://stackoverflow.com/a/13638084/2988730
+    def logForLevel(self, message, *args, **kwargs):
+        if self.isEnabledFor(levelNum):
+            self._log(levelNum, message, args, **kwargs)
+    def logToRoot(message, *args, **kwargs):
+        logging.log(levelNum, message, *args, **kwargs)
+
+    logging.addLevelName(levelNum, levelName)
+    setattr(logging, levelName, levelNum)
+    setattr(logging.getLoggerClass(), methodName, logForLevel)
+    setattr(logging, methodName, logToRoot)
+
+
+# Add Level to be inline with the Tor levels (DEBUG - INFO - NOTICE - WARN(ing) - ERROR)
+addLoggingLevel('NOTICE', logging.INFO + 5)
+# This one is to be inline with STEM's logging levels:
+addLoggingLevel('TRACE', logging.DEBUG - 5)
+
+
 class FilterCallback(object):
 
     filter_callback = None
@@ -400,56 +458,6 @@ class LoggingManager(object):
         return self.self_id
 
 
-# Thanks to 'Mad Physicist'
-# http://stackoverflow.com/questions/2183233/how-to-add-a-custom-loglevel-to-pythons-logging-facility
-def addLoggingLevel(levelName, levelNum, methodName=None):
-    """
-    Comprehensively adds a new logging level to the `logging` module and the
-    currently configured logging class.
-
-    `levelName` becomes an attribute of the `logging` module with the value
-    `levelNum`. `methodName` becomes a convenience method for both `logging`
-    itself and the class returned by `logging.getLoggerClass()` (usually just
-    `logging.Logger`). If `methodName` is not specified, `levelName.lower()` is
-    used.
-
-    To avoid accidental clobberings of existing attributes, this method will
-    raise an `AttributeError` if the level name is already an attribute of the
-    `logging` module or if the method name is already present
-
-    Example
-    -------
-    >>> addLoggingLevel('TRACE', logging.DEBUG - 5)
-    >>> logging.getLogger(__name__).setLevel("TRACE")
-    >>> logging.getLogger(__name__).trace('that worked')
-    >>> logging.trace('so did this')
-    >>> logging.TRACE
-    5
-
-    """
-    if not methodName:
-        methodName = levelName.lower()
-
-    if hasattr(logging, levelName):
-       raise AttributeError('{} already defined in logging module'.format(levelName))
-    if hasattr(logging, methodName):
-       raise AttributeError('{} already defined in logging module'.format(methodName))
-    if hasattr(logging.getLoggerClass(), methodName):
-       raise AttributeError('{} already defined in logger class'.format(methodName))
-
-    # This method was inspired by the answers to Stack Overflow post
-    # http://stackoverflow.com/q/2183233/2988730, especially
-    # http://stackoverflow.com/a/13638084/2988730
-    def logForLevel(self, message, *args, **kwargs):
-        if self.isEnabledFor(levelNum):
-            self._log(levelNum, message, args, **kwargs)
-    def logToRoot(message, *args, **kwargs):
-        logging.log(levelNum, message, *args, **kwargs)
-
-    logging.addLevelName(levelNum, levelName)
-    setattr(logging, levelName, levelNum)
-    setattr(logging.getLoggerClass(), methodName, logForLevel)
-    setattr(logging, methodName, logToRoot)
 
 
 class ForwardHandler(MemoryHandler):
@@ -488,9 +496,6 @@ class WhitespaceRemovingFormatter(logging.Formatter):
     def format(self, record):
         record.msg = record.msg.strip()
         return super(WhitespaceRemovingFormatter, self).format(record)
-
-
-
 
 
 # 20170409 RDW: Not used?
@@ -721,4 +726,48 @@ def sanitize_for_html(string):
     return string.replace('&', '&amp;').replace("\\", '&#92;').replace("/", '&#47;') \
         .replace('<', '&lt;').replace('>', '&gt;') \
         .replace('"', '&quot;').replace("'", '&#039;')
+
+
+from logging import Filter, _checkLevel
+
+
+class FileBasedFilter(logging.Filter):
+
+    def __init__(self, name='', level='NOTICE'):
+
+        # This will raise if wrong 'level' used
+        self.standard_level = _checkLevel(level)
+        self.files = {}
+
+        super(FileBasedFilter, self).__init__(name)
+
+    def setLevel(self, level):
+        self.standard_level = _checkLevel(level)
+
+    def set_level_for_file(self, filepath, level):
+        self.files[filepath] = _checkLevel(level)
+
+    def remove_level_for_file(self, filepath):
+        if filepath in self.files:
+            del self.files[filepath]
+
+    def filter(self, record):
+
+        if super(FileBasedFilter, self).filter(record) == 0:
+            return 0
+
+        if record.pathname in self.files:
+            if record.levelno >= self.files[record.pathname]:
+                return 1
+
+        if record.levelno >= self.standard_level:
+            return 1
+
+        return 0
+
+
+__gsbf__ = FileBasedFilter()
+
+def getGlobalFilter():
+    return __gsbf__
 
