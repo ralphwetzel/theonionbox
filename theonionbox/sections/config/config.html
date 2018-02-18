@@ -12,6 +12,7 @@ configs_all = []
 try:
     # get all valid configuration names (only and drop attached information)
     config_names = tor.get_info('config/names')
+    # print(config_names)
     names_with_values = config_names.splitlines()
     config_params = {}
     for line in names_with_values:
@@ -187,11 +188,11 @@ end
                                     %>
                                         {{out}}
                                     <%
-                                      elif pt == 'LineList':
+                                      elif pt in ['LineList', 'RouterList']:
                                         sep = '<br>'
-                                        if option == 'ExitPolicy':
-                                            sep = ' | '
-                                        end
+                                        # if option == 'ExitPolicy':
+                                        #     sep = ' | '
+                                        # end
                                         out = ''
                                         for value in values:
                                             if option in ['HashedControlPassword', '__HashedControlSessionPassword']:

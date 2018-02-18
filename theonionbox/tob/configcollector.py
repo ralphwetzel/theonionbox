@@ -1,5 +1,11 @@
-# from stem.control import BaseController
+from __future__ import absolute_import
+import logging
+
 from manpage import ManPage
+
+# file based special message filtering
+from tob.log import getGlobalFilter
+# getGlobalFilter().set_level_for_file(__file__, 'TRACE')
 
 
 class ConfigCollector(object):
@@ -8,6 +14,8 @@ class ConfigCollector(object):
         self.tor = controller
 
     def collect_configs_used(self):
+
+        log = logging.getLogger('theonionbox')
 
         configs_used = {}
 
@@ -20,6 +28,7 @@ class ConfigCollector(object):
         lines = config_text.splitlines()
 
         for line in lines:
+            # log.trace(line)
             line.lstrip()
             if len(line) and line[0] != '#':
                 param = line.split(' ')[0]
@@ -34,8 +43,9 @@ class ConfigCollector(object):
         conf_map = []
         for line in names_with_values:
             config = line.split(' ')
+            # log.trace(config)
             c0 = config[0]
-            if config[1] in ['Dependant', 'Virtual']:   # special handling for HiddenServiceOptions!
+            if config[1] in ['Dependent', 'Virtual']:   # special handling for HiddenServiceOptions!
                 # remove these from the resulting dict!
                 if c0 in configs_used:
                     del configs_used[c0]
@@ -52,6 +62,7 @@ class ConfigCollector(object):
         di = tgi.splitlines()
 
         for line in di:
+            # log.trace(line)
             line = line[:-1]  # skip '"' @ end of line
             param, default = line.split('"')
 
@@ -65,7 +76,7 @@ class ConfigCollector(object):
         # ... that we have gathered before
         tcm = self.tor.get_conf_map(conf_map, None, True)
 
-        # print(tcm)
+        # log.trace(tcm)
 
         # running through all the parameters
         for option in conf_map:
@@ -80,11 +91,15 @@ class ConfigCollector(object):
             except:
                 continue
 
+            cpo = config_params[option]
+            # if cpo in ['LineList', 'TimeIntervalCommaList', 'RouterList', 'CommaList']:
+            #     log.trace('{}|{}: {} {}'.format(option, cpo, type(tgi), tgi))
+
             # If this parameter is already in the resulting dict
             # just update the value and continue.
             # This is to ensure that the 'torrc' values are always in the resulting dict.
             if option in configs_used:
-                configs_used[option] = tgi
+                configs_used[option] = self.format_data(option, cpo, tgi)
                 continue
 
             # Manual check for equality of current setting and default value
@@ -157,16 +172,29 @@ class ConfigCollector(object):
                     tgi = 'Error!'
 
             elif cpo == 'TimeIntervalCommaList':
-                _default = default[0].replace(' ', '')
-                _tgi = tgi[0].replace(' ', '')
-                if _tgi == _default:
-                    continue
-
-            # print('{}: {} ({}) / {}'.format(option, tgi, default, cpo))
+                    _default = default[0].replace(' ', '')
+                    _tgi = tgi[0].replace(' ', '')
+                    if _tgi == _default:
+                        continue
 
             # result is a dict {option_name: [list of parameters]}
-            configs_used[option] = tgi
-
-        # print(configs_used)
+            configs_used[option] = self.format_data(option, cpo, tgi)
 
         return configs_used
+
+    def format_data(self, option, data_type, data):
+
+        # LineList = Array of Comma separated list of items
+        log = logging.getLogger('theonionbox')
+        log.trace('{}|{}: {} {}'.format(option, data_type, type(data), data))
+
+        if data_type in ['LineList', 'RouterList']:
+
+            if data is not None and len(data) > 0:
+                out = []
+                for line in data:
+                    new_line = [item.strip() for item in line.split(',')]
+                    out.append(", ".join(new_line))
+                data = out
+
+        return data
