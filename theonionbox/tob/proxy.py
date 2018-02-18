@@ -7,8 +7,8 @@ class Proxy(object):
         self.config = config
         self.controller = None
 
-        self.host = config.get['host', '127.0.0.1']
-        self.port = config.get['port', 'default']
+        self.host = config.get('host', '127.0.0.1')
+        self.port = config.get('port', 'default')
 
         self.cookie_backup = None
 
