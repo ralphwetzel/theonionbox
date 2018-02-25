@@ -110,6 +110,12 @@ body {
 
 }
 
+.box_value_columns {
+    -webkit-column-count: 3; /* Chrome, Safari, Opera */
+    -moz-column-count: 3; /* Firefox */
+    column-count: 3;
+}
+
 /* this could/should be merged into box_value if usage of <p> for all values is re-organized */
 .box_value_margin {
     margin: 0 0 10px;

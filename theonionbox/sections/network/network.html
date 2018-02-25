@@ -2,6 +2,8 @@
 %# It is intended to be a bottlepy - style template
 %# used for the scripting part of TheOnionBox!
 
+% from tob.log import sanitize_for_html
+
 <%
 tor = get('tor') if tor is None else tor
 oo_details = get('oo_details') if oo_details is None else oo_details
@@ -167,22 +169,16 @@ fp = get('family_fp', None)
         {{!group_row('Exit Policies')}}
 
             % if ep is not None:
-                <p>
-                    <div class="row">
-                        <div class="{{box_datum_grid}}">
-                            Policy Lines
-                        </div>
-                        <div class="{{box_value_grid}}">
-                            <div class="row">
-                                % for item in ep:
-                                    <div class="col-sm-4">
-                                        {{item}}
-                                    </div>
-                                % end
-                            </div>
-                        </div>
+                <div class="row">
+                    <div class="{{box_datum_grid}}">
+                        Policy Lines
                     </div>
-                </p>
+                    <div class="{{box_value_grid}} box_value_margin box_value_columns">
+                        % for item in ep:
+                            {{item}}<br>
+                        % end
+                    </div>
+                </div>
             % end
 
             % if eps is not None:
@@ -193,22 +189,16 @@ fp = get('family_fp', None)
                     % ar = 'Reject'
                     % epdata = eps['reject']
                 % end
-                <p>
-                    <div class="row">
-                        <div class="{{box_datum_grid}}">
-                            {{'{} Summary IPv4'.format(ar)}}
-                        </div>
-                        <div class="{{box_value_grid}}">
-                            <div class="row">
-                                % for item in epdata:
-                                    <div class="col-sm-4">
-                                        {{item}}
-                                    </div>
-                                % end
-                            </div>
-                        </div>
+                <div class="row">
+                    <div class="{{box_datum_grid}}">
+                        {{'{} Summary IPv4'.format(ar)}}
                     </div>
-                </p>
+                    <div class="{{box_value_grid}} box_value_margin box_value_columns">
+                        % for item in epdata:
+                            {{item}}<br>
+                        % end
+                    </div>
+                </div>
             % end
 
             % if ep6s is not None:
@@ -219,23 +209,24 @@ fp = get('family_fp', None)
                     % ar = 'Reject'
                     % epdata = ep6s['reject']
                 % end
-                <p>
-                    <div class="row">
-                        <div class="{{box_datum_grid}}">
-                            {{'{} Summary IPv6'.format(ar)}}
-                        </div>
-                        <div class="{{box_value_grid}}">
-                            <div class="row">
-                                % for item in epdata:
-                                    <div class="col-sm-4">
-                                        {{item}}
-                                    </div>
-                                % end
-                            </div>
+                <div class="row">
+                    <div class="{{box_datum_grid}}">
+                        {{'{} Summary IPv6'.format(ar)}}
+                    </div>
+                    <div class="{{box_value_grid}} box_value_margin">
+                        <div class="row">
+                            % for item in epdata:
+                                <div class="col-sm-4">
+                                    {{item}}
+                                </div>
+                            % end
                         </div>
                     </div>
-                </p>
-
+                </div>
+            % else:
+                %# From Onionoo:
+                %# "Missing if the relay rejects all connections to IPv6 addresses."
+                {{!standard_row('Reject Summary IPv6', '1-65535')}}
             % end
         %end
 
@@ -251,31 +242,37 @@ fp = get('family_fp', None)
 %>
         % fmatrix = {}
         % if ef or af or indf:
-            % # {{!group_row('Family Members')}}
+            {{!group_row('Family Members')}}
             % fmatrix = {'Effective': ef, 'Alleged': af, 'Indirect': indf}
         % end
         % for key, value in fmatrix.items():
             % if value is not None:
-                {{!group_row('{} Family'.format(key))}}
-                <p>
-                    % for fp in value:
-                        % fam_det = oo_factory.details(fp)
-                        % fam_nick = '' # 'Unknown'
-                        % if fam_det is not None:
-                            % fam_nick = fam_det('nickname') or '' # 'Unknown'
-                        % end
-                        <div class="row">
-                            <div class="{{box_datum_grid}}">
-                                {{fam_nick}}
-                            </div>
-                            <div class="{{box_value_grid}}">
-                                {{fp}}
-                            </div>
-                            <div class="{{box_right_grid}}"></div>
-                        </div>
-                    % end
-                </p>
-
+                <div class="row">
+                    <div class="{{box_datum_grid}}">
+                        {{'{} Family'.format(key)}}
+                    </div>
+                    <div class="{{box_value_grid}}"><p>
+                    <%
+                        out = ''
+                        for fp in value:
+                            fam_det = oo_factory.details(fp)
+                            fam_nick = '' # 'Unknown'
+                            if fam_det is not None:
+                                fam_nick = fam_det('nickname') or '' # 'Unknown'
+                            end
+                            if len(out) > 0:
+                                out += '<br>'
+                            end
+                            out += sanitize_for_html(fp)
+                            if len(fam_nick) > 0:
+                                out += sanitize_for_html(' [{}]'.format(fam_nick))
+                            end
+                        end
+                    %>
+                        {{!out}}
+                    </p></div>
+                    <div class="{{box_right_grid}}"></div>
+                </div>
             % end
         % end
     %end
