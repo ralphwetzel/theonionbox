@@ -1,5 +1,6 @@
 import math
 import sys
+from tob.log import sanitize_for_html
 
 #####
 # Python version detection
@@ -26,7 +27,7 @@ box_right_grid = 'col-xs-2'
 def standard_row(datum='', value=''):
     out = "<div class='row'>"
     out += "<div class='{}'>{}</div>".format(box_datum_grid, datum)
-    out += "<div class='{}'><p>{}</p></div>".format(box_value_grid, value)
+    out += "<div class='{}'><p>{}</p></div>".format(box_value_grid, sanitize_for_html(value))
     out += "<div class='{}'></div>".format(box_right_grid)
     out += "</div>"
     return out
