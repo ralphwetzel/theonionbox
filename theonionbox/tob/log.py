@@ -721,6 +721,7 @@ class LogFormatter(logging.Formatter):
 # Sanitizer - especially to ensure that error messages can be displayed in the client log correctly
 def sanitize_for_html(string):
     # removes all whitespace including new lines:
+    string = str(string)
     string = ' '.join(string.split())
     # Escape HTML special characters ``&<>``, slashes '\/' and quotes ``'"``
     return string.replace('&', '&amp;').replace("\\", '&#92;').replace("/", '&#47;') \
