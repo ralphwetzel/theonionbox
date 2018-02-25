@@ -161,7 +161,16 @@
     </div>
 </div>
 
-{{!standard_row('Flags', flags(node_mode == 'Bridge'))}}
+<div class="row">
+    <div class="{{box_datum_grid}} box_value_margin">
+        Flags
+    </div>
+    <div class="{{box_value_grid}} box_value_margin">
+        {{!flags(node_mode == 'Bridge')}}
+    </div>
+    <div class="{{box_right_grid}}"></div>
+</div>
+
 % end
 
 <hr>
