@@ -107,9 +107,13 @@ body {
 	font-family: "LatoLatinWeb";
     font-size: 19px;
     text-align: left;
+
 }
 
-
+/* this could/should be merged into box_value if usage of <p> for all values is re-organized */
+.box_value_margin {
+    margin: 0 0 10px;
+}
 
 %# /* http://stackoverflow.com/questions/20760047/upside-down-caret */
 .caret.caret-reversed {
