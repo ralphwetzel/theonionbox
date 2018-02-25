@@ -60,7 +60,6 @@ fp = get('family_fp', None)
             </div>
             <div class="{{box_value_grid}}">
                 % fp = oo_details('fingerprint')
-                %# <a href="https://atlas.torproject.org/#details/{{fp}}" target="_blank">
                    {{fp}}
                 </a>
             </div>
@@ -198,6 +197,7 @@ fp = get('family_fp', None)
                             {{item}}<br>
                         % end
                     </div>
+                    <div class="{{box_right_grid}}"></div>
                 </div>
             % end
 
@@ -213,15 +213,12 @@ fp = get('family_fp', None)
                     <div class="{{box_datum_grid}}">
                         {{'{} Summary IPv6'.format(ar)}}
                     </div>
-                    <div class="{{box_value_grid}} box_value_margin">
-                        <div class="row">
-                            % for item in epdata:
-                                <div class="col-sm-4">
-                                    {{item}}
-                                </div>
-                            % end
-                        </div>
+                    <div class="{{box_value_grid}} box_value_margin box_value_columns">
+                        % for item in epdata:
+                            {{item}}<br>
+                        % end
                     </div>
+                    <div class="{{box_right_grid}}"></div>
                 </div>
             % else:
                 %# From Onionoo:
