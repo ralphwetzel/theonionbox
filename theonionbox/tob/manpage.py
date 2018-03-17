@@ -21,26 +21,6 @@ class ManPage(object):
             boxLog.info("Manpage index file '{}' loaded.".format(index_filename))
             self.success = True
 
-        # the parser makes an error constructing 'non-persistentoptions' ...
-        # ... which is no big issue as we intend to recreate & extend it anyhow!
-        self.ndx['non-persistentoptions'] = [
-            '__ControlPort',    # Those are from tor.1.html
-            '__DirPort',
-            '__DNSPort',
-            '__ExtORPort',
-            '__NATDPort',
-            '__ORPort',
-            '__SocksPort',
-            '__TransPort',
-            '__AllDirActionsPrivate',   # ... and beginning from here: control-spec.txt
-            '__DisablePredictedCircuits',
-            '__LeaveStreamsUnattached',
-            '__HashedControlSessionPassword',
-            '__ReloadTorrcOnSIGHUP',
-            '__OwningControllerProcess'
-        ]
-
-
     def get_success(self):
         return self.success
 
