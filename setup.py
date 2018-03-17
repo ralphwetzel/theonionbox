@@ -32,6 +32,15 @@ class CompileREADMECommand(setuptools.command.sdist.sdist):
 
             return hash_bytestr_iter(file_as_blockiter(open(filename, 'rb')), hashlib.sha256(), True)
 
+        # tor.1.txt production
+        try:
+            from xtor import TorTxt
+            tt = TorTxt(force=True)
+            if tt.run() is True:
+                tt.copy(os.path.join('theonionbox','tor'))
+        except:
+            pass
+
         old_md_hash = ''
         old_html_hash = ''
         old_rst_hash = ''
