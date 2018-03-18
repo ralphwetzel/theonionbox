@@ -15,57 +15,53 @@
 
 <div class="row acc_off" style="display: none">
     <div class="{{box_datum_grid}}">
-        <p>Status</p>
+        Status
     </div>
-    <div class="{{box_value_grid}}">
-        <p>
-            <code class="text-left" style="color: grey;">
-                disabled
-            </code>
-        </p>
+    <div class="{{box_value_grid}} box_value_margin">
+        <code class="text-left" style="color: grey;">
+            disabled
+        </code>
     </div>
 </div>
 <div class="row acc_on">
     <div class="{{box_datum_grid}}">
-        <p>Status</p>
+        Status
     </div>
-    <div class="{{box_value_grid}}">
-        <p>
-            <code style="color: green;" id="acc_status">
-                %# <!-- acc_stats.status -->
-                ... waiting for data ...
-            </code>
-        </p>
+    <div class="{{box_value_grid}} box_value_margin">
+        <code style="color: green;" id="acc_status">
+            %# <!-- acc_stats.status -->
+            ... waiting for data ...
+        </code>
     </div>
 </div>
 <div class="row acc_on">
     <div class="{{box_datum_grid}}">
-        <p>Download</p>
+        Download
     </div>
     <div class="{{box_value_grid}}">
-        <p id="acc_down">
+        <div id="acc_down" class="box_value_margin">
             %# <!-- acc_stats.read_bytes -->
-        </p>
+        </div>
     </div>
 </div>
 <div class="row acc_on">
     <div class="{{box_datum_grid}}">
-        <p>Upload</p>
+        Upload
     </div>
     <div class="{{box_value_grid}}">
-        <p id="acc_up">
+        <div id="acc_up" class="box_value_margin">
             %# <!-- acc_stats.written_bytes -->
-        </p>
+        </div>
     </div>
 </div>
 <div class="row acc_on">
     <div class="{{box_datum_grid}}">
-        <p>End of Interval</p>
+        End of Interval
     </div>
     <div class="{{box_value_grid}}">
-        <p id="acc_interval">
+        <div id="acc_interval" class="box_value_margin">
             %# <!-- acc_stats.interval_end-->
-        </p>
+        </div>
     </div>
 </div>
 
