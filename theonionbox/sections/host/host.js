@@ -151,7 +151,7 @@ $(document).ready(function() {
         canvas = document.getElementById('processor_load_{{count}}');
         chart_processor_{{count}}.addTimeSeries(proc_data_{{count}}, {lineWidth:1,strokeStyle:'#64B22B',fillStyle:'rgba(100, 178, 43, 0.30)'});
         % if count > 0:
-            chart_processor_{{count}}.streamTo(canvas, 5000);
+            chart_processor_{{count}}.prepare(canvas, 5000);
 
         % else:
             chart_processor_{{count}}.prepare(canvas, 5000);
@@ -200,4 +200,19 @@ $(document).ready(function() {
 $('#processor_load_0').click(function() {
     $('#myModal').modal();
 });
+
+
+$('#myModal').on('show.bs.modal', function (e) {
+    %  for count in range(1, cpu_count + 1):
+        chart_processor_{{count}}.start();
+    % end
+})
+
+$('#myModal').on('hidden.bs.modal', function (e) {
+    %  for count in range(1, cpu_count + 1):
+        chart_processor_{{count}}.stop();
+    % end
+})
+
+
 % end

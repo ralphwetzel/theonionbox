@@ -1,3 +1,3 @@
 __description__ = 'The Onion Box: WebInterface to monitor Tor node operations.'
 __version__ = '4.2.dev0'
-__stamp__ = '20180218|155242'
+__stamp__ = '20180318|140226'
