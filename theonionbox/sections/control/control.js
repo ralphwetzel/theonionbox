@@ -62,13 +62,13 @@ $('#search').keyup(function (event) {
     var search_for = $(this).val();
 
     if (e.keyCode === 13 && search_for !== ""){
-        $('#search').popover('destroy');
+        $('#search').popover('dispose');
         do_search(search_for);
     }
 });
 
 $('#search').blur(function () {
-    $('#search').popover('destroy');
+    setTimeout(function() { $('#search').popover('dispose');} , 500);
 });
 
 if (!Object.keys) {
@@ -82,6 +82,7 @@ if (!Object.keys) {
         return keys;
     };
 }
+
 
 $('#search').on('input', function () {
     var search_for = $(this).val().toLowerCase();
@@ -107,22 +108,22 @@ $('#search').on('input', function () {
         }
 
         if (out === '') {
-            $('#search').popover('destroy');
+            $('#search').popover('dispose');
         }
         else {
             // check if already visible
             var po = $('#search').data()['bs.popover'];
 
-            if (po === null || po === void 0 || po.tip().hasClass('in') !== true) {
+            if (po === null || po === void 0 || po.tip === null) {
                 $('#search').attr('data-content', out);
                 $('#search').popover('show');
             } else {
-                po.$tip.find(".popover-content").html(out);
+                $(po.tip).find(".popover-body").html(out);
             }
         }
     }
     else {
-        $('#search').popover('destroy');
+        $('#search').popover('dispose');
     }
 });
 
@@ -147,20 +148,20 @@ function do_search(search_for)
                 for (var len = data.length, i=0; i<len; ++i) {
                     var node = data[i];
                     out += '<div class="row row-striped">';
-                    out += '<div class="col-xs-6">';
+                    out += '<div class="col-6">';
                     out += '<a href="{{base_path}}{{session_id}}/open?search=' + node.i + '" target="_blank">';
                     out += node.n;
                     out += '</a>';
                     out += '</div>';
                     // out += '<td>' + node.f + '</td>';
-                    if (node.t === 'r') { out += '<div class="col-xs-3">Relay</div>'; }
-                    if (node.t === 'b') { out += '<div class="col-xs-3">Bridge</div>'; }
-                    if (node.r === true) { out += '<div class="col-xs-3">Running</div>';}
+                    if (node.t === 'r') { out += '<div class="col-3">Relay</div>'; }
+                    if (node.t === 'b') { out += '<div class="col-3">Bridge</div>'; }
+                    if (node.r === true) { out += '<div class="col-3">Running</div>';}
                     out += '</div>';
                 }
                 out += '</div>';
             }
-            $('#search').popover('destroy');
+            $('#search').popover('dispose');
             $('#search').attr('data-content', out);
             $('#search').attr('data-trigger', 'manual');
             $('#search').popover('show');
@@ -170,3 +171,4 @@ function do_search(search_for)
         })
     ;
 }
+
