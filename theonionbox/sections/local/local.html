@@ -41,9 +41,9 @@
         fs = ''
         for flag in flags:
             if fs is not '':
-                fs += ' '
+                fs += ' | '
             end
-            fs += '<code style="color: '+ FLAG_COLORS[flag] + ';">' + flag + '</code>'
+            fs += '<span style="color: '+ FLAG_COLORS[flag] + ';">' + flag + '</span>'
         end
 
         if (len(flags) == 1) and (flags[0] == 'none'):
@@ -53,7 +53,7 @@
                 if a_s.status != 'awake':
                     fs += ' | could be due to '
                     fs += '<a href="#accounting">Hibernation Status</a>'
-                    fs += ' <code style="color: green;">' + a_s.status + '</code>'
+                    fs += ' <span style="color: green;">' + a_s.status + '</span>'
                 end
             end
         end
@@ -71,38 +71,37 @@
 
 
 {{!header_row('Tor', 'Local Status', 'stats')}}
+{{!standard_row('Version', tor.get_version())}}
 
 <div class = "row">
     <div class="{{box_datum_grid}}">
-        <p>Version</p>
+        Version Flag
     </div>
-    <div class="{{box_value_grid}}">
-        <p>
-            {{tor.get_version()}}
-            % tvc = tor.get_version_current()
-            % if tvc in VERSION_STATUS_COLORS:
-                <br><code style="color: {{VERSION_STATUS_COLORS[tvc]}};">{{tvc}}</code>
-            % else:
-                <br><code>{{tvc}}</code>
-            % end
-            % if tvt.is_latest_stable(tvs) is True:
-                <code style="color: blue;">latest stable</code>
-            % end
-        </p>
+    <div class="{{box_value_grid}} box_value_margin">
+        % tvc = tor.get_version_current()
+        % if tvc in VERSION_STATUS_COLORS:
+            <span style="color: {{VERSION_STATUS_COLORS[tvc]}};">{{tvc}}</span>
+        % else:
+            <span>{{tvc}}</span>
+        % end
+        % if tvt.is_latest_stable(tvs) is True:
+            <span> | latest stable</span>
+        % end
     </div>
+    <div class="{{box_right_grid}}"></div>
 </div>
+
 
 % if tvt.is_latest_stable(tvs) is False:
 
         <div class = "row">
             <div class="{{box_datum_grid}}">
-                <p>Latest Stable Version</p>
+                Latest Stable Version
             </div>
-            <div class="{{box_value_grid}}">
-                <p>
-                    <a href="https://dist.torproject.org/" target="_blank">{{tvt.stable}}</a>
-                </p>
+            <div class="{{box_value_grid}} box_value_margin">
+                <a href="https://dist.torproject.org/" target="_blank">{{tvt.stable}}</a>
             </div>
+            <div class="{{box_right_grid}}"></div>
         </div>
 <%
     end
@@ -110,13 +109,12 @@
 %>
         <div class = "row">
             <div class="{{box_datum_grid}}">
-                <p>Latest Unstable Version</p>
+                Latest Unstable Version
             </div>
-            <div class="{{box_value_grid}}">
-                <p>
-                    <a href="https://dist.torproject.org/" target="_blank">{{tvt.unstable}}</a>
-                </p>
+            <div class="{{box_value_grid}} box_value_margin">
+                <a href="https://dist.torproject.org/" target="_blank">{{tvt.unstable}}</a>
             </div>
+            <div class="{{box_right_grid}}"></div>
         </div>
 %   end
 
@@ -133,44 +131,26 @@
 %>
 {{!standard_row('Mode', node_mode)}}
 
-% if node_mode != 'Client':
-<div class="row">
-    <div class="{{box_datum_grid}}">
-        <p>Fingerprint</p>
-    </div>
-    <div class="{{box_value_grid}}">
-        <%
-            _fngrprnt = 'failed'
-            try:
-                _fngrprnt = tor.get_fingerprint()
-            except:
-                pass
-            end
-        %>
-        % if _fngrprnt is None or len(_fngrprnt) < 1:
-            <p style="color: #31708f;">
-                Tor in client mode: No fingerprint.
-            </p>
-        % else:
-            <p>
-                %# <a href="https://atlas.torproject.org/#details/{{!_fngrprnt}}" target="_blank">
-                    {{!_fngrprnt}}
-                %# </a>
-            </p>
-        % end
-    </div>
-</div>
+<%
+    _fngrprnt = None
+    try:
+        _fngrprnt = tor.get_fingerprint()
+    except:
+        pass
+    end
+%>
+% if node_mode != 'Client' and _fngrprnt is not None:
+    {{!standard_row('Fingerprint', _fngrprnt)}}
 
-<div class="row">
-    <div class="{{box_datum_grid}} box_value_margin">
-        Flags
+    <div class="row">
+        <div class="{{box_datum_grid}}">
+            Flags
+        </div>
+        <div class="{{box_value_grid}} box_value_margin">
+            {{!flags(node_mode == 'Bridge')}}
+        </div>
+        <div class="{{box_right_grid}}"></div>
     </div>
-    <div class="{{box_value_grid}} box_value_margin">
-        {{!flags(node_mode == 'Bridge')}}
-    </div>
-    <div class="{{box_right_grid}}"></div>
-</div>
-
 % end
 
 <hr>
