@@ -7,27 +7,27 @@ from tob.log import sanitize_for_html
 py = sys.version_info
 py30 = py >= (3, 0, 0)
 
-# box_bold_grid = 'col-xs-3 col-md-2 box_bold'
-# box_section_grid = 'col-xs-8 col-md-9 box_section'
-# box_datum_grid = 'col-xs-3 col-md-2 box_datum'
-# box_value_grid = 'col-xs-8 col-md-9 box_value'
-# box_title_grid = 'col-xs-8 col-md-9 box_title'
-# box_subtitle_grid = 'col-xs-8 col-md-9 box_subtitle'
+# box_bold_grid = 'col-3 col-md-2 box_bold'
+# box_section_grid = 'col-8 col-md-9 box_section'
+# box_datum_grid = 'col-3 col-md-2 box_datum'
+# box_value_grid = 'col-8 col-md-9 box_value'
+# box_title_grid = 'col-8 col-md-9 box_title'
+# box_subtitle_grid = 'col-8 col-md-9 box_subtitle'
 
-box_bold_grid = 'col-xs-3 box_bold'
-box_section_grid = 'col-xs-7 box_section truncate'
-box_datum_grid = 'col-xs-3 box_datum truncate'
-box_datum_grid_bold = 'col-xs-3 box_datum_bold truncate'
-box_value_grid = 'col-xs-7 box_value'
-box_title_grid = 'col-xs-7 box_title truncate'
-box_subtitle_grid = 'col-xs-7 box_subtitle'
-box_powered_grid = 'col-xs-7 box_powered'
-box_right_grid = 'col-xs-2'
+box_bold_grid = 'col-3 box_bold'
+box_section_grid = 'col-7 box_section truncate'
+box_datum_grid = 'col-3 box_datum truncate'
+box_datum_grid_bold = 'col-3 box_datum_bold truncate'
+box_value_grid = 'col-7 box_value'
+box_title_grid = 'col-7 box_title truncate'
+box_subtitle_grid = 'col-7 box_subtitle'
+box_powered_grid = 'col-7 box_powered'
+box_right_grid = 'col-2'
 
 def standard_row(datum='', value=''):
     out = "<div class='row'>"
     out += "<div class='{}'>{}</div>".format(box_datum_grid, datum)
-    out += "<div class='{}'><p>{}</p></div>".format(box_value_grid, sanitize_for_html(value))
+    out += "<div class='{} box_value_margin'>{}</div>".format(box_value_grid, sanitize_for_html(value))
     out += "<div class='{}'></div>".format(box_right_grid)
     out += "</div>"
     return out
@@ -38,7 +38,7 @@ def header_row(bold='', section='', target=''):
     if target is not '':
         out += " id='{}'".format(target)
     out += "><div class='{}'>{}</div>".format(box_bold_grid, bold)
-    out += "<div class='{}'><p>{}</p></div>".format(box_section_grid, section)
+    out += "<div class='{}'>{}</div>".format(box_section_grid, section)
     out += "<div class='{}'></div>".format(box_right_grid)
     out += "</div>"
     return out
@@ -47,11 +47,11 @@ def header_row(bold='', section='', target=''):
 def group_row(title='', color='lightgrey', bold=False, target=''):
     out = """
         <div class = "row" {5}>
-            <div class="{0}">
-                <p class='truncate' style='color: {1}; '>{2}</p>
+            <div class="{0} truncate" style='color: {1};'>
+                {2}
             </div>
-            <div class="{3}">
-                <p class='config_group' style='color: {1}; '></p>
+            <div class="{3} box_value_margin">
+                <div class='config_group' style='color: {1};'></div>
             </div>
             <div class="{4}"></div>
         </div>
