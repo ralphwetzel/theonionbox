@@ -210,11 +210,22 @@ end
                                     #     sep = ' | '
                                     # end
                                     out = ''
+                                    trunc_msg = '<div style="font-size: 70%; color: lightgray; display: block;">This value was truncated for safety reasons.</div>'
                                     # print(values)
                                     for value in values:
                                         if option in ['HashedControlPassword', '__HashedControlSessionPassword']:
                                             value = value[:12] + '...'  # no need to transmit this completely!
-                                            value += '<div style="font-size: 70%; color: lightgray; display: block;">This value was truncated for safety reasons.</div>'
+                                            value += trunc_msg
+                                        elif option in ['HidServAuth']:
+                                            vs = value.split(' ')
+                                            if len(vs) == 2:
+                                                value = vs[0] + ' '
+                                                if len(vs[1]) > 4:
+                                                    value += vs[1][:5]
+                                                end
+                                                value += '...'
+                                                value += trunc_msg
+                                            end
                                         end
                                         if len(out) > 0:
                                             out += sep
