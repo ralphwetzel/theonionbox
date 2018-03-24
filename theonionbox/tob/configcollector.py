@@ -28,7 +28,7 @@ class ConfigCollector(object):
         lines = config_text.splitlines()
 
         for line in lines:
-            # log.trace(line)
+            log.trace(line)
             line.lstrip()
             if len(line) and line[0] != '#':
                 param = line.split(' ')[0]
@@ -43,17 +43,32 @@ class ConfigCollector(object):
         conf_map = []
         for line in names_with_values:
             config = line.split(' ')
-            # log.trace(config)
+            log.trace(config)
             c0 = config[0]
-            if config[1] in ['Dependent', 'Virtual']:   # special handling for HiddenServiceOptions!
-                # remove these from the resulting dict!
-                if c0 in configs_used:
-                    del configs_used[c0]
-                continue
-            config_params[c0] = config[1]
+            c1 = config[1]
+
+            # if config[1] in ['Dependent', 'Virtual']:   # special handling for HiddenServiceOptions!
+
+            # There was a changed merged for Tor 0.3.0.x ...
+            # https://trac.torproject.org/projects/tor/ticket/20956
+            # ... that changed the type for all the "...Port"'s to "Dependent", and the summary to "Virtual"
+            # Until this is fixed, we need a bit more effort to correct the settings
+
+            if c0[:6] == 'Hidden': # special handling for HiddenServiceOptions!
+                if c1 in ['Dependent', 'Dependant', 'Virtual']:
+                    # remove these from the resulting dict!
+                    if c0 in configs_used:
+                        del configs_used[c0]
+                    continue
+
+            elif 'Port' in c0:
+                if c1 in ['Dependent', 'Dependant', 'Virtual']:  # special handling for ...Port's !
+                    c1 = 'LineList'
+
+            config_params[c0] = c1
             conf_map.append(c0)
 
-        #print(conf_map)
+        log.trace(conf_map)
 
         # Finally we get the default values for all parameters
         # ... that have a default value!
@@ -62,7 +77,7 @@ class ConfigCollector(object):
         di = tgi.splitlines()
 
         for line in di:
-            # log.trace(line)
+            log.trace(line)
             line = line[:-1]  # skip '"' @ end of line
             param, default = line.split('"')
 
@@ -76,7 +91,7 @@ class ConfigCollector(object):
         # ... that we have gathered before
         tcm = self.tor.get_conf_map(conf_map, None, True)
 
-        # log.trace(tcm)
+        log.trace(tcm)
 
         # running through all the parameters
         for option in conf_map:
