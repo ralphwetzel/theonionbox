@@ -6,6 +6,10 @@
 
 import os
 
+
+from tob.configcollector import ConfigCollector
+cfgcoll = ConfigCollector(tor)
+
 configs_used = []
 configs_all = []
 
@@ -18,8 +22,22 @@ try:
     for line in names_with_values:
         # print(line)
         config = line.split(' ')
-        config_params[config[0]] = config[1]
+
+        try:
+            c0 = config[0]
+            c1 = config[1]
+
+            # https://trac.torproject.org/projects/tor/ticket/20956
+            # see as well configcollector.py
+            if 'Port' in c0 and c1 in ['Dependent', 'Dependant', 'Virtual']:  # special handling for ...Port's !
+                c1 = 'LineList'
+            end
+
+            config_params[c0] = c1
+        except:
+            pass
         end
+    end
 except:
     pass
 end
@@ -106,9 +124,6 @@ end
 </div>
 <%
 
-    from tob.configcollector import ConfigCollector
-
-    cfgcoll = ConfigCollector(tor)
     configs_used = cfgcoll.collect_configs_used()
 
     manpg = get('manpage', None)
@@ -195,6 +210,7 @@ end
                                     #     sep = ' | '
                                     # end
                                     out = ''
+                                    # print(values)
                                     for value in values:
                                         if option in ['HashedControlPassword', '__HashedControlSessionPassword']:
                                             value = value[:12] + '...'  # no need to transmit this completely!

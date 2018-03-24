@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 import logging
+import sys
 
 from manpage import ManPage
 
@@ -7,6 +8,18 @@ from manpage import ManPage
 from tob.log import getGlobalFilter
 # getGlobalFilter().set_level_for_file(__file__, 'TRACE')
 
+#####
+# Python version detection
+py = sys.version_info
+py37 = py >= (3, 7, 0)
+
+# Raymond Hettinger @
+# https://stackoverflow.com/questions/7961363/removing-duplicates-in-lists?page=1&tab=votes#tab-top
+if py37:
+    _ordered_dict = dict
+else:
+    from collections import OrderedDict
+    _ordered_dict = OrderedDict
 
 class ConfigCollector(object):
 
@@ -53,6 +66,8 @@ class ConfigCollector(object):
             # https://trac.torproject.org/projects/tor/ticket/20956
             # ... that changed the type for all the "...Port"'s to "Dependent", and the summary to "Virtual"
             # Until this is fixed, we need a bit more effort to correct the settings
+
+            # ATT: Similar logic added to 'config.html'
 
             if c0[:6] == 'Hidden': # special handling for HiddenServiceOptions!
                 if c1 in ['Dependent', 'Dependant', 'Virtual']:
@@ -202,6 +217,12 @@ class ConfigCollector(object):
         # LineList = Array of Comma separated list of items
         log = logging.getLogger('theonionbox')
         log.trace('{}|{}: {} {}'.format(option, data_type, type(data), data))
+
+        # to eliminate duplicates:
+        if 'List' in data_type:
+            # Raymond Hettinger @
+            # https://stackoverflow.com/questions/7961363/removing-duplicates-in-lists?page=1&tab=votes#tab-top
+            data = list(_ordered_dict.fromkeys(data))
 
         if data_type in ['LineList', 'RouterList']:
 
