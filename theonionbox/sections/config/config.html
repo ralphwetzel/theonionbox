@@ -56,7 +56,7 @@ end
         <div class = "row">
             <div class="{{box_datum_grid}}">
                 <div class="option_hover truncate ">
-                    <a href="manpage.html#opt-h" target="manpage_window">#</a> Commandline
+                    <a href="manpage.html#_command_line_options" target="manpage_window">#</a> Commandline
                 </div>
             </div>
             <div class="{{box_value_grid}} box_value_margin">
@@ -141,10 +141,14 @@ end
                         <div class = "row">
                             <div class="{{box_datum_grid}}">
                                 <div class="option_hover truncate ">
-                                    % if option[:2] != '__':
+                                    % if option[:2] != '__' and option[:3] != '___':
                                         <a href="manpage.html#{{option}}" target="manpage_window">#</a> {{option}}
                                     % else:
-                                        {{option}}
+                                        % if option[-4:] == 'Port':
+                                            <a href="manpage.html#_non_persistent_options" target="manpage_window">#</a> {{option}}
+                                        % else:
+                                            {{option}}
+                                        % end
                                     % end
                                 </div>
                             </div>
@@ -193,8 +197,8 @@ end
                                     out = ''
                                     for value in values:
                                         if option in ['HashedControlPassword', '__HashedControlSessionPassword']:
-                                            value = value[:43] + '...'  # no need to transmit this completely!
-                                            # value += '<br><span>Why is this value always truncated?</span>'
+                                            value = value[:12] + '...'  # no need to transmit this completely!
+                                            value += '<div style="font-size: 70%; color: lightgray; display: block;">This value was truncated for safety reasons.</div>'
                                         end
                                         if len(out) > 0:
                                             out += sep
