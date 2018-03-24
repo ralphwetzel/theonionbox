@@ -18,7 +18,7 @@ from .proxy import Proxy
 py = sys.version_info
 py30 = py >= (3, 0, 0)
 
-__supported_protocol__ = ['4.2', '4.3', '4.4', '5.0']
+__supported_protocol__ = ['4.2', '4.3', '4.4', '5.0', '5.1']
 
 
 class Mode(object):
@@ -150,8 +150,8 @@ class Document(object):
 
         v = self.version()
         if v not in __supported_protocol__:
-            # lgr.warn("Onionoo protocol version mismatch! Supported: {} | Received: {}."
-            #         .format(__supported_protocol__, v))
+            self.log.warning("Onionoo protocol version mismatch! Supported: {} | Received: {}."
+                     .format(__supported_protocol__, v))
             self.update(None)
             return
 
@@ -222,7 +222,7 @@ class Document(object):
         else:
             return None
 
-    def _decode_history_object(self, name, key):
+    def _decode_history_object(self, name, key, factor=1):
 
         self.log.debug('({}, {})'.format(name, key))
 
@@ -263,7 +263,7 @@ class Document(object):
                 result.append([data_timestamp * 1000, None])
                 # result.append([data_timestamp * 1000, self.none_value])
             else:
-                result.append([data_timestamp * 1000, value * data_factor])
+                result.append([data_timestamp * 1000, value * data_factor * factor])
 
             data_index += 1
             data_timestamp += data_interval
@@ -271,7 +271,7 @@ class Document(object):
         result.append([data_timestamp * 1000, 0])
         return result
 
-    def get_chart(self, chart, period=None):
+    def get_chart(self, chart, period=None, factor=1):
 
         self.log.debug('({}, {})'.format(chart, period))
 
@@ -296,7 +296,7 @@ class Document(object):
                 hist_obj = cache[key]
                 self.log.debug("Cache hit for key '{}': {}.".format(key, hex(id(hist_obj))))
             else:
-                hist_obj = self._decode_history_object(chart, key)
+                hist_obj = self._decode_history_object(chart, key, factor)
 
                 if hist_obj is not None:
                     cache[key] = hist_obj
@@ -465,7 +465,7 @@ class Bandwidth(DocumentInterface):
 
         if self.has_data() is False:
             return None
-        return self._document.get_chart('read_history', period)
+        return self._document.get_chart('read_history', period, factor=-1)
 
     def write(self, period=None):
 
@@ -728,6 +728,8 @@ class OnionOOFactory(object):
         key = 'details:' + fingerprint
         if key in self.onionoo:
             return Details(self.onionoo[key])
+        return Details(Document())
+
 
     def bandwidth(self, fingerprint):
         if len(fingerprint)> 0 and fingerprint[0] == '$':
@@ -735,6 +737,7 @@ class OnionOOFactory(object):
         key = 'bandwidth:' + fingerprint
         if key in self.onionoo:
             return Bandwidth(self.onionoo[key])
+        return Bandwidth(Document())
 
     def weights(self, fingerprint):
         if len(fingerprint)> 0 and fingerprint[0] == '$':
@@ -742,6 +745,7 @@ class OnionOOFactory(object):
         key = 'weights:' + fingerprint
         if key in self.onionoo:
             return Weights(self.onionoo[key])
+        return Weights(Document())
 
     def shutdown(self):
         self.executor.shutdown(True)
