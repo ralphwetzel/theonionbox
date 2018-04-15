@@ -645,8 +645,9 @@ for key in required_modules:
                            .format(loader_name, pip_version))
 
 # required packages version verification
-from pip import get_installed_distributions
-from pkg_resources import parse_version
+try:
+    from pip import get_installed_distributions
+    from pkg_resources import parse_version
 
 boxLog.debug('Required packages version verification:')
 for pkg in get_installed_distributions():
@@ -660,10 +661,12 @@ for pkg in get_installed_distributions():
 
             boxLog.debug('> {} {} installed. {} required.'.format(pkg.key, pkg.version, check['version']))
 
-            if ok is not True:
-                boxLog.warning("Required python module '{0}' version '{2}' is outdated. Please run '{1} install --upgrade {0}'."
-                               .format(pkg.key, pip_version, pkg.version))
-                module_missing = True
+                if ok is not True:
+                    boxLog.warning("Required python module '{0}' version '{2}' is outdated. Please run '{1} install --upgrade {0}'."
+                                   .format(pkg.key, pip_version, pkg.version))
+                    module_missing = True
+except:
+    pass
 
 if module_missing:
     boxLog.warning("Hint: You need to have root privileges to operate '{}'.".format(pip_version))
