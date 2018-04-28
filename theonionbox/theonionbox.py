@@ -649,17 +649,17 @@ try:
     from pip import get_installed_distributions
     from pkg_resources import parse_version
 
-boxLog.debug('Required packages version verification:')
-for pkg in get_installed_distributions():
-    if pkg.key in required_modules:
-        ok = False
-        check = required_modules[pkg.key]
-        if 'version' in check:
-            for required_version in check['version']:
-                if parse_version(pkg.version) >= parse_version(required_version):
-                    ok = True
+    boxLog.debug('Required packages version verification:')
+    for pkg in get_installed_distributions():
+        if pkg.key in required_modules:
+            ok = False
+            check = required_modules[pkg.key]
+            if 'version' in check:
+                for required_version in check['version']:
+                    if parse_version(pkg.version) >= parse_version(required_version):
+                        ok = True
 
-            boxLog.debug('> {} {} installed. {} required.'.format(pkg.key, pkg.version, check['version']))
+                boxLog.debug('> {} {} installed. {} required.'.format(pkg.key, pkg.version, check['version']))
 
                 if ok is not True:
                     boxLog.warning("Required python module '{0}' version '{2}' is outdated. Please run '{1} install --upgrade {0}'."
