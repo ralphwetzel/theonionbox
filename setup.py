@@ -35,7 +35,7 @@ def CompileREADME():
     # tor.1.txt production
     try:
         from xtor import TorTxt
-        tt = TorTxt(force=True)
+        tt = TorTxt(force=False)
         if tt.run() is True:
             tt.copy(os.path.join('theonionbox','tor'))
     except:

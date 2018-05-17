@@ -25,7 +25,7 @@ class Storage(object):
                 path = os.path.join(path, 'theonionbox.persist')
             else:
                 from hashlib import md5
-                suffix = md5(user).hexdigest()
+                suffix = md5(user.encode('utf-8')).hexdigest()
                 path = os.path.join(path, 'theonionbox.{}'.format(suffix))
         else:
             log.warning("No permissions to access '{}' for data persistance. Trying to operate with in-memory database.".format(path))
