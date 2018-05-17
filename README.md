@@ -599,6 +599,11 @@ _The Onion Box_ as of version 4 only supports configuration file protocol `2`.
 # ntp_server = pool.ntp.org
 # ntp_server = fritz.box
 
+## Path to store the database file for persistance of e.g. bandwidth data.
+## Defaults to a system defined temporary directory.
+# persistance_dir = /home/pi/theonionbox
+## Be aware, that you have to assure write privileges to this directory for the user running your box.
+
 ## Tor ships with the GeoIPLight2 Country DB
 ## If you're interested in a more precise indication, you should install the GeoIP City DB
 ## e.g. from http://dev.maxmind.com/geoip/geoip2/geolite2/ and define here the path to the db file.

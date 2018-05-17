@@ -67,6 +67,10 @@ protocol = 2
 # geoip2_city = path/to/geoip2/city/db.mmdb
 ## Be aware that you need to install python module 'geoip2' as well to access those information.
 
+## Path to store the database file for persistance of e.g. bandwidth data.
+## Defaults to a system defined temporary directory.
+# persistance_dir = /home/pi/theonionbox
+## Be aware, that you have to assure write privileges to this directory for the user running your box.
 
 [Tor]
 ## How shall we establish the connection to your primary (controlled) Tor node?
