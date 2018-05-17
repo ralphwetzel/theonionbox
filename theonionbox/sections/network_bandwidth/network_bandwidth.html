@@ -6,95 +6,82 @@
     tor = get('tor') if tor is None else tor
     oo_details = get('oo_details') if oo_details is None else oo_details
     oo_bw = get('oo_bw')
-    oo_show = get('oo_show')
-
-    oo_read = None
-    oo_write = None
-    if oo_bw:
-        oo_read = oo_bw.read()
-        oo_write = oo_bw.write()
-    end
-
-    # do_bw = oo_read is not None or oo_write is not None
-    # do_bw = do_bw or oo_details('bandwidth_rate') or oo_details('bandwidth_burst')
-    # do_bw = do_bw or oo_details('observed_bandwidth') or oo_details('advertised_bandwidth')
 %>
 
-% if oo_show:
-    {{!group_row('Bandwidth')}}
+{{!group_row('Bandwidth')}}
 
-    % publ = oo_bw.published()
-    % if publ is not None:
-        {{!standard_row('Status Time', publ)}}
-    % end
+% publ = oo_bw.published()
+% if publ is not None:
+    {{!standard_row('Status Time', publ)}}
+% end
 
-    % if (oo_read is not None or oo_write is not None):
-        <div class="row">
-            <div class="{{box_datum_grid}}"><p>History Charts</p></div>
-            <div class="{{box_value_grid}}">
-                <div class="btn-toolbar pull-left" role="group">
-                    <div class="btn-group" data-toggle="buttons" id="oo-charts">
-                        <!-- labels for oninoo charts will be inserted here -->
-                        <code style="color: green;">
-                            %# <!-- acc_stats.status -->
-                            ... waiting for data ...
-                        </code>
-                    </div>
-                </div>
+<div class="row">
+    <div class="{{box_datum_grid}}">History Charts</div>
+    <div class="{{box_value_grid}} box_value_margin">
+        <div class="btn-toolbar pull-left" role="group">
+            <div class="btn-group btn-group-toggle" data-toggle="buttons" id="history_buttons">
+                <label id="history_button_Ch" class="btn btn-outline-secondary box_chart_button active"
+                       role="button" onclick="history_goto_slide(0)">
+                    <input type="radio" autocomplete="off" checked>3 Months
+                </label>
             </div>
-            <div class="col-xs-1"></div>
-        </div>
-    % end
-
-    % if oo_read is not None:
-        <div class="row">
-            <div class="{{box_datum_grid}}">Download</div>
-            <div class="{{box_value_grid}}">
-                <p>
-                    <canvas class="bw_chart box_canvas" id="oo-bw-read" width="300" height="150" style="vertical-align: middle"></canvas>
-                </p>
-            </div>
-            <div class="col-xs-1"></div>
-        </div>
-    % end
-
-    % if oo_write is not None:
-        <div class="row">
-            <div class="{{box_datum_grid}}">Upload</div>
-            <div class="{{box_value_grid}}">
-                <p>
-                    <canvas class="bw_chart box_canvas" id="oo-bw-write" width="300" height="150" style="vertical-align: middle"></canvas>
-                </p>
-            </div>
-            <div class="col-xs-1"></div>
-        </div>
-    % end
-
-    <div class="row">
-        <div class="{{box_datum_grid}}">
-            <p>Values</p>
-        </div>
-        <div class="{{box_value_grid}}">
-            <p>
-                <%
-                    bwv = ''
-                    bwv_items = {'advertised_bandwidth': 'Advertised',
-                                'bandwidth_rate': 'Rate',
-                                'bandwidth_burst': 'Burst',
-                                'observed_bandwidth': 'Observed'}
-
-                    for key, text in bwv_items.items():
-                        if oo_details(key):
-                            if len(bwv) > 0:
-                                bwv += ' | '
-                            end
-                            bwv += '{}: {}/s'.format(text, pretty_number(oo_details(key)))
-                        end
-                    end
-                %>
-                {{bwv}}
-            </p>
         </div>
     </div>
+    <div class="col-1"></div>
+</div>
 
-% end
+<div class="row">
+    <div class="{{box_datum_grid}}">Recorded Bandwidth</div>
+    <div class="{{box_value_grid}} box_value_margin">
+
+        <div id="history_glide" class="glide">
+
+            <div id="history_track" class="glide__track" data-glide-el="track">
+                <ul id="history_slides" class="glide__slides" style="margin: 0">
+                    <li id="history_glide_Ch" class="glide__slide glide__slide__history">
+                        <canvas class="bw_chart box_canvas"
+                                id="history_canvas_Ch"
+                                width="300" height="240"
+                                style="vertical-align: middle">
+                        </canvas>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="glide__arrows" data-glide-el="controls">
+                <button class="glide__arrow glide__arrow--left" data-glide-dir="<" style="font-family:'LatoLatinWebLight'; font-size: 14px">prev</button>
+                <button class="glide__arrow glide__arrow--right" data-glide-dir=">" style="font-family:'LatoLatinWebLight'; font-size: 14px">next</button>
+            </div>
+
+            <div class="glide__bullets" data-glide-el="controls[nav]" id="history_bullets">
+                <button class="glide__bullet" data-glide-dir="=0"></button>
+            </div>
+
+        </div>
+    </div>
+    <div class="{{box_right_grid}}"></div>
+</div>
+
+<div class="row">
+    <div class="{{box_datum_grid}}">Values</div>
+    <div class="{{box_value_grid}} box_value_margin">
+        <%
+            bwv = ''
+            bwv_items = {'advertised_bandwidth': 'Advertised',
+                        'bandwidth_rate': 'Rate',
+                        'bandwidth_burst': 'Burst',
+                        'observed_bandwidth': 'Observed'}
+
+            for key, text in bwv_items.items():
+                if oo_details(key):
+                    if len(bwv) > 0:
+                        bwv += ' | '
+                    end
+                    bwv += '{}: {}/s'.format(text, pretty_number(oo_details(key)))
+                end
+            end
+        %>
+        {{bwv}}
+    </div>
+</div>
+

@@ -597,7 +597,9 @@ class FileFormatter(logging.Formatter):
 
     def format(self, record):
 
-        msg = record.msg
+        # to perform casting to string
+        msg = '{}'.format(record.msg)
+
         if msg is None or len(msg) < 1:
             return ""
 
@@ -628,7 +630,9 @@ class ConsoleFormatter(logging.Formatter):
 
     def format(self, record):
 
-        msg = record.msg
+        # to perform casting to string
+        msg = '{}'.format(record.msg)
+
         if msg is None or len(msg) < 1:
             return ""
 
@@ -700,7 +704,9 @@ class LogFormatter(logging.Formatter):
 
     def format(self, record):
 
-        msg = record.msg
+        # to perform casting to string
+        msg = '{}'.format(record.msg)
+
         if msg is None or len(msg) < 1:
             return ""
 
@@ -720,13 +726,26 @@ class LogFormatter(logging.Formatter):
 
 # Sanitizer - especially to ensure that error messages can be displayed in the client log correctly
 def sanitize_for_html(string):
-    # removes all whitespace including new lines:
     string = str(string)
+
+    has_starting_space = string[0] == ' '
+    has_final_space = string[-1:] == ' '
+
+    # removes all whitespace including new lines:
     string = ' '.join(string.split())
+
     # Escape HTML special characters ``&<>``, slashes '\/' and quotes ``'"``
-    return string.replace('&', '&amp;').replace("\\", '&#92;').replace("/", '&#47;') \
+    out = string.replace('&', '&amp;').replace("\\", '&#92;').replace("/", '&#47;') \
         .replace('<', '&lt;').replace('>', '&gt;') \
         .replace('"', '&quot;').replace("'", '&#039;')
+
+    if has_starting_space is True:
+        out = ' ' + out
+
+    if has_final_space is True:
+        out += ' '
+
+    return out
 
 
 from logging import Filter, _checkLevel

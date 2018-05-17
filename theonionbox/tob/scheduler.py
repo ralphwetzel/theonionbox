@@ -45,12 +45,14 @@ class Scheduler(object):
 
     def add_job(self, func, trigger, args=None, kwargs=None, id=None, **trigger_args):
         if self.aps3:
-            return self.schedulr.add_job(func, trigger, id=id, args=args, kwargs=kwargs, **trigger_args)
+            return self.schedulr.add_job(func, trigger, id=id, replace_existing=True,
+                                         args=args, kwargs=kwargs, **trigger_args)
         else:
             if trigger is 'date':
                 run_date = trigger_args['run_date']   # by intention: to raise if not set!
                 del trigger_args['run_date']
-                return self.schedulr.add_date_job(func, run_date, name=id, args=args, kwargs=kwargs)
+                return self.schedulr.add_date_job(func, run_date, name=id, # replace_existing=True,
+                                                  args=args, kwargs=kwargs)
             elif trigger is 'interval':
                 # only partially implemented!!
                 seconds = 0
@@ -68,7 +70,7 @@ class Scheduler(object):
                     hours = trigger_args.get('hours', 0)
                     del trigger_args['hours']
 
-                return self.schedulr.add_interval_job(func, name=id,
+                return self.schedulr.add_interval_job(func, name=id, # replace_existing=True,
                                                       hours=hours, minutes=minutes, seconds=seconds,
                                                       args=args, kwargs=kwargs)
             elif trigger is 'cron':
@@ -88,7 +90,8 @@ class Scheduler(object):
                     hour = trigger_args.get('hour', 0)
                     del trigger_args['hour']
 
-                return self.schedulr.add_cron_job(func, name=id, hour=hour, minute=minute, second=second)
+                return self.schedulr.add_cron_job(func, name=id, # replace_existing=True,
+                                                  hour=hour, minute=minute, second=second)
             else:
                 raise NotImplementedError
 

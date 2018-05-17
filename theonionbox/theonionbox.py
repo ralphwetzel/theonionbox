@@ -20,7 +20,6 @@ py = sys.version_info
 py34 = py >= (3, 4, 0)
 py30 = py >= (3, 0, 0)
 
-
 #####
 # Script directory detection
 import inspect
@@ -123,7 +122,8 @@ if argv:
             box_cmdline['log'] = arg
         elif opt in ('-m', '--mode'):
             # '--mode' deprecated since 20180210
-            box_cmdline['warn'] = "Command line parameter '-m' or '--mode' is no more necessary and thus DEPRECATED."
+            box_cmdline['warn'].append("Command line parameter '-m' or '--mode' is no more necessary and "
+                                       "thus DEPRECATED.")
         else:   # == ('-h','--help')
             print_usage()
             sys.exit(0)
@@ -156,15 +156,14 @@ except:
 
 # import logging
 from logging.handlers import TimedRotatingFileHandler, MemoryHandler
-from tob.log import addLoggingLevel, LoggingManager, ForwardHandler
-
+from tob.log import addLoggingLevel, LoggingManager, ForwardHandler, getGlobalFilter
 
 # logging.basicConfig()
 
-# Add Level to be inline with the Tor levels (DEBUG - INFO - NOTICE - WARN(ing) - ERROR)
-addLoggingLevel('NOTICE', logging.INFO + 5)
-# This one is to be inline with STEM's logging levels:
-addLoggingLevel('TRACE', logging.DEBUG - 5)
+# # Add Level to be inline with the Tor levels (DEBUG - INFO - NOTICE - WARN(ing) - ERROR)
+# addLoggingLevel('NOTICE', logging.INFO + 5)
+# # This one is to be inline with STEM's logging levels:
+# addLoggingLevel('TRACE', logging.DEBUG - 5)
 
 # valid level descriptors
 boxLogLevels = ['TRACE', 'DEBUG', 'INFO', 'NOTICE', 'WARNING', 'ERROR']
@@ -182,7 +181,14 @@ boxLogLevels = ['TRACE', 'DEBUG', 'INFO', 'NOTICE', 'WARNING', 'ERROR']
 # This is the logger to handle the 'BOX' messages.
 # All messages targeted for the host are handled here!
 boxLog = logging.getLogger('theonionbox')
-boxLog.setLevel('NOTICE')
+
+# We will Filter everything through the GlobalFilter
+# NOTSET + 1 just ensures that there IS a LEVEL set, even if we don't rely on it!
+boxLog.setLevel(logging.NOTSET + 1)
+boxLogGF = getGlobalFilter()
+boxLogGF.setLevel('NOTICE')
+boxLog.addFilter(boxLogGF)
+
 boxLog.addHandler(logging.NullHandler())
 
 # This Handler collects all messages during the start of The Onion Box
@@ -268,10 +274,10 @@ if boxHost['venv'] is not None:
     boxLog.notice('This seems to be a Python VirtualEnv.')
 
 if box_cmdline['trace'] is True:
-    boxLog.setLevel('TRACE')
+    boxLogGF.setLevel('TRACE')
     boxLog.notice('Trace Mode activated from command line.')
 elif box_cmdline['debug'] is True:
-    boxLog.setLevel('DEBUG')
+    boxLogGF.setLevel('DEBUG')
     boxLog.notice('Debug Mode activated from command line.')
 
 for warning in box_cmdline['warn']:
@@ -315,6 +321,9 @@ box_ssl_key = None
 
 box_geoip_db = None
 box_proxy = 'default'  # 9050 & 9151
+
+from tempfile import gettempdir
+box_persistance_dir = gettempdir()
 
 proxy_config = {
     'control': 'default',   # tor_config['control']
@@ -397,6 +406,8 @@ else:
 
                 box_geoip_db = section.get('geoip2_city', box_geoip_db)
 
+                box_persistance_dir = section.get('persistance_dir', box_persistance_dir)
+
                 # Nothing currently deprecated in v2
                 box_config_deprecated = [
                 ]
@@ -460,6 +471,7 @@ else:
                        "your settings and use version {} protocol."
                     .format(box_protocol, box_supported_protocol))
 
+
 #####
 # These are the modules necessary for basic operation.
 # The dict will be extended while checking the configuration data to ensure
@@ -467,36 +479,55 @@ else:
 
 pip_version = 'pip3' if py30 else 'pip'
 
-# module name: {min_version, message to user}
+# module name: {
+#   module: name overwriting module name
+#   version: required version definition
+#   info: custom message to user
+# }
+
 required_modules = {
+
+    # module name: {
+    #   'module': name overwriting module name
+    #   'version': required version definition
+    #   'info': custom message to user if module not found
+    # }
+
+    'psutil': {
+        'version': '>=5.4.0',
+        'info': "Check 'https://pypi.python.org/pypi/psutil' for installation instructions."
+    },
     'stem': {
-        'version': ['1.5.4']
+        'version': '>=1.5.4'
     },
     'bottle': {
-        'version': ['0.12.13']
+        'version': '>=0.12.13'
     },
-    'apscheduler': {
-        'version': ['2.1.2', '3.4.0']
+    'apscheduler2': {
+        'module': 'apscheduler',
+        'version': '>=2.1.2, <3.*; python_version<"3.0"'
+    },
+    'apscheduler3': {
+        'module': 'apscheduler',
+        'version': '>=3.4; python_version>="3.0"'
     },
     'requests': {
-        'version': ['2.18.0']
+        'version': '>=2.18.0'
     },
     'tzlocal': {
-        'version': ['1.5']
+        'version': '>=1.5'
     },
-    # be aware that the module is named 'PySocks' yet the loader looks for 'socks'
     'pysocks': {
-        'loader': 'socks',
-        'version': ['1.6.7'],
-        'info': "Required python module 'PySocks' is missing. You have to install it via '{} install pysocks'.".format(pip_version)
+        'version': '>=1.6.7'
+    },
+    'futures': {
+        'version': '>=3.2; python_version<"3.0"'
+    },
+    'urllib3': {
+        'version': '>=1.22'
     }
 }
 
-if not py30:
-    required_modules['futures'] = {
-        'loader': 'concurrent',
-        'version': ['3.2']
-    }
 
 #####
 # Configuration data verification
@@ -537,7 +568,7 @@ if tor_control not in ['port', 'socket', 'proxy']:
 
 if box_ssl is True:
     required_modules['ssl'] = {
-        'version': ['1.16'],
+        'version': '>=1.16',
         'info': "To operate via SSL you have to install python module '\{0\}': '{} install \{0\}".format(pip_version)
     }
 
@@ -554,10 +585,9 @@ if proxy_config['socket'] == 'default':
 
 
 #####
-# Module availability check
+# stem availability check
 from pkgutil import find_loader
 
-# stem
 if find_loader('stem') is None or box_cmdline['debug'] is True or box_cmdline['trace'] is True:
 
     # Well! If module 'stem' is not available, we are not able to continue.
@@ -614,59 +644,47 @@ if find_loader('stem') is None or box_cmdline['debug'] is True or box_cmdline['t
 
         simple_tor.shutdown()
 
-# Lets make it official!
+#####
+# Module availability check & required versions verification (incl. stem for the second time!)
+from pkg_resources import require, VersionConflict, DistributionNotFound
+
+boxLog.debug('Required packages availability check & version verification:')
 module_missing = False
-
-# First: psutils
-if find_loader('psutil') is None:
-    boxLog.warning("Required python module 'psutil' is missing.")
-    module_missing = True
-    if boxHost['system'] == 'Linux':
-        boxLog.notice("You have to install it via '{} install psutil'.".format(pip_version))
-        boxLog.notice("If this fails, make sure the python headers are installed, too: 'apt-get install python-dev'.")
-    elif boxHost['system'] == 'Windows':
-        boxLog.notice("Check 'https://pypi.python.org/pypi/psutil' for an installer package.")
-    else:
-        boxLog.notice("Check 'https://pypi.python.org/pypi/psutil' for installation instructions.")
-
 
 for key in required_modules:
 
     module = required_modules[key]
-    loader_name = key if 'loader' not in module else module['loader']
+    distribution_name = key if 'module' not in module else module['module']
 
-    if find_loader(loader_name) is None:
+    test_module = '{} {}'.format(distribution_name, module['version'])
+
+    try:
+        found = require(test_module)
+        if len(found) > 0:  # if == 0 & no Exception, the module is not required for this version of Python
+            boxLog.debug('> {} {} required; {} found @ {}.'.format(found[0].key,
+                                                                   module['version'],
+                                                                   found[0].parsed_version,
+                                                                   found[0].location
+                                                                   ))
+    except VersionConflict as vc:
+        module_missing = True
+
+        boxLog.warning(
+            "Required python module '{}' is outdated (version '{}' found). Please run '{} install --upgrade {}'."
+            .format(vc.req, vc.dist, pip_version, distribution_name))
+
+    except DistributionNotFound as dnf:
         module_missing = True
 
         if 'info' in module:
-            boxLog.warning(module['info'].format(loader_name))
+            boxLog.warning(module['info'].format(distribution_name))
         else:
-            boxLog.warning("Required python module '{0}' is missing. You have to install it via '{1} install {0}'."
-                           .format(loader_name, pip_version))
+            boxLog.warning("Required python module '{}' is missing. You have to install it via '{} install {}'."
+                           .format(dnf.req, pip_version, distribution_name))
 
-# required packages version verification
-try:
-    from pip import get_installed_distributions
-    from pkg_resources import parse_version
-
-    boxLog.debug('Required packages version verification:')
-    for pkg in get_installed_distributions():
-        if pkg.key in required_modules:
-            ok = False
-            check = required_modules[pkg.key]
-            if 'version' in check:
-                for required_version in check['version']:
-                    if parse_version(pkg.version) >= parse_version(required_version):
-                        ok = True
-
-                boxLog.debug('> {} {} installed. {} required.'.format(pkg.key, pkg.version, check['version']))
-
-                if ok is not True:
-                    boxLog.warning("Required python module '{0}' version '{2}' is outdated. Please run '{1} install --upgrade {0}'."
-                                   .format(pkg.key, pip_version, pkg.version))
-                    module_missing = True
-except:
-    pass
+    except Exception as exc:
+        module_missing = True
+        boxLog.warning(exc)
 
 if module_missing:
     boxLog.warning("Hint: You need to have root privileges to operate '{}'.".format(pip_version))
@@ -812,8 +830,21 @@ elif boxHost['system'] == 'FreeBSD':
     else:
         boxHost['temp'] = (temp[0] == 'hw.acpi.thermal.tz0.temperature:')
 
+elif boxHost['system'] == 'Darwin':
+
+    try:
+        from tob.osxtemp import Temperature, Sensors, Units
+        boxHost['temp_Darwin'] = Temperature(Sensors.CPU_0_PROXIMITY, Units.CELSIUS)
+    except OSError:
+        boxLog.warning('macOSX SMC access library not found. Please check README for further instructions.')
+    else:
+        try:
+            boxHost['temp'] = (boxHost['temp_Darwin']() != 0)
+        except OSError as exc:
+            boxLog.warning(exc)
+
 if boxHost['temp']:
-    boxLog.notice('Temperature sensor information located in file system. Expect to get a chart!')
+    boxLog.notice('Temperature sensor information availabe. Expect to get a chart!')
 else:
     boxLog.notice('No temperature sensor information found.')
 
@@ -823,7 +854,7 @@ else:
 # http://planzero.org/blog/2012/01/26/system_uptime_in_python,_a_better_way
 # currently only supported runnig on Linux!
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 boxHost['up'] = None
 if boxHost['system'] == 'Linux':
@@ -844,7 +875,7 @@ elif boxHost['system'] == 'Windows':
     # We expect to find this uptime.exe in ./uptime!
 
     import subprocess
-    from datetime import timedelta
+    # from datetime import timedelta
 
     uptimes = []
     try:
@@ -877,7 +908,7 @@ elif boxHost['system'] == 'Windows':
 elif boxHost['system'] == 'FreeBSD':
 
     import subprocess
-    from datetime import datetime
+    # from datetime import datetime
 
     try:
         uptimes = subprocess.check_output('/usr/bin/who -b', shell=True).decode('utf-8').split()
@@ -899,6 +930,63 @@ elif boxHost['system'] == 'FreeBSD':
                     upt = upt.replace(year=its_now.year)
 
                 boxHost['up'] = upt
+
+elif boxHost['system'] == 'Darwin':
+
+    import subprocess
+    import re
+    # from datetime import datetime
+
+    try:
+        uptime = subprocess.check_output('uptime', shell=True)
+
+        # uptime return format is ... complex!
+
+        # 17:35  up  5:10, 1 user, load averages: 4.03 2.47 1.97
+        # 17:35  up  14 mins, 1 user, load averages: 4.03 2.47 1.97
+        # 17:35  up  1 min, 1 user, load averages: 4.03 2.47 1.97
+        # 17:35  up  7 days, 5:10, 1 user, load averages: 4.03 2.47 1.97
+        # 17:35  up  7 days, 14 mins, 1 user, load averages: 4.03 2.47 1.97
+        # 17:35  up  7 days, 1 min, 1 user, load averages: 4.03 2.47 1.97
+        # 17:35  up  17 days, 5:10, 1 user, load averages: 4.03 2.47 1.97
+        # 17:35  up  17 days, 14 mins, 1 user, load averages: 4.03 2.47 1.97
+        # 17:35  up  17 days, 1 min, 1 user, load averages: 4.03 2.47 1.97
+        # 17:35  up  1 day, 5:10, 1 user, load averages: 4.03 2.47 1.97
+
+        uptime = re.findall('(\d+:\d+)(?:  up  )(?:(\d+)(?: days?, ))?(?:(\d+:\d+)|(?:(\d+)(?: mins?))),', uptime)
+
+        # we just expect one match!
+        if len(uptime) == 1:
+            uptime = uptime[0]
+
+    except:
+        pass
+    else:
+        # Uptime RegEx tuple: (Timestamp, Days, hours:mins, mins)
+        # hours:mins and mins are mutually exclusive!
+        if len(uptime) == 4:
+            (ts, days, hours, mins) = uptime
+
+            if hours != '':
+                hours = hours.split(':')
+                mins = hours[1]
+                hours = hours[0]
+
+            days = days or '0'
+            hours = ('00{}'.format(hours))[-2:]
+            mins = ('00{}'.format(mins))[-2:]
+
+            try:
+                its_now = datetime.fromtimestamp(box_time.time())
+                upt_diff = timedelta(days=int(days),
+                                     hours=int(hours),
+                                     minutes=int(mins))
+                upt = its_now - upt_diff
+
+            except Exception as exc:
+                boxLog.warning('Uptime information parsing error: {}'.format(exc))
+            else:
+                boxHost['up'] = upt.strftime('%Y-%m-%d %H:%M')
 
 if boxHost['up']:
     boxLog.notice('Uptime information located. Expect to get a readout!')
@@ -936,6 +1024,12 @@ def check_box_version(use_this_checker, relaunch_job=False):
 
 boxVersion = VersionManager(boxProxy, __stamp__ or __version__, boxHost['system'], boxHost['release'])
 check_box_version(boxVersion, True)
+
+#####
+# Data persistance management
+from tob.persistor import Storage
+
+boxStorage = Storage(box_persistance_dir, boxHost['user'] if 'user' in boxHost else None)
 
 #####
 # READY to GO!
@@ -1041,6 +1135,12 @@ def record_cpu_data(timestamp=None, compensate_deviation=True):
 
             pass
 
+        elif boxHost['system'] == 'Darwin':
+            try:
+                cpu['t'] = boxHost['temp_Darwin']()
+            except:
+                pass
+
     # append the data to the list
     host_cpudata_lock.acquire()
     host_cpudata.append(cpu)
@@ -1058,15 +1158,19 @@ from tob.onionoo import OnionOOFactory, Details, Bandwidth, Weights, Mode
 onionoo = OnionOOFactory(boxProxy)
 
 
-def refresh_onionoo(relaunch_job=False):
+def refresh_onionoo(relaunch_job=False, delayed=5):
     from random import randint
 
     # fp = tor.get_fingerprint() if tor else None
 
     # if fp is not None:
     #   onionoo.add(fp)
-    onionoo.refresh()
-    
+
+    if delayed < 0:
+        delayed = 0
+
+    box_cron.add_job(onionoo.refresh, 'date', id='onionoo_job', run_date=datetime.now() + timedelta(seconds=delayed))
+
     for key, node in box_cc.items():
         if node['fp'] is None and node['nick'] is not None:
             fp = onionoo.nickname2fingerprint(node['nick'])
@@ -1075,7 +1179,7 @@ def refresh_onionoo(relaunch_job=False):
                 if fp[0] != '$':
                     fp = '$' + fp
                 node['fp'] = fp
-    
+
     if box_cron.get_job('onionoo') is not None:
         return
 
@@ -1089,7 +1193,7 @@ def refresh_onionoo(relaunch_job=False):
     return
 
 
-refresh_onionoo(relaunch_job=True)
+refresh_onionoo(relaunch_job=True, delayed=5)
 
 
 #####
@@ -1124,13 +1228,41 @@ else:
 bottle_stderr = boxLog.debug
 bottle_stdout = boxLog.trace
 
+
+boxLibsPath = 'libs'
+
 # jQuery version
-jQuery_lib = "jquery-3.1.1.min.js"
+jQuery = {
+    'dir': 'jquery-3.3.1',
+    'js': "jquery-3.3.1.min.js"
+}
 
 # Bootstrap
-bootstrapDir = 'bootstrap'
-bootstrapJS = "bootstrap.min.js"
-bootstrapCSS = "bootstrap.min.css"
+Bootstrap = {
+    'dir': 'bootstrap-4.1.1',
+    'js': 'bootstrap.bundle.min.js',
+    'css': 'bootstrap.min.css'
+}
+
+# Glide.js
+Glide = {
+    'dir': os.path.join('glide-3.0.3', 'dist'),
+    'js': 'glide.js',
+    'core.css': 'glide.core.css',
+    'theme.css': 'glide.theme.css'
+}
+
+# scrollMonitor
+scrollMonitor = {
+    'dir': 'scrollMonitor-1.2.4',
+    'js': 'scrollMonitor.js',
+}
+
+#SmoothieChart
+smoothie = {
+    'dir': 'smoothie-1.34.0',
+    'js': 'smoothie.js'
+}
 
 
 #####
@@ -1315,7 +1447,7 @@ def connect_session_to_node(session, node_id):
 
         else:
             try:
-                node = TorNode(controller=contrl, listener=boxToNode)
+                node = TorNode(controller=contrl, storage=boxStorage ,listener=boxToNode)
                 node.id = node_id
 
                 # connect the message handling system!
@@ -1692,6 +1824,31 @@ def get_index(session_id):
     #
     # onionoo.refresh(True)
 
+
+    # assure data completeness of control center info
+    # for key, node in box_cc.items():
+    #     if node['fp'] is None and node['nick'] is not None:
+    #         nickname = node['nick']
+    #         if nickname[0] == '#':
+    #             nickname = nickname[1:]
+    #         try:
+    #             print(tor.get_server_descriptor(nickname))
+    #         except:
+    #             pass
+    #
+    #         # fp = onionoo.nickname2fingerprint(node['nick'])
+    #         # if fp is not None:
+    #         #     # print(fp)
+    #         #     if fp[0] != '$':
+    #         #         fp = '$' + fp
+    #         #     node['fp'] = fp
+    #
+    import stem.descriptor.remote
+    #
+    # for desc in stem.descriptor.remote.get_server_descriptors():
+    #    print(desc.nickname, desc.fingerprint)
+
+
     # reset the time flags!
     del session['cpu']
     del session['accounting']
@@ -1704,7 +1861,8 @@ def get_index(session_id):
     # update_tor_info()
 
     # show onionoo data ONLY if already available!!
-    onionoo_show = onionoo_details.has_data() or onionoo_bw.has_data() or onionoo_weights.has_data()
+    # onionoo_show = onionoo_details.has_data() or onionoo_bw.has_data() or onionoo_weights.has_data()
+    boxLog.debug('{},{},{}'.format(onionoo_details.has_data() , onionoo_bw.has_data() , onionoo_weights.has_data()))
 
     # setup the MessageHandler for this session
     node.torLogMgr.add_client(session_id)
@@ -1767,6 +1925,9 @@ def get_index(session_id):
         sections += ['accounting']
 
     sections += ['monitor', 'transport']
+
+    # this is for testing purposes only
+    sections += ['nodes', 'transport']
 
     # if fingerprint:
     #     sections.append('family')
@@ -1890,7 +2051,7 @@ def get_index(session_id):
         , 'virtual_basepath': box_basepath
         , 'sections': sections
         , 'manpage': box_manpage
-        , 'oo_show': onionoo_show
+        # , 'oo_show': onionoo_show
         , 'oo_details': onionoo_details
         , 'oo_bw': onionoo_bw
         , 'oo_weights': onionoo_weights
@@ -1898,8 +2059,8 @@ def get_index(session_id):
         , 'oo_factory': onionoo
         , 'geoip': tor_geoip
         , 'family_fp': fingerprint
-        , 'controlled_nodes': box_cc,
-        'transport_status': transport
+        , 'controlled_nodes': box_cc
+        , 'transport_status': transport
 
     }
 
@@ -2064,7 +2225,7 @@ def get_search(session_id):
     del session['family']
 
     # show onionoo data ONLY if already available!!
-    onionoo_show = onionoo_details.has_data() or onionoo_bw.has_data() or onionoo_weights.has_data()
+    # onionoo_show = onionoo_details.has_data() or onionoo_bw.has_data() or onionoo_weights.has_data()
 
     sections = ['!header', 'header',
                 '!content']
@@ -2120,7 +2281,7 @@ def get_search(session_id):
         , 'virtual_basepath': box_basepath
         , 'sections': sections
         , 'manpage': box_manpage
-        , 'oo_show': onionoo_show
+        # , 'oo_show': onionoo_show
         , 'oo_details': onionoo_details
         , 'oo_bw': onionoo_bw
         , 'oo_weights': onionoo_weights
@@ -2235,22 +2396,43 @@ def post_data(session_id):
         if len(log_list) > 0:
             return_data_dict['msg'] = log_list
 
+    # get the onionoo data
+    onionoo_details = onionoo.details(fp)
+    onionoo_bw = onionoo.bandwidth(fp)
+    onionoo_weights = onionoo.weights(fp)
+
     # operations monitoring
     if 'monitor' in box_sections:
 
-        # print(node.livedata)
+        from tob.livedata import intervals
 
-        if ('monitor' not in session) or (session['monitor'] == 0):
-            hd_list = node.livedata.get_data(interval='1s')
-            ld_list = node.livedata.get_data(interval='1m')
-        else:
+        return_data_dict['mon'] = {}
+        last_ts = None
+        if 'monitor' in session:
             last_ts = session['monitor']
-            hd_list = node.livedata.get_data(interval='1s', since_timestamp=last_ts)
-            ld_list = node.livedata.get_data(interval='1m', since_timestamp=last_ts)
+            if last_ts == 0:
+                last_ts = None
 
-        return_data_dict['mon'] = {'hd': hd_list, 'ld': ld_list}
-        # print("{} -> HD: {} / LD: {}".format(node.livedata, len(hd_list), len(ld_list)))
-        
+        for interval in intervals:
+            try:
+                retval = node.livedata.get_data(interval=interval, since_timestamp=last_ts)
+                if len(retval) > 0:
+                    return_data_dict['mon'][interval] = retval
+            except Exception as e:
+                print(e)
+                pass
+
+        if ('network_bw' not in session) or (session['network_bw'] == 0):
+            res = {}
+            obwr = onionoo_bw.read()
+            obww = onionoo_bw.write()
+            if obwr is not None:
+                res['read'] = obwr
+            if obww is not None:
+                res['write'] = obww
+            if len(res) > 0:
+                return_data_dict['mon']['oo_bw'] = res
+
         # this little hack ensures, that we deliver data on the
         # first *two* calls after launch!
         session['monitor'] = its_now if 'monitor' in session else 0
@@ -2259,11 +2441,6 @@ def post_data(session_id):
         # Once there was code here.
         # It's no more ;) !
         pass
-
-    # get the onionoo data
-    onionoo_details = onionoo.details(fp)
-    onionoo_bw = onionoo.bandwidth(fp)
-    onionoo_weights = onionoo.weights(fp)
 
     if 'network_bandwidth' in box_sections:
         if ('network_bw' not in session) or (session['network_bw'] == 0):
@@ -2385,7 +2562,9 @@ def send_css(session_id, filename):
 
         elif filename == 'bootstrap.css':
             # print(bootstrapCSS, bootstrapDir+'/css')
-            return static_file(bootstrapCSS, root=bootstrapDir + '/css', mimetype='text/css')
+            return static_file(Bootstrap['css'], root=os.path.join(boxLibsPath, Bootstrap['dir'], 'css'), mimetype='text/css')
+        elif filename in ['glide.core.css', 'glide.theme.css']:
+            return static_file(Glide[filename[6:]], root=os.path.join(boxLibsPath, Glide['dir'], 'css'), mimetype='text/css')
         else:
             return static_file(filename, root='css', mimetype='text/css')
 
@@ -2414,9 +2593,18 @@ def send_js(session_id, filename):
                 return HTTPResponse(file, **headers)
 
         elif filename == 'bootstrap.js':
-            return static_file(bootstrapJS, root=bootstrapDir + '/js', mimetype='text/javascript')
+            return static_file(Bootstrap['js'],
+                               root=os.path.join(boxLibsPath, Bootstrap['dir'], 'js'), mimetype='text/javascript')
         elif filename == 'jquery.js':
-            return static_file(jQuery_lib, root='scripts', mimetype='text/javascript')
+            return static_file(jQuery['js'], root=os.path.join(boxLibsPath, jQuery['dir']), mimetype='text/javascript')
+        elif filename == 'glide.js':
+            return static_file(Glide['js'], root=os.path.join(boxLibsPath, Glide['dir']), mimetype='text/javascript')
+        elif filename == 'smoothie.js':
+            return static_file(smoothie['js'],
+                               root=os.path.join(boxLibsPath, smoothie['dir']), mimetype='text/javascript')
+        elif filename == 'scrollMonitor.js':
+            return static_file(scrollMonitor['js'],
+                               root=os.path.join(boxLibsPath, scrollMonitor['dir']), mimetype='text/javascript')
         else:
             return static_file(filename, root='scripts', mimetype='text/javascript')
 
@@ -2438,69 +2626,74 @@ def send_js(session_id, filename):
 #
 #     return True
 
-
-def record_cpu_data(timestamp=None, compensate_deviation=True):
-    from psutil import virtual_memory, cpu_percent, cpu_count  # to readout the cpu load
-
-    if timestamp is None:
-        timestamp = time()
-
-    if compensate_deviation is True:
-        timestamp = box_time(timestamp)
-
-    timestamp *= 1000  # has to be converted to ms as JS expects ms!
-
-    # we always catch the current cpu load
-    cpu = {}
-    count = 0
-
-    # first: overall cpu load:
-    cpu['c'] = cpu_percent(None, False)
-
-    # to indicate values according to the logic of the Windows Task Manager
-    if boxHost['system'] == 'Windows':
-        cpu['c'] /= cpu_count()
-
-    # notice: psutil.cpu_percent() will return a meaningless 0.0 when called for the first time
-    # this is not nice yet doesn't hurt!
-    for cx in cpu_percent(None, True):
-        cpu['c%s' % count] = cx
-        count += 1
-
-    cpu['s'] = timestamp
-
-    # ... and the percentage of memory usage
-    cpu['mp'] = virtual_memory().percent
-
-    if boxHost['temp']:
-        if boxHost['system'] == 'Linux':
-            try:
-                cpu['t'] = float(open('/sys/class/thermal/thermal_zone0/temp').read()) / 1000.0
-            except:
-                pass
-        elif boxHost['system'] == 'FreeBSD':
-            # This is EXTREMELY slow!
-            # => Disabled!!
-
-            # from subprocess import check_output
-            # try:
-            #     temp = check_output('sysctl -a | grep hw.acpi.thermal.tz0.temperature', shell=True)\
-            #         .decode('utf-8').split()
-            # except:
-            #     pass
-            # else:
-            #     if len(temp) == 2:
-            #         try:
-            #             cpu['t'] =  int(temp[1].strip().rstrip('C'))
-            #         except:
-            #             pass
-
-            pass
-
-    # append the data to the list
-    host_cpudata_lock.acquire()
-    host_cpudata.append(cpu)
-    host_cpudata_lock.release()
+# def record_cpu_data(timestamp=None, compensate_deviation=True):
+#     from psutil import virtual_memory, cpu_percent, cpu_count  # to readout the cpu load
+#
+#     if timestamp is None:
+#         timestamp = time()
+#
+#     if compensate_deviation is True:
+#         timestamp = box_time(timestamp)
+#
+#     timestamp *= 1000  # has to be converted to ms as JS expects ms!
+#
+#     # we always catch the current cpu load
+#     cpu = {}
+#     count = 0
+#
+#     # first: overall cpu load:
+#     cpu['c'] = cpu_percent(None, False)
+#
+#     # to indicate values according to the logic of the Windows Task Manager
+#     if boxHost['system'] == 'Windows':
+#         cpu['c'] /= cpu_count()
+#
+#     # notice: psutil.cpu_percent() will return a meaningless 0.0 when called for the first time
+#     # this is not nice yet doesn't hurt!
+#     for cx in cpu_percent(None, True):
+#         cpu['c%s' % count] = cx
+#         count += 1
+#
+#     cpu['s'] = timestamp
+#
+#     # ... and the percentage of memory usage
+#     cpu['mp'] = virtual_memory().percent
+#
+#     if boxHost['temp']:
+#         if boxHost['system'] == 'Linux':
+#             try:
+#                 cpu['t'] = float(open('/sys/class/thermal/thermal_zone0/temp').read()) / 1000.0
+#             except:
+#                 pass
+#         elif boxHost['system'] == 'FreeBSD':
+#             # This is EXTREMELY slow!
+#             # => Disabled!!
+#
+#             # from subprocess import check_output
+#             # try:
+#             #     temp = check_output('sysctl -a | grep hw.acpi.thermal.tz0.temperature', shell=True)\
+#             #         .decode('utf-8').split()
+#             # except:
+#             #     pass
+#             # else:
+#             #     if len(temp) == 2:
+#             #         try:
+#             #             cpu['t'] =  int(temp[1].strip().rstrip('C'))
+#             #         except:
+#             #             pass
+#
+#             pass
+#         elif boxHost['system'] == 'Darwin':
+#             #try:
+#             cpu['t'] = boxHost['temp_Darwin']()
+#             print(boxHost['temp_Darwin']())
+#             #except:
+# #                pass
+#
+#     # append the data to the list
+#     host_cpudata_lock.acquire()
+#     host_cpudata.append(cpu)
+#     host_cpudata_lock.release()
 
 
 # This is our new (v3) default server
@@ -2700,6 +2893,7 @@ def sigterm_handler(_signo, _stack_frame):
 
 
 signal.signal(signal.SIGTERM, sigterm_handler)
+
 
 
 def main(run_debug=False, open_browser=True):

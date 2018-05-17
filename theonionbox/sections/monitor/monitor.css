@@ -5,3 +5,7 @@
 .glide--horizontal .glide__bullets {
       bottom: 30px;
     }
+
+#monitor_track {
+    margin-bottom: 0;
+}

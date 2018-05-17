@@ -5,10 +5,10 @@
 <%
     tor = get('tor') if tor is None else tor
     oo_weights = get('oo_weights') if oo_weights is None else oo_weights
-    oo_show = get('oo_show')
+    # oo_show = get('oo_show')
 %>
 
-% if oo_show and oo_weights.has_data():
+% if oo_weights.has_data():
 
     {{!group_row('Weights')}}
 
@@ -18,51 +18,47 @@
     % end
 
     <div class="row">
-        <div class="{{box_datum_grid}}"><p>History Charts</p></div>
-        <div class="{{box_value_grid}}">
+        <div class="{{box_datum_grid}}">History Charts</div>
+        <div class="{{box_value_grid}} box_value_margin">
             <div class="btn-toolbar pull-left" role="group">
-                <div class="btn-group" data-toggle="buttons" id="consensus_charts">
+                <div class="btn-group btn-group-toggle" data-toggle="buttons" id="consensus_charts">
                     <!-- labels for consensus charts will be inserted here -->
                 </div>
             </div>
         </div>
-        <div class="col-xs-1"></div>
+        <div class="{{box_right_grid}}"></div>
     </div>
     <div class="row">
-        <div class="{{box_datum_grid}}"><p>Consensus Weight</p></div>
-        <div class="{{box_value_grid}}">
-            <p>
-                  <canvas class="bw_chart box_canvas" id="chart-cw" width="300" height="150" style="vertical-align: middle"></canvas>
-            </p>
+        <div class="{{box_datum_grid}}">Consensus Weight</div>
+        <div class="{{box_value_grid}} box_value_margin">
+            <canvas class="bw_chart box_canvas" id="chart-cw" width="300" height="150" style="vertical-align: middle"></canvas>
         </div>
-        <div class="col-xs-1"></div>
+        <div class="{{box_right_grid}}"></div>
     </div>
     <div class="row">
-        <div class="{{box_datum_grid}}"><p></p></div>
-        <div class="{{box_value_grid}}">
-            <p id="network_consensus_weight">
+        <div class="{{box_datum_grid}}"></div>
+        <div class="{{box_value_grid}} box_value_margin">
+            <div id="network_consensus_weight">
                 %# <!-- Current Consensus Weight: xxx -->
-            </p>
+            </div>
         </div>
-        <div class="col-xs-1"></div>
+        <div class="{{box_right_grid}}"></div>
     </div>
     <div class="row">
-        <div class="{{box_datum_grid}}"><p>Probabilities</p></div>
-        <div class="{{box_value_grid}}">
-            <p>
-                <canvas class="bw_chart box_canvas" id="chart-cwf" width="300" height="150" style="vertical-align: middle"></canvas>
-            </p>
+        <div class="{{box_datum_grid}}">Probabilities</div>
+        <div class="{{box_value_grid}} box_value_margin">
+            <canvas class="bw_chart box_canvas" id="chart-cwf" width="300" height="150" style="vertical-align: middle"></canvas>
         </div>
-        <div class="col-xs-1"></div>
+        <div class="{{box_right_grid}}"></div>
     </div>
     <div class="row">
-        <div class="{{box_datum_grid}}"><p></p></div>
-        <div class="{{box_value_grid}}">
-            <p id="network_probabilities">
+        <div class="{{box_datum_grid}}"></div>
+        <div class="{{box_value_grid}} box_value_margin">
+            <div id="network_probabilities">
                 %# <!-- Fractions & Probabilities: xxx -->
-            </p>
+            </div>
         </div>
-        <div class="col-xs-1"></div>
+        <div class="{{box_right_grid}}"></div>
     </div>
 
 % end

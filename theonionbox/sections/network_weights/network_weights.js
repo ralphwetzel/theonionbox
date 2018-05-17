@@ -2,8 +2,6 @@
     oo_weights = get('oo_weights') if oo_weights is None else oo_weights
     oo_details = get('oo_details') if oo_details is None else oo_details
 
-    oo_show = get('oo_show')
-    if oo_show is True:
 %>
 
 var weights_series_options = {
@@ -76,7 +74,7 @@ function cw_handler() {}
 cw_handler.prototype = new DataHandler();
 cw_handler.prototype.process = function(data, timedelta) {
 
-% if oo_show and oo_details.has_data():
+% if oo_details.has_data():
 
     var to_percent = function(value) {
 
@@ -100,7 +98,7 @@ cw_handler.prototype.process = function(data, timedelta) {
 
 % end
 
-% if oo_show and oo_weights.has_data():
+% if oo_weights.has_data():
 
     var last_inserted_button = null;
     var new_show_key = oo_weights_shows;
@@ -238,7 +236,7 @@ cw_handler.prototype.process = function(data, timedelta) {
                 if (!$('#cw_' + key).length) {
 
                     button_code = '<label id=\"cw_' + key + '\"';
-                    button_code += ' class=\"btn btn-default box_chart_button\"';
+                    button_code += ' class=\"btn btn-outline-secondary box_chart_button\"';
                     button_code += ' onclick=\"set_consensus_display(\'' + key + '\')\">';
                     button_code += '<input type=\"radio\" autocomplete=\"off\">';
                     button_code += weights_chart_labels[i];
@@ -291,31 +289,28 @@ $(document).ready(function() {
     boxData.addHandler('oo_weights', new cw_handler());
 
     var canvas;
-    % if oo_show:
-        canvas = document.getElementById('chart-cw');
-        consensus_weight.prepare(canvas, 5000);
 
-        var cw_watcher = scrollMonitor.create(canvas, 100);
-        cw_watcher.enterViewport(function () {
-            consensus_weight.start();
-        });
-        cw_watcher.exitViewport(function () {
-            consensus_weight.stop();
-        });
+    canvas = document.getElementById('chart-cw');
+    consensus_weight.prepare(canvas, 5000);
 
-        canvas = document.getElementById('chart-cwf');
-        consensus_weight_fraction.prepare(canvas, 5000);
+    var cw_watcher = scrollMonitor.create(canvas, 100);
+    cw_watcher.enterViewport(function () {
+        consensus_weight.start();
+    });
+    cw_watcher.exitViewport(function () {
+        consensus_weight.stop();
+    });
 
-        var cwf_watcher = scrollMonitor.create(canvas, 100);
-        cwf_watcher.enterViewport(function () {
-            consensus_weight_fraction.start();
-        });
-        cwf_watcher.exitViewport(function () {
-            consensus_weight_fraction.stop();
-        });
+    canvas = document.getElementById('chart-cwf');
+    consensus_weight_fraction.prepare(canvas, 5000);
 
-    % end
-
+    var cwf_watcher = scrollMonitor.create(canvas, 100);
+    cwf_watcher.enterViewport(function () {
+        consensus_weight_fraction.start();
+    });
+    cwf_watcher.exitViewport(function () {
+        consensus_weight_fraction.stop();
+    });
 
 });
 
@@ -402,7 +397,3 @@ function set_consensus_display(selector)
     // console.log(consensus_weight_fraction);
 
 }
-
-
-% #// 'end' for 'if oo_show is True:'
-% end

@@ -118,8 +118,16 @@ body {
 
 /* this could/should be merged into box_value if usage of <p> for all values is re-organized */
 .box_value_margin {
-    margin: 0 0 10px;
+    margin: 0 0 5px;
 }
+
+.box_canvas {
+    border-radius: .25rem;
+    /*border-width: 4px;*/
+    /*border-style: solid;*/
+    /*border-color: #44ee44;*/
+}
+
 
 %# /* http://stackoverflow.com/questions/20760047/upside-down-caret */
 .caret.caret-reversed {
@@ -199,7 +207,6 @@ body {
 .icon-upload:before {
   content: "\e901";
 }
-
 
 
 .form-group input[type="checkbox"] {

@@ -9,6 +9,8 @@ from stem.control import EventType
 import functools
 from time import time
 
+from tob.persistor import BandwidthPersistor
+
 # There is a deprecation warning in stem's @with_defaults decorater
 # that we try to catch with this setup
 # import warnings
@@ -31,7 +33,9 @@ class TorNode(object):
     
     id = None
 
-    def __init__(self, controller, livedatamanager=None, listener=None, notice=True, warn=True, err=True):
+    storage = None
+
+    def __init__(self, controller, storage, listener=None, notice=True, warn=True, err=True):
         self.tor = controller
 
         self.cron = Scheduler()
@@ -56,18 +60,21 @@ class TorNode(object):
         self.boxLogListener.setTarget(self.torLog)
         self.boxLogListener.flush()
 
-        if livedatamanager is None:
-            # we need a new LiveDataHandler
-            self.livedata = livedata.Manager()
-            # as soon as the controller is authenticated, we collect the latest BW data and initialize the LiveData
-            self.tor.register_post_auth_callback(self._init_livedata)
-        else:
-            self.boxLog.debug("Re-using!!")
-            # We reuse the provided LiveData
-            self.livedata = livedatamanager
+        self.storage = storage
+
+        # As soon as the controller is authenticated, we collect the latest BW data and initialize the LiveData
+        self.tor.register_post_auth_callback(self._init_livedata)
+
+        # if livedatamanager is None:
+        #     # we need a new LiveDataHandler
+        #     self.livedata = livedata.Manager()
+        # else:
+        #     self.boxLog.debug("Re-using!!")
+        #     # We reuse the provided LiveData
+        #     self.livedata = livedatamanager
 
         # start the event handler for the Bandwidth data
-        self.tor.add_event_listener(functools.partial(self._handle_livedata), EventType.BW)
+        # self.tor.add_event_listener(functools.partial(self._handle_livedata), EventType.BW)
 
         # start the event handler for the connection data
         self.tor.add_event_listener(functools.partial(self._handle_connection_events), EventType.ORCONN)
@@ -95,6 +102,8 @@ class TorNode(object):
             self.tor.close()
         if self.cron is not None:
             self.cron.shutdown()
+        if self.livedata is not None:
+            self.livedata.shutdown()
 
     @property
     def logging_level(self, level):
@@ -134,9 +143,17 @@ class TorNode(object):
         # print(self, self.livedata, event.arrived_at, event.read, event.written)
 
         # now manage the bandwidth data
-        self.livedata.record_bandwidth(time_stamp=event.arrived_at,
-                                       bytes_read=int(event.read),
-                                       bytes_written=int(event.written))
+        if self.livedata is None:
+            return False
+
+        conn = self.livedata.record_bandwidth(time_stamp=event.arrived_at,
+                                              bytes_read=int(event.read),
+                                              bytes_written=int(event.written))
+
+        if conn is not None:
+            conn.commit()
+            conn.close()
+
         return True
 
     def _init_livedata(self):
@@ -149,24 +166,47 @@ class TorNode(object):
         # bytes written.  These entries each represent about one second's worth
         # of traffic.
 
+        # for desc in self.tor.get_network_statuses():
+        #     print(desc.fingerprint)
+
         log = logging.getLogger('theonionbox')
         log.debug('Initializing LiveData transmission...')
 
-        try:
-            bwevc = self.tor.get_info('bw-event-cache').split(' ')
-            bwevc_len = len(bwevc)
-            its_now = time()
-            counter = 0
-            for ev in bwevc:
-                read, written = ev.split(',')
-                self.livedata.record_bandwidth(time_stamp=its_now - bwevc_len + counter,
-                                               bytes_read=int(read),
-                                               bytes_written=int(written))
-                counter += 1
-        except Exception as e:
-            log.warning('Failed to establish LiveData connection: {}'.format(e))
-            pass
+        if self.livedata is None:
 
+            fp = self.tor.get_fingerprint()
+            pers = BandwidthPersistor(storage=self.storage, fingerprint=fp)
+
+            self.livedata = livedata.Manager(Persistor=pers)
+
+            # The Persistor connection
+            # It will be generated at the first call to record_bandwidth
+            # ... and then reused!
+            conn = None
+
+            try:
+                bwevc = self.tor.get_info('bw-event-cache').split(' ')
+                bwevc_len = len(bwevc)
+                its_now = time()
+                counter = 0
+
+                for ev in bwevc:
+                    read, written = ev.split(',')
+                    conn = self.livedata.record_bandwidth(time_stamp=its_now - bwevc_len + counter,
+                                                          bytes_read=int(read),
+                                                          bytes_written=int(written),
+                                                          connection=conn)
+                    counter += 1
+            except Exception as e:
+                log.warning('Failed to establish LiveData connection: {}'.format(e))
+                return
+
+            if conn is not None:
+                conn.commit()
+                conn.close()
+
+            # start the event handler for the Bandwidth data
+            self.tor.add_event_listener(functools.partial(self._handle_livedata), EventType.BW)
 
     # this will be called by a cron job each minute once!
     def _update_tor_info(self, params=None):

@@ -8,7 +8,7 @@
 tor = get('tor') if tor is None else tor
 oo_details = get('oo_details') if oo_details is None else oo_details
 oo_bw = get('oo_bw')
-oo_show = get('oo_show')
+# oo_show = get('oo_show', False)
 fp = get('family_fp', None)
 
 
@@ -20,26 +20,18 @@ fp = get('family_fp', None)
     <div class="row">
         <div class="{{box_datum_grid}}">
         </div>
-        <div class="{{box_value_grid}} alert alert-info">
+        <div class="{{box_value_grid}} box_value_margin alert alert-info">
             This node is a Tor client. No network status available.
         </div>
     </div>
 
-% elif oo_show is False:
-    <div class="row">
-        <div class="{{box_datum_grid}}">
-        </div>
-        <div class="{{box_value_grid}} alert alert-danger">
-            No Onionoo Network data to display. Reload page to update...
-        </div>
-    </div>
 % else:
 
 %   if oo_details.is_relay() and oo_details.is_bridge():
         <div class="row">
             <div class="{{box_datum_grid}}">
             </div>
-            <div class="{{box_value_grid}} alert alert-danger">
+            <div class="{{box_value_grid}} box_value_margin alert alert-danger">
                 According to Onionoo the node with fingerprint '{{oo_details('fingerprint')}}' is a Relay <b>and</b> a Bridge.
                 This shall not happen!
             </div>
@@ -56,9 +48,9 @@ fp = get('family_fp', None)
 
         <div class="row">
             <div class="{{box_datum_grid}}">
-                <p>Fingerprint</p>
+                Fingerprint
             </div>
-            <div class="{{box_value_grid}}">
+            <div class="{{box_value_grid}} box_value_margin">
                 % fp = oo_details('fingerprint')
                    {{fp}}
                 </a>
@@ -100,16 +92,16 @@ fp = get('family_fp', None)
             try:
                 out = unicode("""
                     <div class='row'>
-                        <div class='truncate col-xs-6 box_datum'>{}</div>
-                        <div class='col-xs-6 box_value'><p>{}</p></div>
+                        <div class='truncate col-6 box_datum'>{}</div>
+                        <div class='col-6 box_value box_value_margin'>{}</div>
                     </div>""").format(datum, value)
             except:
                 # Python3
                 try:
                     out = """
                         <div class='row'>
-                            <div class='truncate col-xs-6 box_datum'>{}</div>
-                            <div class='col-xs-6 box_value'><p>{}</p></div>
+                            <div class='truncate col-6 box_datum'>{}</div>
+                            <div class='col-6 box_value box_value_margin'>{}</div>
                         </div>""".format(datum, value)
                 except:
                     pass
@@ -124,36 +116,36 @@ fp = get('family_fp', None)
             ip = oo_details('or_addresses')[0]
 %>
 
-        {{!group_row('Location')}}
+            {{!group_row('Location')}}
 
-        <div class="row">
-            <div class='col-xs-6' id="location_data">
-                {{!location_row('Country', geoip.country(ip, oo_details('country')))}}
-                {{!location_row('Country Name', geoip.country_name(ip, oo_details('country_name')))}}
-                % if geoip.region_name(ip, oo_details('region_name')) is not None:
-                        {{!location_row('Region Name', geoip.region_name(ip, oo_details('region_name')))}}
+            <div class="row">
+                <div class='col-6' id="location_data">
+                    {{!location_row('Country', geoip.country(ip, oo_details('country')))}}
+                    {{!location_row('Country Name', geoip.country_name(ip, oo_details('country_name')))}}
+                    % if geoip.region_name(ip, oo_details('region_name')) is not None:
+                            {{!location_row('Region Name', geoip.region_name(ip, oo_details('region_name')))}}
+                    % end
+                    % if geoip.city_name(ip, oo_details('city_name')) is not None:
+                        {{!location_row('City Name', geoip.city_name(ip, oo_details('city_name')))}}
+                    % end
+                    % geoip_lat = geoip.latitude(ip, oo_details('latitude'))
+                    % geoip_long = geoip.longitude(ip, oo_details('longitude'))
+                    {{!location_row('Latitude', geoip_lat)}}
+                    {{!location_row('Longitude', geoip_long)}}
+                </div>
+
+                <div class='col-4 map' id="location_map">
+
+                % if geoip_lat and geoip_long:
+
+                    <link rel="stylesheet" href="https://openlayers.org/en/v3.15.1/css/ol.css" type="text/css">
+                    <script src="https://openlayers.org/en/v3.15.1/build/ol.js" type="text/javascript"></script>
+
                 % end
-                % if geoip.city_name(ip, oo_details('city_name')) is not None:
-                    {{!location_row('City Name', geoip.city_name(ip, oo_details('city_name')))}}
-                % end
-                % geoip_lat = geoip.latitude(ip, oo_details('latitude'))
-                % geoip_long = geoip.longitude(ip, oo_details('longitude'))
-                {{!location_row('Latitude', geoip_lat)}}
-                {{!location_row('Longitude', geoip_long)}}
+
+                </div>
+                <div class='col-2'></div>
             </div>
-
-            <div class='col-xs-4 map' id="location_map">
-
-            % if geoip_lat and geoip_long:
-
-                <link rel="stylesheet" href="https://openlayers.org/en/v3.15.1/css/ol.css" type="text/css">
-                <script src="https://openlayers.org/en/v3.15.1/build/ol.js" type="text/javascript"></script>
-
-            % end
-
-            </div>
-            <div class='col-xs-2'></div>
-        </div>
 
         % end
 
@@ -165,7 +157,7 @@ fp = get('family_fp', None)
         if ep or eps or ep6s:
 %>
 
-        {{!group_row('Exit Policies')}}
+            {{!group_row('Exit Policies')}}
 
             % if ep is not None:
                 <div class="row">
@@ -248,7 +240,7 @@ fp = get('family_fp', None)
                     <div class="{{box_datum_grid}}">
                         {{'{} Family'.format(key)}}
                     </div>
-                    <div class="{{box_value_grid}}"><p>
+                    <div class="{{box_value_grid}} box_value_margin">
                     <%
                         out = ''
                         for fp in value:
@@ -267,12 +259,13 @@ fp = get('family_fp', None)
                         end
                     %>
                         {{!out}}
-                    </p></div>
+                    </div>
                     <div class="{{box_right_grid}}"></div>
                 </div>
             % end
         % end
     %end
 
-% # this end is to close 'if oo_show:'
+    % #TODO: Processing for a bridge
+
 % end

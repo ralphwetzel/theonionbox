@@ -117,7 +117,7 @@ var temp_style = {
         fillStyle: '#E6E6E6',
         strokeStyle: '#777777',
         millisPerLine: 60000,
-        verticalSections: 1,
+        verticalSections: 4,
         borderVisible: true
         },
     labels: {

@@ -16,12 +16,15 @@ py30 = py >= (3, 0, 0)
 
 box_bold_grid = 'col-3 box_bold'
 box_section_grid = 'col-7 box_section truncate'
+#box_datum_grid = 'col-6 col-md-3 box_datum truncate text-left text-md-right'
 box_datum_grid = 'col-3 box_datum truncate'
 box_datum_grid_bold = 'col-3 box_datum_bold truncate'
+# box_value_grid = 'col-12 col-md-7 box_value'
 box_value_grid = 'col-7 box_value'
 box_title_grid = 'col-7 box_title truncate'
 box_subtitle_grid = 'col-7 box_subtitle'
 box_powered_grid = 'col-7 box_powered'
+# box_right_grid = 'col-md-2'
 box_right_grid = 'col-2'
 
 def standard_row(datum='', value=''):

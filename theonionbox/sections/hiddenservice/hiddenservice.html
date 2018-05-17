@@ -31,28 +31,16 @@ hs_conf_params = [
     % for hs_dir in hs_configs:
         % hs_conf = hs_configs[hs_dir]
 
-        <div class = "row">
-            <div class="{{box_datum_grid}}">
-                <p class='truncate' style='color: lightgrey; '>Hidden Service Options</p>
-            </div>
-            <div class="{{box_value_grid}}">
-                <p class='config_group' style='color: lightgrey; '></p>
-            </div>
-            <div class="col-xs-1"></div>
-        </div>
+        {{!group_row('Hidden Service Options')}}
 
         <div class = "row">
-            <div class="{{box_datum_grid}}">
-                <p class="option_hover truncate ">
-                    <a href="manpage.html#HiddenServiceDir" target="manpage_window">#</a> HiddenServiceDir
-                </p>
+            <div class="{{box_datum_grid}} option_hover truncate">
+                <a href="manpage.html#HiddenServiceDir" target="manpage_window">#</a> HiddenServiceDir
             </div>
-            <div class="{{box_value_grid}}">
-                <p>
-                    {{hs_dir}}
-                </p>
+            <div class="{{box_value_grid}} box_value_margin">
+                {{hs_dir}}
             </div>
-            <div class="col-xs-1"></div>
+            <div class="{{box_right_grid}}"></div>
         </div>
 
         % for param in hs_conf_params:
@@ -70,17 +58,13 @@ hs_conf_params = [
                 % end
 
                 <div class = "row">
-                    <div class="{{box_datum_grid}}">
-                        <p class="option_hover truncate ">
-                            <a href="manpage.html#{{param}}" target="manpage_window">#</a> {{param}}
-                        </p>
+                    <div class="{{box_datum_grid}} option_hover truncate">
+                        <a href="manpage.html#{{param}}" target="manpage_window">#</a> {{param}}
                     </div>
-                    <div class="{{box_value_grid}}">
-                        <p>
-                            {{out}}
-                        </p>
+                    <div class="{{box_value_grid}} box_value_margin">
+                        {{out}}
                     </div>
-                    <div class="col-xs-1"></div>
+                    <div class="{{box_right_grid}}"></div>
                 </div>
             % end
         % end

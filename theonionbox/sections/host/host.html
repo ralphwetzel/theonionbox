@@ -28,7 +28,7 @@
     <div class="{{box_value_grid}}">
         <div class="row">
             <div class="col-6">
-                <canvas class="processor_chart" id="processor_load_0" width="100" height="50"
+                <canvas class="processor_chart box_canvas" id="processor_load_0" width="100" height="50"
                         style="vertical-align: middle; {{'cursor: pointer;' if cpu_count > 1 else ''}}"
                         data-toggle="tooltip" data-placement="bottom"
                         title="{{'Click for CPU Core Details!' if cpu_count > 1 else 'CPU Usage'}}">
@@ -55,7 +55,7 @@
     <div class="{{box_value_grid}}">
         <div class="row">
             <div class="col-6">
-                <canvas class="processor_chart" id="mem_load" width="100" height="50"
+                <canvas class="processor_chart box_canvas" id="mem_load" width="100" height="50"
                     style="vertical-align: middle;"
                     data-toggle="tooltip" data-placement="bottom"
                     title="Memory Usage (%)">
@@ -82,7 +82,7 @@
         <div class="{{box_value_grid}}">
             <div class="row">
                 <div class="col-6">
-                        <canvas class="processor_chart" id="temp" width="100" height="50"
+                        <canvas class="processor_chart box_canvas" id="temp" width="100" height="50"
                             style="vertical-align: middle;">
                         </canvas>
                 </div>
@@ -123,7 +123,7 @@
                   CPU Core #{{count}}
               </div>
               <div class="col-7 box_value_margin">
-                <canvas class="processor_chart" id="processor_load_{{count + 1}}" height="50"
+                <canvas class="processor_chart box_canvas" id="processor_load_{{count + 1}}" height="50"
                         style="vertical-align: middle; height: 50px;"
                         data-toggle="tooltip" data-placement="bottom"
                         title="CPU#{{count}}: CPU Usage (%)">

@@ -62,10 +62,22 @@ function isElementOutOfViewport(el) {
 
 function boxChart(options)
 {
+    options = (options || SmoothieChart.defaultChartOptions);
+
     // to ensure that the new chartOptions (used for rendering) are handled correctly
     if (options.timeLabelLeftAlign === void 0) { options.timeLabelLeftAlign = false;}
     if (options.timeLabelSeparation === void 0) { options.timeLabelSeparation = 0;}
     if (options.grid.strokeStyleHor === void 0) { options.grid.strokeStyleHor = '#d4d4d4';}
+/*    if (options.title === void 0) { options.title = {text: '',
+                                                    fontSize: 16,
+                                                    fontFamily: 'LatoLatinWeb',
+                                                    fadeIn: false,
+                                                    fadeAway: false,
+                                                    backFillStyle: 'rgba(255, 255, 255, 0.5)',
+                                                    backStrokeStyle: '#ffffff',
+                                                    fillStyle: '#000000',
+                                                    width: 0};
+    }*/
 
     SmoothieChart.call(this, options);
 
@@ -88,6 +100,19 @@ function boxChart(options)
 }
 
 boxChart.prototype = new SmoothieChart();
+
+boxChart.prototype.getTooltipEl = function () {
+    // Create the tool tip element lazily
+    if (!this.tooltipEl) {
+        this.tooltipEl = document.createElement('div');
+        this.tooltipEl.className = 'smoothie-chart-tooltip';
+        this.tooltipEl.style.position = 'absolute';
+        this.tooltipEl.style.display = 'none';
+        this.tooltipEl.style.zIndex = '5';      // this is different!
+        document.body.appendChild(this.tooltipEl);
+    }
+    return this.tooltipEl;
+};
 
 boxChart.prototype.updateTooltip = function () {
     var el = this.getTooltipEl();
@@ -162,6 +187,8 @@ boxChart.prototype.resize = function() {
         this.backupCanvas = document.createElement('canvas');
         haveResized = true;
     }
+
+    //return haveResized;
 
     var width, height;
 
@@ -623,12 +650,35 @@ boxChart.prototype.render = function(canvas, time) {
 
     }
 
-    // Bounding rectangle.
+/*    // Bounding rectangle.
     if (chartOptions.grid.borderVisible) {
-      context.beginPath();
-      context.strokeRect(0, 0, dimensions.width, dimensions.height);
-      context.closePath();
-    }
+
+        var br = $(this.canvas).css('border-radius');
+        br = parseInt(br, 10);
+        context.lineWidth = 2;
+
+        if (br === 0) {
+          context.beginPath();
+          context.strokeRect(0, 0, dimensions.width, dimensions.height);
+          context.closePath();
+        } else {
+            var dw = dimensions.width;
+            var dh = dimensions.height;
+            context.beginPath();
+            context.moveTo(br, 0);
+            context.lineTo(dw - br, 0);
+            context.quadraticCurveTo(dw, 0, dw, br);
+            context.lineTo(dw, dh - br);
+            context.quadraticCurveTo(dw, dh, dw - br, dh);
+            context.lineTo(br, dh);
+            context.quadraticCurveTo(0, dh, 0, dh - br);
+            context.lineTo(0, br);
+            context.quadraticCurveTo(0, 0, br, 0);
+            context.closePath();
+            context.stroke();
+        }
+    } */
+
     context.restore();
 
     // Draw any horizontal lines...
@@ -743,6 +793,11 @@ boxChart.prototype.render = function(canvas, time) {
           // context.lineTo(firstX, dimensions.height + seriesOptions.lineWidth);
           context.lineTo(dimensions.width + seriesOptions.lineWidth + 1, y0);
           context.lineTo(firstX, y0);
+
+          // RDW 20180302
+          // context.fillStyle = chartOptions.grid.fillStyle;
+          // context.fill();
+
           context.fillStyle = seriesOptions.fillStyle;
           context.fill();
         }
@@ -764,6 +819,7 @@ boxChart.prototype.render = function(canvas, time) {
     context.lineTo(dimensions.width, y0);
     context.stroke();
     context.closePath();
+    context.restore();
 
     var maxValueString = "";
     var minValueString = "";
@@ -932,13 +988,67 @@ boxChart.prototype.render = function(canvas, time) {
       this.updateTooltip();
     }
 
+/*
+    // draw the Title
+    if (chartOptions.title.text.length > 0) {
+        context.font = chartOptions.title.fontSize + 'px ' + chartOptions.title.fontFamily;
+
+        var header_text = chartOptions.title.text;
+        var htRect = {left: 0, top: 50,
+            width: Math.max(context.measureText(header_text).width, chartOptions.title.width),
+            height: chartOptions.title.fontSize};
+
+        htRect.left = (dimensions.width - htRect.width) /2;
+
+        context.fillStyle = chartOptions.title.backFillStyle;
+        context.fillRect(htRect.left, htRect.top, htRect.width, htRect.height);
+        context.textAlign = "center";
+        context.fillStyle = chartOptions.labels.fillStyle;
+        context.fillText(header_text, htRect.left, htRect.top);
+
+    }
+*/
+
     context.restore(); // See .save() above.
+
+
+    // Bounding rectangle.
+    if (chartOptions.grid.borderVisible) {
+
+        context.save();
+
+        var br = $(this.canvas).css('border-radius');
+        br = parseInt(br, 10);
+        context.lineWidth = 2;
+
+        if (br === 0) {
+          context.beginPath();
+          context.strokeRect(0, 0, dimensions.width, dimensions.height);
+          context.closePath();
+        } else {
+            var dw = dimensions.width;
+            var dh = dimensions.height;
+            context.beginPath();
+            context.moveTo(br, 0);
+            context.lineTo(dw - br, 0);
+            context.quadraticCurveTo(dw, 0, dw, br);
+            context.lineTo(dw, dh - br);
+            context.quadraticCurveTo(dw, dh, dw - br, dh);
+            context.lineTo(br, dh);
+            context.quadraticCurveTo(0, dh, 0, dh - br);
+            context.lineTo(0, br);
+            context.quadraticCurveTo(0, 0, br, 0);
+            context.closePath();
+            context.stroke();
+        }
+        context.restore();
+    }
 
     // Save the rendered chart to backup to allow clipping for optimisation in the next rendering loop.
     var backupContext = this.backupCanvas.getContext('2d');
     backupContext.drawImage(this.canvas, 0, 0);
 
-    return;
+    // return;
   };
 
 

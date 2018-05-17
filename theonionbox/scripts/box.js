@@ -686,6 +686,9 @@ var oobw_style = {
         },
         yMinFormatter: function() { return ""; }
     };
+
+
+
 % end
 
     /* Bootstrap Toggle */
@@ -747,6 +750,113 @@ if (typeof log !== 'function') {
 }
 
 % if login is False:
+
+    // #####
+    // # Customized Glide.js for TOB
+    function boxGlide(selector)
+    {
+        Glide.call(this, selector);
+    }
+
+    boxGlide.prototype = new Glide();
+    boxGlide.prototype.mount = function(settings) {
+
+
+        var _extends = Object.assign || function (target) {
+              for (var i = 1; i < arguments.length; i++) {
+                var source = arguments[i];
+
+                for (var key in source) {
+                  if (Object.prototype.hasOwnProperty.call(source, key)) {
+                    target[key] = source[key];
+                  }
+                }
+              }
+
+              return target;
+            };
+
+        /**
+         * Merges passed settings object with default options.
+         *
+         * @param  {Object} defaults
+         * @param  {Object} settings
+         * @return {Object}
+         */
+        function mergeOptions(defaults, settings) {
+          var options = _extends({}, defaults, settings);
+
+          // `Object.assign` do not deeply merge objects, so we
+          // have to do it manually for every nested object
+          // in options. Although it does not look smart,
+          // it's smaller and faster than some fancy
+          // merging deep-merge algorithm script.
+          if (settings.hasOwnProperty('classes')) {
+            options.classes = _extends({}, defaults.classes, settings.classes);
+
+            if (settings.classes.hasOwnProperty('direction')) {
+              options.classes.direction = _extends({}, defaults.classes.direction, settings.classes.direction);
+            }
+          }
+
+          return options;
+        }
+
+        var AddBullets = function (Glide, Components, Events) {
+
+            // https://stackoverflow.com/a/4793630
+            function insertAfter(newNode, referenceNode) {
+                referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
+            }
+
+            var AddBullets = {
+
+                add_bullets() {
+
+                    var NAV_SELECTOR = '[data-glide-el="controls[nav]"]';
+                    var nav = Components.Html.root.querySelector(NAV_SELECTOR);
+
+                    var TRACK_SELECTOR = '[data-glide-el="track"]';
+                    var track = Components.Html.root.querySelector(TRACK_SELECTOR);
+
+                    var slides = Array.from(track.children[0].children).filter(function (slide) {
+                        return !slide.classList.contains(Glide.settings.classes.cloneSlide);
+                    });
+
+                    for (var i = 0; i < slides.length; i++) {
+
+                        var bullets = Array.from(nav.children);
+                        // var bullet;
+
+                        if (i > bullets.length - 1) {
+                            var bullet = document.createElement("BUTTON");
+                            bullet.classList.add('glide__bullet');
+                            bullet.setAttribute('data-glide-dir', "=" + i);
+                            insertAfter(bullet, bullets[bullets.length - 1]);
+                        }
+                    }
+
+                    Components.Controls.mount();
+                }
+            };
+
+            Events.on('mount.after', function () {
+                AddBullets.add_bullets();
+            });
+
+            return AddBullets;
+        };
+
+        var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+        options = mergeOptions(options, {'AddBullets': AddBullets});
+
+        Glide.mount(this, options);
+    };
+
+
+
+
+
     // Final step of the script ... to launch the site logic!
     //$(window).on('load', function() {
     $(document).ready(function() {

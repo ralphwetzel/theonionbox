@@ -20,6 +20,23 @@
   background: rgba(255, 255, 255, 0.6);
 }
 
+.box_login_btn {
+    color: black;
+    background-color: #fff;
+    border-color: rgba(132, 54, 187, 100);
+}
+
+.box_login_btn:hover, .btn-bd-primary:active {
+  color: #fff;
+  background-color: rgba(132, 54, 187, 100);
+  border-color: rgba(132, 54, 187, 100);
+}
+
+#login_pwd:focus {
+    border-color: rgba(100, 178, 43, 100);
+    box-shadow: 0 0 0 .2rem rgba(100, 178, 43, .25);
+}
+
 
 .spnnr
 {

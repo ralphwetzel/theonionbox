@@ -1,8 +1,12 @@
-from typing import Optional, Tuple, Dict
+from typing import Optional, Dict, Callable
 from time import time
 
 class Recorder(object):
-    ...
+
+    interval: int
+    compensate: Callable[float]
+    reference_slot: float
+    basket: Dict[float]
 
     def __init__(self,
                  interval: Optional[int]=1,
@@ -18,4 +22,8 @@ class Recorder(object):
         ...
 
     def get_interval(self) -> float:
+        ...
+
+    def _calc_slot(self,
+                   timestamp: float) -> int:
         ...

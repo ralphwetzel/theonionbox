@@ -16,7 +16,7 @@
 %   if 'logout' in header:
 %       if header['logout'] == True:
     <form role="logout" method='get' action="{{base_path}}{{session_id}}/logout.html">
-        <button type="submit" id="button_logout" class="btn btn-default btn-lg"
+        <button type="submit" id="button_logout" class="btn btn-outline-light"
                 style="position: absolute; right: 20px; top: 20px;">Logout</button>
     </form>
 %       end
@@ -37,8 +37,8 @@
         data-html="true"
         data-template='<div class="popover popover_width" role="tooltip">
             <div class="arrow"></div>
-            <h3 class="popover-title"></h3>
-            <div class="popover-content"></div>
+            <h3 class="popover-header"></h3>
+            <div class="popover-body"></div>
             </div>'
         > !! </a>
     % end
@@ -66,7 +66,7 @@
     <div class="truncate {{box_subtitle_grid}}">
         {{!subtitle}}
     </div>
-    <div class="col-xs-3"></div>
+    <div class="col-3"></div>
 </div>
 
 %   powered = ''

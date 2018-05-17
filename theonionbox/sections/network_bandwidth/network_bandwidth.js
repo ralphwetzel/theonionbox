@@ -1,389 +1,531 @@
-<%
-    oo_bw = get('oo_bw')
-    oo_read = None
-    oo_write = None
-    if oo_bw:
-        oo_read = oo_bw.read()
-        oo_write = oo_bw.write()
-    end
+% from tob.livedata import intervals
+var history_intervals = {{!intervals}};
 
-    if oo_show:
+var history_keys = ['1s', '1m', '5m', '1h', '4h', 'Ch', 'y1', 'y5'];
+var history_read_data = {};
+var history_written_data = {};
+var history_bandwidth = {};
 
-%>
 
-var history_series_options = {
-    dontDropOldData: true
+// from box.js:
+// history_chart_keys = ['y5', 'y1', 'm3', 'm1', 'w1', 'd3'];
+
+var translate_onionoo_to_history = {
+    'y5': 'y5',
+    'y1': 'y1',
+    'm3': 'Ch',
+    'm1': '4h',
+    'w1': '1h',
+    'd3': '5m'
 };
 
-var written_data_history = [];
-var read_data_history = [];
+var history_glide_js = null;
 
-// var history_chart_keys = ['d3', 'w1', 'm1', 'm3', 'y1', 'y5'];
-// var history_chart_keys = ['3_days', '1_week', '1_month', '3_months', '1_year', '5_years'];
-// var history_chart_labels = ['3 Days', '1 Week', '1 Month', '3 Months', '1 Year', '5 Years'];
+function create_history_glide() {
 
-// 20170318 RDW: Moved to box.js
-// var history_chart_keys = ['y5', 'y1', 'm3', 'm1', 'w1', 'd3'];
-// var history_chart_labels = ['5 Years', '1 Year', '3 Months', '1 Month', '1 Week', '3 Days'];
+    var current_slide = 0;
 
-for (len = history_chart_keys.length, i=0; i<len; ++i) {
-    if (i in history_chart_keys) {
-        written_data_history[history_chart_keys[i]] = new boxTimeSeries(history_series_options);
-        read_data_history[history_chart_keys[i]] = new boxTimeSeries(history_series_options);
+    if (history_glide_js !== null && history_glide_js.length !== 0) {
+        current_slide = history_glide_js.index;
+        history_glide_js.destroy();
     }
+
+    history_glide_js = new Glide('#history_glide', {type: 'slider', startAt: current_slide});
+
+    history_glide_js.on('run.before', function(move) {
+        // to stop the repaint on the canvas gliding away...
+        var ci = history_glide_js.index;
+        var key = history_glide_js._c.Html.slides[ci].getAttribute('id').substr(-2);
+        history_bandwidth[key].stop();
+        history_bandwidth[key].mouseout();
+        $('#history_button_' + key).removeClass('active');
+    });
+
+    history_glide_js.on('run', function(move) {
+        // to start the repaint of the canvas now visible...
+        // index already holds the new index!
+        var new_index = history_glide_js.index;
+        var key = history_glide_js._c.Html.slides[new_index].getAttribute('id').substr(-2);
+        history_bandwidth[key].start();
+        // $('#history_detail').text('Resolution: ' + md[key][0] + ' | Source: ' + md[key][1] + '.');
+        $('#history_button_' + key).addClass('active');
+    });
+
+    history_glide_js.mount({'AddBullets': AddBullets});
+    // history_glide_js.mount();
+
 }
 
-%# // 1: bandwidth charts
+// ScrollMonitor to enable / disable repaint
+var history_monitor = scrollMonitor.create(document.getElementById("history_glide"), 100);
+history_monitor.enterViewport(function () {
+    if (history_glide_js != null && history_glide_js.length !== 0) {
+        var ci = history_glide_js.index;
+        var key = history_glide_js._c.Html.slides[ci].getAttribute('id').substr(-2);
+        history_bandwidth[key].start();
+    }
+});
+history_monitor.exitViewport(function () {
+    var ci = history_glide_js.index;
+    var key = history_glide_js._c.Html.slides[ci].getAttribute('id').substr(-2);
+    history_bandwidth[key].stop();
+    history_bandwidth[key].mouseout();
+});
 
-var oobw_style = {
-    millisPerPixel: 500,
-    maxValueScale: 1.1,
-    minValueScale: 1.1,
-    // maxDataSetLength: 5000,     // TBC: is this ok for all use cases??
-    interpolation: 'step',
-    yMaxFormatter: function(data, precision) {
-        if (!precision) {
-            var precision = 2;
-        }
-        return (prettyNumber(data, '', 'si') + '/s');
-    },
-    yMinFormatter: function() { return ""; },
-    enableDpiScaling: true,
-    timeLabelLeftAlign: true,
-    timeLabelSeparation: 2,
-    grid:
-        {
-        fillStyle: '#E6E6E6',
-        strokeStyle: '#777777',
-        millisPerLine: 60000,
-        verticalSections: 1,
-        borderVisible: true
-        },
-    labels: {
-        fillStyle: '#000000',
-        disabled: false,
-        fontSize: 10,
-        fontFamily: 'LatoLatinWebLight',
-        precision: 2
+
+
+
+var AddBullets = function (Glide, Components, Events) {
+
+    // https://stackoverflow.com/a/4793630
+    function insertAfter(newNode, referenceNode) {
+        referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
+    }
+
+    var AddBullets = {
+
+        add_bullets() {
+
+            var NAV_SELECTOR = '[data-glide-el="controls[nav]"]';
+            var nav = Components.Html.root.querySelector(NAV_SELECTOR);
+
+            var TRACK_SELECTOR = '[data-glide-el="track"]';
+            var track = Components.Html.root.querySelector(TRACK_SELECTOR);
+
+            var slides = Array.prototype.slice.call(track.children[0].children).filter(function (slide) {
+                return !slide.classList.contains(Glide.settings.classes.cloneSlide);
+            });
+
+            for (var i = 0; i < slides.length; i++) {
+
+                var bullets = Array.prototype.slice.call(nav.children);
+                // var bullet;
+
+                if (i > bullets.length - 1) {
+                    var bullet = document.createElement("BUTTON");
+                    bullet.classList.add('glide__bullet');
+                    bullet.setAttribute('data-glide-dir', "=" + i);
+                    insertAfter(bullet, bullets[bullets.length - 1]);
+                }
+            }
+
+            Components.Controls.mount();
         }
     };
 
-var oobw_read = new boxChart(oobw_style);
-var oobw_write = new boxChart(oobw_style);
-var oobw_shows = '';
+    Events.on('mount.after', function () {
+        AddBullets.add_bullets();
+    });
 
-function oobw_handler() {}
-oobw_handler.prototype = new DataHandler();
-oobw_handler.prototype.process = function(data, timedelta) {
+    return AddBullets;
+};
 
-% if oo_read is not None or oo_write is not None:
+
+
+function history_handler() {}
+history_handler.prototype = new DataHandler();
+history_handler.prototype.process = function(data, timedelta) {
+
+    var data_points;
+    var data_point;
+    var DOM_changed = false;
 
     // console.log(data);
-
-    var last_inserted_button = null;
-    var new_show_key = oobw_shows;
 
     var last_key_read = '';
     var last_key_write = '';
 
-    for (var len = history_chart_keys.length, i=0; i<len; ++i) {
+    for (var hkey in translate_onionoo_to_history) {
 
-        if (i in history_chart_keys) {
+        var translated_key = translate_onionoo_to_history[hkey];
 
-            var key = history_chart_keys[i];
-            var insert_button = false;
+        if (data.read[hkey] && data.read[hkey].length > 0) {
 
-            if (data.read[key] && data.read[key].length > 0) {
+            DOM_changed = connect_history_canvas(translated_key) || DOM_changed;
+            var result = [];
 
-                var result = [];
+            if (last_key_read !== '') {
+                var first_time = data.read[hkey][0][0];
+                var check_time = history_read_data[last_key_read].data[0][0];
+                var check_index = 0;
 
-                if (last_key_read !== '') {
-                    var first_time = data.read[key][0][0];
-                    var check_time = read_data_history[last_key_read].data[0][0];
-                    var check_index = 0;
-
-                    while (check_time < first_time) {
-                        result.push(read_data_history[last_key_read].data[check_index]);
-                        ++check_index;
-                        check_time = read_data_history[last_key_read].data[check_index][0];
-                    }
-                }
-
-                read_data_history[key].data = result.concat(data.read[key]);
-                read_data_history[key].resetBounds();
-                last_key_read = key;
-                insert_button = true;
-            }
-
-            if (data.write[key] && data.write[key].length > 0) {
-
-                var result = [];
-
-                if (last_key_write !== '') {
-                    var first_time = data.write[key][0][0];
-                    var check_time = written_data_history[last_key_write].data[0][0];
-                    var check_index = 0;
-
-                    while (check_time < first_time) {
-                        result.push(written_data_history[last_key_write].data[check_index]);
-                        ++check_index;
-                        check_time = written_data_history[last_key_write].data[check_index][0];
-                    }
-                }
-
-                written_data_history[key].data = result.concat(data.write[key]);
-                written_data_history[key].resetBounds();
-                last_key_write = key;
-                insert_button = true;
-            }
-
-            if (insert_button) {
-                if (!$('#oobw_' + key).length) {
-
-                    button_code = '<label id=\"oobw_' + key + '\"';
-                    button_code += ' class=\"btn btn-default box_chart_button\"';
-                    button_code += ' onclick=\"set_oobw_display(\'' + key + '\')\">';
-                    button_code += '<input type=\"radio\" autocomplete=\"off\">';
-                    button_code += history_chart_labels[i];
-                    button_code += '</label>';
-
-                    if (last_inserted_button && last_inserted_button.length) {
-                        last_inserted_button = $(button_code).insertBefore(last_inserted_button);
-                    }
-                    else {
-                        $("#oo-charts").html('');
-                        last_inserted_button = $(button_code).prependTo($("#oo-charts"));
-                        // $('#oobw_' + key).addClass('active');
-                    }
-                }
-                else {
-                    last_inserted_button = $('#oobw_' + key);
-                }
-                // Latest inserted key ( = first in row) will be shown!
-                new_show_key = key;
-            }
-            else {
-                if ($('#oobw_' + key).length) {
-                    $('#oobw_' + key).remove();
+                while (check_time < first_time) {
+                    result.push(history_read_data[last_key_read].data[check_index]);
+                    ++check_index;
+                    check_time = history_read_data[last_key_read].data[check_index][0];
                 }
             }
+
+            history_read_data[translated_key].data = result.concat(data.read[hkey]);
+            history_read_data[translated_key].resetBounds();
+            last_key_read = hkey;
+
+        }
+
+        if (data.write[hkey] && data.write[hkey].length > 0) {
+
+            DOM_changed = connect_history_canvas(translated_key) || DOM_changed;
+            result = [];
+
+            if (last_key_write !== '') {
+                first_time = data.write[hkey][0][0];
+                check_time = history_written_data[last_key_write].data[0][0];
+                check_index = 0;
+
+                while (check_time < first_time) {
+                    result.push(history_written_data[last_key_write].data[check_index]);
+                    ++check_index;
+                    check_time = history_written_data[last_key_write].data[check_index][0];
+                }
+            }
+
+            history_written_data[translated_key].data = result.concat(data.write[hkey]);
+            history_written_data[translated_key].resetBounds();
+            last_key_write = hkey;
+
         }
     }
 
-    if (last_inserted_button && last_inserted_button.length) {
-        last_inserted_button.addClass('active');
+    if (DOM_changed) {
+        create_history_glide();
     }
 
-    // change chart to display only if no or invalid selection
-    if (oobw_shows === '' || oobw_shows !== '' && !$('#oobw_' + oobw_shows).length) {
-        if (oobw_shows != new_show_key) {
-            set_oobw_display(new_show_key);
-        }
-    }
-
-% end
 };
 
-oobw_handler.prototype.prepare = function() {
-    // console.log("section_general: prepare");
+history_handler.prototype.prepare = function() {
+    // console.log("section_monitor: prepare");
 };
 
-oobw_handler.prototype.nav = function() {
+history_handler.prototype.nav = function() {
     return 'Onionoo Network Data';
 };
 
 $(document).ready(function() {
+    addNavBarButton('Onionoo Network Data', 'history');
+    boxData.addHandler('oo_bw', new history_handler());
 
-    boxData.addHandler('oo_bw', new oobw_handler());
+    for (var len = history_keys.length, i = 0; i < len; i++) {
+        var key = history_keys[i];
+        history_read_data[key] = new boxTimeSeries();
+        history_written_data[key] = new boxTimeSeries();
+        history_bandwidth[key] = new boxChart();
 
-    var canvas;
-    % if oo_read is not None:
-        canvas = document.getElementById('oo-bw-read');
-        oobw_read.prepare(canvas, 5000);
-
-        var oobwr_watcher = scrollMonitor.create(canvas, 100);
-        oobwr_watcher.enterViewport(function () {
-            oobw_read.start();
-        });
-        oobwr_watcher.exitViewport(function () {
-            oobw_read.stop();
-        });
-
-    % end
-    % if oo_write is not None:
-        canvas = document.getElementById('oo-bw-write');
-        oobw_write.prepare(canvas, 5000);
-
-        var oobww_watcher = scrollMonitor.create(canvas, 100);
-        oobww_watcher.enterViewport(function () {
-            oobw_write.start();
-        });
-        oobww_watcher.exitViewport(function () {
-            oobw_write.stop();
-        });
-
-    % end
+    }
 
 });
 
-function set_oobw_display(selector)
-{
-    if (selector == oobw_shows) { return; }
 
-    var charts = ['d3', 'w1', 'm1', 'm3', 'y1', 'y5'];
+function history_interval_style(key) {
 
-    if ($.inArray(selector, charts) > -1) {
-        s = selector;
+    function pad2(number) { return (number < 10 ? '0' : '') + number; }
 
-        var style_r = {
-            chartOptions: chart_style[s],
-            timeseries: [ {
-                serie: read_data_history[s],
-                options: {
-                    lineWidth:1,
-                    strokeStyle:'rgb(0, 0, 153)',
-                    fillStyle:'rgba(0, 0, 153, 0.30)',
-                    nullTo0:true
+    var mppf = {
+        '1s': 0.5,
+        '1m': 0.5,
+        '5m': 0.5,
+        '1h': 0.25,
+        '4h': 0.25,
+        'Ch': 0.25,
+        'y1': 0.25,
+        'y5': 0.25
+    };
+
+    var mpp = {
+        '1s': history_intervals['1s'] * 1000 * mppf['1s'],
+        '1m': history_intervals['1m'] * 1000 * mppf['1m'],
+        '5m': history_intervals['5m'] * 1000 * mppf['5m'],
+        '1h': history_intervals['1h'] * 1000 * mppf['1h'],
+        '4h': history_intervals['4h'] * 1000 * mppf['4h'],
+        'Ch': history_intervals['Ch'] * 1000 * mppf['Ch'],
+        'y1': 1000 * 172800 * mppf['y1'],
+        'y5': 1000 * 864000 * mppf['y5']
+    };
+
+    var mpl = {
+        '1s': 60 * 1000, // minutely
+        '1m': 60 * 60 * 1000, // hourly
+        '5m': 60 * 60 * 1000 * 3, // 3 hourly
+        '1h': 60 * 60 * 24 * 1000, // daily,
+        '4h': 0,
+        'Ch': 0,
+        'y1': 0,
+        'y5': 0
+    };
+
+    var td = {
+        '1s': '',
+        '1m': '',
+        '5m': '',
+        '1h': '',
+        '4h': 'weekly',
+        'Ch': 'monthly',
+        'y1': 'monthly',
+        'y5': 'yearly'
+    };
+/*
+    var mtt = {
+        '1s': 'Minutes',
+        '1m': 'Hours',
+        '5m': 'Day',
+        '1h': 'Week',
+        '4h': 'Month',
+        'Ch': 'Three Months',
+        'y1': 'One Year',
+        'y5': 'Fife Years'
+    };*/
+
+    function tsf(key) {
+        if ($.inArray(key, ['1s', '1m', '5m']) > -1) {
+            return function(date) {
+                return pad2(date.getHours()) + ':' + pad2(date.getMinutes());
                 }
-            } ]
-        };
-
-        var style_w = {
-            chartOptions: chart_style[s],
-            timeseries: [ {
-                serie: written_data_history[s],
-                options: {
-                    lineWidth:1,
-                    strokeStyle:'rgb(0, 0, 153)',
-                    fillStyle:'rgba(0, 0, 153, 0.30)',
-                    nullTo0:true
-                }
-            } ]
-        };
-
-        oobw_read.setDisplay(style_r);
-        oobw_write.setDisplay(style_w);
-        oobw_shows = selector;
-
-        // console.log(oobw_read);
-        // console.log(oobw_write);
-
+        } else if ($.inArray(key, ['1h', '4h', 'Ch', 'y1']) > -1) {
+            return function (date) {
+                return pad2(date.getDate()) + "." + pad2(date.getMonth() + 1) + ".";
+            }
+        } else if ($.inArray(key, ['y5']) > -1) {
+            return function(date) {
+                return date.getFullYear();
+            }
+        }
     }
+
+    return {
+
+        chartOptions: {
+            millisPerPixel: mpp[key],
+            maxValueScale: 1.1,
+            minValueScale: 1.1,
+            maxDataSetLength: Math.max(screen.width, screen.height),     // TBC: is this ok for all use cases??
+            interpolation: 'step',
+            enableDpiScaling: true,
+            timeLabelLeftAlign: true,
+            timeLabelSeparation: 2,
+            // sizeToParent: false,
+
+            grid: {
+                millisPerLine: mpl[key],
+                timeDividers: td[key],
+                fillStyle: '#E6E6E6',
+                strokeStyle: '#777777',
+                verticalSections: 1,
+                borderVisible: true
+            },
+
+            timestampFormatter: tsf(key),
+            yMaxFormatter: function(data, precision) {
+                if (!precision) {
+                    precision = 2;
+                }
+                return (prettyNumber(data, '', 'si') + '/s');
+            },
+            yMinFormatter: function(data, precision) {
+                if (!precision) {
+                    precision = 2;
+                }
+                return (prettyNumber(Math.abs(data), '', 'si') + '/s');
+            },
+
+            labels: {
+                fontFamily: "LatoLatinWebLight",
+                fillStyle: '#000000',
+                disabled: false,
+                fontSize: 10,
+                precision: 2
+            },
+
+            tooltip: true,
+            tooltipLine: {
+                lineWidth: 1,
+                strokeStyle: '#FF0000'
+            },
+
+            /** Formats the HTML string content of the tooltip. */
+            tooltipFormatter: function (timestamp, data) {
+                var date = new Date(timestamp);
+                var lines = ['<span style="font-size: 12px">' +
+                                'Status @ ' + pad2(date.getHours()) + ':' + pad2(date.getMinutes()) + ':' + pad2(date.getSeconds()) +
+                                '</span>'];
+
+                for (var i = 0; i < data.length; ++i) {
+                    var text = '';
+                    if (data[i].series.options.tooltipTextFormatter) {
+                        text = data[i].series.options.tooltipTextFormatter(data[i].value);
+                    } else {
+                        text = this.options.yMaxFormatter(data[i].value, this.options.labels.precision);
+                    }
+                    lines.push('<span style="color:' + data[i].series.options.strokeStyle + '; font-size: 12px">' +
+                        text + '</span>');
+                }
+
+                return lines.join('<br>');
+            },
+        },
+        timeseries: [{
+            serie: history_written_data[key],
+            options: {
+                lineWidth:1,
+                strokeStyle:'rgb(0, 0, 153)',
+                fillStyle:'rgba(0, 0, 153, 0.50)',
+                nullTo0:true
+            }}, {
+            serie: history_read_data[key],
+            options: {
+                lineWidth:1,
+                strokeStyle:'rgb(0, 0, 153)',
+                fillStyle:'rgba(0, 0, 153, 0.30)',
+                nullTo0:true
+            }}
+            ]
+    };
 }
 
-// Display Styles setzen
-var oo_style = {};
 
-oo_style.d3 = {
-    millisPerPixel: 1000 * 900 / 4,
-    grid: {
-        millisPerLine: 1000 * 60 * 60 * 24, // daily
-        timeDividers: ''
-    },
-    timestampFormatter: function(date) {
-        return pad2(date.getDate()) + "." + pad2(date.getMonth() + 1) + "." ;
-    },
-    yMaxFormatter: function(data, precision) {
-        if (!precision) {
-            var precision = 2;
-        }
-        return (prettyNumber(data, '', 'si') + '/s');
-    },
-    yMinFormatter: function() { return ""; }
+
+var history_watchers = [];
+
+$(document).ready(function() {
+
+    var client_time = new Date().getTime();
+
+    // read_data_hd.append(client_time - 5000, 0);
+    // written_data_hd.append(client_time - 5000, 0);
+
+    // read_data_ld.append(client_time - 5000, 0);
+    // written_data_ld.append(client_time - 5000, 0);
+
+    // history_bandwidth['1s'].prepare(canvas, 5000);
+    history_bandwidth['Ch'].setDisplay(history_interval_style('Ch'));
+    var canvas = document.getElementById('history_canvas_Ch');
+    history_bandwidth['Ch'].streamTo(canvas, 0);
+
+    create_history_glide();
+
+});
+
+function connect_history_canvas(tag) {
+
+    console.log(tag);
+
+    var glide = $("#history_glide_" + tag);
+    if (glide.length > 0) {
+        return false;
+    }
+
+    var li = "<li class='glide__slide glide__slide__monitor' id='history_glide_" + tag + "' style=''></li>";
+    var cv = "<canvas class='bw_chart box_canvas' " +
+                "id='history_canvas_" + tag + "' " +
+                "width='300' height='240' " +
+                "style='vertical-align: middle'>" +
+            "</canvas>";
+
+    var pos = $.inArray(tag, history_keys);
+    while (glide.length === 0 && pos > 0) {
+        pos -= 1;
+        glide = $("#history_glide_" + history_keys[pos]);
+    }
+    if (glide.length !== 0) {
+
+        // To insert the new slide without visible DOM repaint:
+        // Get the width of the wrapper
+        var mww = $("#history_wrapper").width();
+
+        // and size the li accordingly
+        var jli = $(li);
+        jli.width(mww);
+
+        // now append the canvas - which will be sized to the same width
+        jli.append(cv);
+
+/*        // make room for this slide in the track
+        var mt = $("#history_track");
+
+        var mtw = mt.width();
+        //console.log(mtw, mww, mtw + mww);
+
+        var sc = $(".glide__slide__history").length;
+
+        //mt.css("width", mtw + mww);
+        mt.width((sc + 1) * mww);
+
+        mtw = mt.width();
+        //console.log(mtw);*/
+
+        // and now insert the slide
+        // console.log(glide, jli);
+        jli.insertAfter(glide);
+
+    } else {
+        return false;
+    }
+
+    var mis=history_interval_style(tag);
+    history_bandwidth[tag].setDisplay(mis);
+    var canvas = document.getElementById('history_canvas_' + tag);
+    // history_bandwidth[tag].prepare(canvas, 5000);
+    history_bandwidth[tag].streamTo(canvas, 5000);
+
+    history_add_button(tag);
+
+    return true;
+}
+
+var history_buttons = {
+    '1s': 'unexpected',
+    '1m': 'unexpected',
+    '5m': 'unexpected',
+    '1h': 'unexpected',
+    '4h': '1 Month',
+    'Ch': '3 Months',
+    'y1': '1 Year',
+    'y5': '5 Years'
 };
 
-oo_style.w1 = {
-    millisPerPixel: 1000 * 3600 / 4,
-    grid: {
-        millisPerLine: 1000 * 60 * 60 * 24, // daily
-        timeDividers: ''
-    },
-    timestampFormatter: function(date) {
-        return pad2(date.getDate()) + "." + pad2(date.getMonth() + 1) + "." ;
-    },
-    yMaxFormatter: function(data, precision) {
-        if (!precision) {
-            var precision = 2;
+function history_add_button(tag) {
+
+    var button = $("#history_button_" + tag);
+    if (button.length > 0) {
+        return false;
+    }
+
+    var lbl = "<label id='history_button_" + tag + "' " +
+                "class='btn btn-outline-secondary box_chart_button' " +
+                "role='button' " +
+                "onclick='history_goto_slide(0)'>" +
+              "</label>";
+
+    var inpt = "<input type='radio' autocomplete='off'>" + history_buttons[tag];
+
+    var pos = $.inArray(tag, history_keys);
+    while (button.length === 0 && pos > 0) {
+        pos -= 1;
+        button = $("#history_button_" + history_keys[pos]);
+    }
+    if (button.length !== 0) {
+
+        var btn = $(lbl);
+        btn.append(inpt);
+
+        btn.insertAfter(button);
+
+    } else {
+        return false;
+    }
+
+    var counter = 0;
+    for (var i= 0; i < history_keys.length; ++i) {
+        button = document.getElementById('history_button_' + history_keys[i]);
+
+        if (button !== null && button.length !== 0) {
+            button.setAttribute('onclick', 'history_goto_slide(' + counter + ')');
+            counter += 1;
         }
-        return (prettyNumber(data, '', 'si') + '/s');
-    },
-    yMinFormatter: function() { return ""; }
-};
+    }
 
-oo_style.m1 = {
-    millisPerPixel: 1000 * 14400 / 4,
-    grid: {
-        millisPerLine: 0,
-        timeDividers: 'weekly'
-    },
-    timestampFormatter: function(date) {
-        return pad2(date.getDate()) + "." + pad2(date.getMonth() + 1) + "." ;
-    },
-    yMaxFormatter: function(data, precision) {
-        if (!precision) {
-            var precision = 2;
-        }
-        return (prettyNumber(data, '', 'si') + '/s');
-    },
-    yMinFormatter: function() { return ""; }
-};
+}
 
-oo_style.m3 = {
-    millisPerPixel: 1000 * 43200 / 4,
-    grid: {
-        millisPerLine: 0,
-        timeDividers: 'monthly'
-    },
-    timestampFormatter: function(date) {
-        return pad2(date.getDate()) + "." + pad2(date.getMonth() + 1) + "." ;
-    },
-    yMaxFormatter: function(data, precision) {
-        if (!precision) {
-            var precision = 2;
-        }
-        return (prettyNumber(data, '', 'si') + '/s');
-    },
-    yMinFormatter: function() { return ""; }
-};
-
-// y1: This one is untested! Please provide feedback if it is ugly!!
-oo_style.y1 = {
-    millisPerPixel: 1000 * 172800 / 4,
-    grid: {
-        millisPerLine: 0,
-        timeDividers: 'monthly'
-    },
-    timestampFormatter: function(date) {
-        return pad2(date.getDate()) + "." + pad2(date.getMonth() + 1) + "." ;
-    },
-    yMaxFormatter: function(data, precision) {
-        if (!precision) {
-            var precision = 2;
-        }
-        return (prettyNumber(data, '', 'si') + '/s');
-    },
-    yMinFormatter: function() { return ""; }
-};
-
-// y5: This one is untested! Please provide feedback if it is ugly!!
-oo_style.y5 = {
-    millisPerPixel: 1000 * 864000 / 4,
-    grid: {
-        millisPerLine: 0,
-        timeDividers: 'yearly'
-    },
-    timestampFormatter: function(date) {
-        return date.getFullYear();
-    },
-    yMaxFormatter: function(data, precision) {
-        if (!precision) {
-            var precision = 2;
-        }
-        return (prettyNumber(data, '', 'si') + '/s');
-    },
-    yMinFormatter: function() { return ""; }
-};
-
-
-% #// 'end' for 'if oo_show is True:'
-% end
+function history_goto_slide(number) {
+    if (history_glide_js != null && history_glide_js.length !== 0) {
+        history_glide_js.go('=' + number);
+    }
+}

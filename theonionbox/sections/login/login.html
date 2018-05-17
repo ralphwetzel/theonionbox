@@ -12,23 +12,21 @@
 
         <div class = "row">
             <div class="{{box_datum_grid}}">
-                <p>Password</p>
+                Password
             </div>
-            <div class="col-xs-3 col-md-3 box_value">
-                    <div class="form-group">
-                        <input type="password" class="form-control" id='login_pwd' name='login_pwd' tabindex="1">
-                    </div>
+            <div class="col-3 col-md-3 box_value box_value_margin">
+                <div class="form-group">
+                    <input type="password" class="form-control" id='login_pwd' name='login_pwd' tabindex="1">
+                </div>
             </div>
-
         </div>
 
         <div class = "row">
             <div class="{{box_datum_grid}}">
-                <p></p>
             </div>
-            <div class="{{box_value_grid}}">
+            <div class="{{box_value_grid}} box_value_margin">
                 <div class="form-group sk-three-bounce">
-                    <button type="submit" id="button_login" class="btn btn-default">Login</button>
+                    <button type="submit" id="button_login" class="btn box_login_btn">Login</button>
                     <div class="spnnr" style="width: 20px; display: inline-block;"></div>
                     <div class="spnnr sk-child sk-bounce1"></div>
                     <div class="spnnr sk-child sk-bounce2"></div>
@@ -41,9 +39,8 @@
 <div id="info_expired" style="display: none">
     <div class = "row">
         <div class="{{box_datum_grid}}">
-            <p></p>
         </div>
-        <div class="{{box_value_grid}} alert alert-danger">
+        <div class="{{box_value_grid}} alert alert-danger box_value_margin">
             Session expired. Please reload this page!
         </div>
     </div>
