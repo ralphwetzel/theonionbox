@@ -1372,7 +1372,7 @@ To solve that issue you have to set the parameter `proxy_path` in your `theonion
 # you have to define that base path here. You are not limited to a single path element.
 # Please assure that this is an absolute filepath yet without the domain:port, beginning with a leading slash,
 # no trailing slash, no quotation marks:
-    proxy_path = /theonionbox
+proxy_path = /theonionbox
 ```
 Now everything should work as expected.
 
