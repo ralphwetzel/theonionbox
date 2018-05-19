@@ -65,6 +65,7 @@ Above that, _The Onion Box_ is able to display Tor network status protocol data 
     - [... using init.d](#-using-initd)
     - [... using systemd](#-using-systemd)
 - [Usage Monitoring](#usage-monitoring)
+- [*The Onion Box* behind Apache's mod_proxy](#the-onion-box-behind-apaches-mod_proxy)
 - [Q&A](#qa)
     - [I receive a _Not supported proxy scheme socks5h_ warning. What shall I do?](#i-receive-a-not-supported-proxy-scheme-socks5h-warning-what-shall-i-do)
     - [I get a _Memory Error_ when trying to install via pip](#i-get-a-memory-error-when-trying-to-install-via-pip)
@@ -1335,8 +1336,46 @@ except Exception as exc:
 [...]
 
 ```
+## *The Onion Box* behind Apache's mod_proxy
 
-# Troubleshooting
+If you intend to operate your *Box* behind Apache's *mod_proxy*, you need to adapt the configuration of both, the proxy as well as your *Box*:
+
+For the following example lets assume that your *Onion Box* is at `192.168.178.46:8080` in your local (home) network.
+You're logged into the server acting as the proxy. Apache is already installed on this server.
+
+To configure *mod_proxy* edit the configuration file `httpd.conf` and uncomment the following lines:
+```
+LoadModule proxy_module modules/mod_proxy.so 
+LoadModule proxy_ajp_module modules/mod_proxy_ajp.so 
+LoadModule proxy_http_module modules/mod_proxy_http.so
+```
+
+At the end of `httpd.conf` add the following line to define the proxy operation:
+
+```
+ProxyPass <proxyname> <endpointURL>
+```
+
+Regarding our example you would define
+```
+ProxyPass "/theonionbox" "http://192.168.178.46:8080"
+```
+
+After a restart of Apache, browsing to `localhost/theonionbox` on your proxy server should then redirect to `http://192.168.178.46:8080`.
+Doing so should open your *Box* page - yet it looks scrumbled and doesn't operate as it should.
+
+To solve that issue you have to set the parameter `proxy_path` in your `theonionbox.cfg` configuration file to match the `<proxyname>` you defined earlier:
+
+```
+# Per default, the Box operates at the root level of a domain e.g. http://localhost:8080/.
+# If you intend to operate it (behind a proxy!) at a deeper level (e.g. @ http://my.server.com/theonionbox/)
+# you have to define that base path here. You are not limited to a single path element.
+# Please assure that this is an absolute filepath yet without the domain:port, beginning with a leading slash,
+# no trailing slash, no quotation marks:
+    proxy_path = /theonionbox
+```
+Now everything should work as expected.
+
 ## Q&A
 ### I receive a _Not supported proxy scheme socks5h_ warning. What shall I do?
 If you receive this message, your `requests` module installation most probably is outdated - and not supporting _socks5h_ proxy operations.
