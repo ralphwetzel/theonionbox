@@ -55,6 +55,7 @@ class VersionManager(object):
 
             tag = tag.lower().split('rc')[0]    # strip 'RC..'
             tag = tag.lower().split('dev')[0]   # strip 'dev'
+            tag = tag.lower().split('post')[0]   # strip 'post'
 
             if tag[-1:] == '.':
                 tag = tag[:-1]

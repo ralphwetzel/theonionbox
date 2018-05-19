@@ -22,9 +22,9 @@ class Storage(object):
         if os.access(path, os.F_OK | os.R_OK | os.W_OK) is True:
 
             if user is None or user == '':
-                path = os.path.join(path, 'theonionbox.persist')
+                path = os.path.join(path, '.theonionbox.persist')
             else:
-                path = os.path.join(path, 'theonionbox.{}'.format(user))
+                path = os.path.join(path, '.theonionbox.{}'.format(user))
         else:
             log.warning("No permissions to access '{}' for data persistance. Trying to operate with in-memory database.".format(path))
             path = ':memory:'
