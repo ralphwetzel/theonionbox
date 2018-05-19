@@ -24,9 +24,7 @@ class Storage(object):
             if user is None or user == '':
                 path = os.path.join(path, 'theonionbox.persist')
             else:
-                from hashlib import md5
-                suffix = md5(user.encode('utf-8')).hexdigest()
-                path = os.path.join(path, 'theonionbox.{}'.format(suffix))
+                path = os.path.join(path, 'theonionbox.{}'.format(user))
         else:
             log.warning("No permissions to access '{}' for data persistance. Trying to operate with in-memory database.".format(path))
             path = ':memory:'
