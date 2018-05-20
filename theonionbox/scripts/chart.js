@@ -196,20 +196,20 @@ boxChart.prototype.resize = function() {
         if (!this.css_style_parent) {
             this.css_style_parent = window.getComputedStyle(this.canvas.parentNode);
         }
-        width = parseInt(this.css_style_parent.getPropertyValue('width'));
-        height = parseInt(this.css_style_parent.getPropertyValue('height'));
+        width = parseFloat(this.css_style_parent.getPropertyValue('width'));
+        height = parseFloat(this.css_style_parent.getPropertyValue('height'));
     }
     else {
         if (!this.css_style) {
             this.css_style = window.getComputedStyle(this.canvas);
         }
-        width = parseInt(this.css_style.getPropertyValue('width'));
-        height = parseInt(this.css_style.getPropertyValue('height'));
+        width = parseFloat(this.css_style.getPropertyValue('width'));
+        height = parseFloat(this.css_style.getPropertyValue('height'));
     }
 
     var dpr = this.options.enableDpiScaling ? window.devicePixelRatio : 1;
-    var dprWidth = parseInt(this.canvas.getAttribute('width'));
-    var dprHeight = parseInt(this.canvas.getAttribute('height'));
+    var dprWidth = parseFloat(this.canvas.getAttribute('width'));
+    var dprHeight = parseFloat(this.canvas.getAttribute('height'));
 
     if (!this.originalWidth || (Math.floor(this.originalWidth * dpr) !== dprWidth || this.originalWidth !== width)) {
         this.originalWidth = width;
@@ -1018,7 +1018,7 @@ boxChart.prototype.render = function(canvas, time) {
         context.save();
 
         var br = $(this.canvas).css('border-radius');
-        br = parseInt(br, 10);
+        br = parseFloat(br);
         context.lineWidth = 2;
 
         if (br === 0) {
