@@ -64,8 +64,8 @@ Above that, _The Onion Box_ is able to display Tor network status protocol data 
     - [... on FreeBSD](#-on-freebsd)
     - [... using init.d](#-using-initd)
     - [... using systemd](#-using-systemd)
-- [Usage Monitoring](#usage-monitoring)
 - [*The Onion Box* behind Apache's mod_proxy](#the-onion-box-behind-apaches-mod_proxy)
+- [Usage Monitoring](#usage-monitoring)
 - [Q&A](#qa)
     - [I receive a _Not supported proxy scheme socks5h_ warning. What shall I do?](#i-receive-a-not-supported-proxy-scheme-socks5h-warning-what-shall-i-do)
     - [I get a _Memory Error_ when trying to install via pip](#i-get-a-memory-error-when-trying-to-install-via-pip)
@@ -1299,43 +1299,6 @@ The next steps are straight forward:
 
 Done.
 
-## Usage Monitoring
-To create a small survey of its usage, _The Onion Box_ sends the following information to `t527moy64zwxsfhb.onion`, the hidden service acting as _The Onion Box Update Service_ when requesting the latest version information of Tor and _The Onion Box_:
-
-- An UUID created newly each time during launch of the box.
-- The stamp of your _Box_ release
-- The name of the operating system hosting your box
-- The release information of the operating system hosting your box
-
-By intension these information are not at all sufficient to identify you (as a person) or the system hosting your box. They just allow to estimate the number of concurrently running instances of _The Onion Box_ and the diversity of the underlying operating systems.
-
-Please refer to [version.py](theonionbox/tob/version.py) to review the code:
-```python
-[...]
-
-proxies = {
-    'http': 'socks5h://' + proxy_address,
-    'https': 'socks5h://' + proxy_address
-}
-payload = {
-    'protocol': __VERSION_PROTOCOL__,
-    'version': self.version,
-    'system': self.system,
-    'release': self.release
-}
-
-address = 'http://t527moy64zwxsfhb.onion/{}/check.html'.format(self.id)
-
-r = None
-
-try:
-    r = requests.get(address, proxies=proxies, params=payload, timeout=10)
-except Exception as exc:
-    pass
-
-[...]
-
-```
 ## *The Onion Box* behind Apache's mod_proxy
 
 If you intend to operate your *Box* behind Apache's *mod_proxy*, you need to adapt the configuration of both, the proxy as well as your *Box*:
@@ -1375,6 +1338,44 @@ To solve that issue you have to set the parameter `proxy_path` in your `theonion
 proxy_path = /theonionbox
 ```
 Now everything should work as expected.
+
+## Usage Monitoring
+To create a small survey of its usage, _The Onion Box_ sends the following information to `t527moy64zwxsfhb.onion`, the hidden service acting as _The Onion Box Update Service_ when requesting the latest version information of Tor and _The Onion Box_:
+
+- An UUID created newly each time during launch of the box.
+- The stamp of your _Box_ release
+- The name of the operating system hosting your box
+- The release information of the operating system hosting your box
+
+By intension these information are not at all sufficient to identify you (as a person) or the system hosting your box. They just allow to estimate the number of concurrently running instances of _The Onion Box_ and the diversity of the underlying operating systems.
+
+Please refer to [version.py](theonionbox/tob/version.py) to review the code:
+```python
+[...]
+
+proxies = {
+    'http': 'socks5h://' + proxy_address,
+    'https': 'socks5h://' + proxy_address
+}
+payload = {
+    'protocol': __VERSION_PROTOCOL__,
+    'version': self.version,
+    'system': self.system,
+    'release': self.release
+}
+
+address = 'http://t527moy64zwxsfhb.onion/{}/check.html'.format(self.id)
+
+r = None
+
+try:
+    r = requests.get(address, proxies=proxies, params=payload, timeout=10)
+except Exception as exc:
+    pass
+
+[...]
+
+```
 
 ## Q&A
 ### I receive a _Not supported proxy scheme socks5h_ warning. What shall I do?
