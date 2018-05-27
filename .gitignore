@@ -61,3 +61,7 @@ docs/_build/
 # PyBuilder
 target/
 theonionbox/theonionbox.ltd
+
+# Special to The Onion Box
+# Glide Library comes with a 'dist' directory that we need!
+!theonionbox/libs/glide-*/dist/
