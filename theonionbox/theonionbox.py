@@ -599,11 +599,11 @@ if find_loader('stem') is None or box_cmdline['debug'] is True or box_cmdline['t
         boxLog.debug('SimpleController Test in Debug & Trace mode:')
         out = boxLog.debug
 
-    from tob.simplecontroller import SimplePort, SimpleSocket
-
     simple_tor = None
 
     if tor_control == 'port':
+
+        from tob.simplecontroller import SimplePort
         out('Trying to connect to Tor @ {}:{}.'.format(tor_host, tor_port))
 
         if tor_port == 'default':
@@ -626,6 +626,7 @@ if find_loader('stem') is None or box_cmdline['debug'] is True or box_cmdline['t
         out("Trying to connect to Tor via socket @ '{}'.".format(tor_socket))
 
         try:
+            from tob.simplecontroller import SimpleSocket
             simple_tor = SimpleSocket(tor_socket)
         except:
             out('Failed to connect to Tor.')
@@ -1095,9 +1096,10 @@ def record_cpu_data(timestamp=None, compensate_deviation=True):
     # first: overall cpu load:
     cpu['c'] = cpu_percent(None, False)
 
+    # 20180527 RDW: Isn't this wrong (at least on Windows 10)?
     # to indicate values according to the logic of the Windows Task Manager
-    if boxHost['system'] == 'Windows':
-        cpu['c'] /= cpu_count()
+    # if boxHost['system'] == 'Windows':
+    #    cpu['c'] /= cpu_count()
 
     # notice: psutil.cpu_percent() will return a meaningless 0.0 when called for the first time
     # this is not nice yet doesn't hurt!

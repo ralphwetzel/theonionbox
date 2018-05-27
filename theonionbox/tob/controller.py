@@ -1,6 +1,8 @@
 from __future__ import absolute_import
 # from stem.control import Controller, with_default, UNDEFINED, LOG_CACHE_FETCHES, _case_insensitive_lookup
 from stem.util import str_type, log
+from stem import UNDEFINED
+
 from deviation import getTimer
 
 # from stem.socket import ControlPort, ControlSocketFile
@@ -633,6 +635,45 @@ class Controller(BaseController):
                 self._set_cache({'accounting|stats': acc_stats})
 
         return acc_stats
+
+    @stem.control.with_default()
+    def get_user(self, default=UNDEFINED):
+
+        from platform import system
+
+        # As stem's & Tor's implementations will return no valuable results on Windows
+        # we diverge appropriately:
+
+        user = None
+
+        if self.is_localhost() and system() == 'Windows':
+
+            from psutil import pid_exists, process_iter
+
+            try:
+                # This should (always) work!
+                pid = self.get_pid()
+            except:
+                # OMG. Can't help!
+                pass
+            else:
+                if pid_exists(pid):
+
+                    # https://psutil.readthedocs.io/en/latest/#filtering-and-sorting-processes
+                    procs = [p.info for p in process_iter(attrs=['pid', 'username']) if pid == p.info['pid']]
+
+                    if len(procs) > 0:
+                        user = procs[0]['username']
+
+        else:
+            user = super(Controller, self).get_user(default=default)
+
+        # from stem.control.get_user()
+        if user:
+            self._set_cache({'user': user})
+            return user
+        else:
+            raise ValueError("Unable to resolve tor's user" if self.is_localhost() else "Tor isn't running locally")
 
 
 def create_controller(node, proxy=None, timeout=5):

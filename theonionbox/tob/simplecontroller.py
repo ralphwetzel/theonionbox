@@ -1,6 +1,6 @@
 import threading
 # from socks import socksocket
-from socket import socket, AF_INET, SOCK_STREAM, AF_UNIX
+from socket import socket, AF_INET, SOCK_STREAM
 
 # "Thanks" to stem!
 try:
@@ -76,6 +76,7 @@ class SimplePort(SimpleController):
 class SimpleSocket(SimpleController):
 
     def __init__(self, socket_path):
+        from socket import AF_UNIX
         self._socket = socket(AF_UNIX, SOCK_STREAM)
         self._socket.settimeout(2)
 
