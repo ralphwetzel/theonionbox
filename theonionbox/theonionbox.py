@@ -1907,6 +1907,8 @@ def get_index(session_id):
     sections = ['!header', 'header',
                 '!content']
 
+    sections += ['controlcenter']
+
     if tor.is_localhost():
         sections += ['host']
 
@@ -2438,6 +2440,32 @@ def post_data(session_id):
         # this little hack ensures, that we deliver data on the
         # first *two* calls after launch!
         session['monitor'] = its_now if 'monitor' in session else 0
+
+    # operations monitoring
+    if 'controlcenter' in box_sections:
+
+        return_data_dict['cc'] = {}
+        last_ts = None
+        if 'controlcenter' in session:
+            last_ts = session['controlcenter']
+            if last_ts == 0:
+                last_ts = None
+
+        # try:
+        #     retval = node.livedata.get_data(since_timestamp=last_ts)
+        #     if len(retval) > 0:
+        #         return_data_dict['cc']['1s'] = retval
+        # except Exception as e:
+        #     print(e)
+        #     pass
+
+        retval = node.livedata.get_data(since_timestamp=last_ts)
+        if len(retval) > 0:
+            return_data_dict['cc']['1s'] = retval
+
+        # this little hack ensures, that we deliver data on the
+        # first *two* calls after launch!
+        session['controlcenter'] = its_now if 'cc' in session else 0
 
     if 'network' in box_sections:
         # Once there was code here.
