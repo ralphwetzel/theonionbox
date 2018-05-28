@@ -147,18 +147,26 @@ class sdist(setuptools.command.sdist.sdist):
 
     def run(self):
 
-        from shutil import rmtree
+        def emptydir(top):
+            if top == '/' or top == "\\":
+                return
+            else:
+                for root, dirs, files in os.walk(top, topdown=False):
+                    for name in files:
+                        os.remove(os.path.join(root, name))
+                    for name in dirs:
+                        os.rmdir(os.path.join(root, name))
 
         try:
-            print("Removing ./dist ...")
-            rmtree('dist')
+            print("Clearing ./dist ...")
+            emptydir('dist')
         except:
             print('Removing ./dist FAILED!')
 
 
         try:
-            print("Removing ./theonionbox.egg-info ...")
-            rmtree('theonionbox.egg-info')
+            print("Clearing ./theonionbox.egg-info ...")
+            emptydir('theonionbox.egg-info')
         except:
             print('Removing ./theonionbox.egg-info FAILED!')
 
