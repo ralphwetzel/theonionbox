@@ -330,6 +330,8 @@ As final step, activate the environment now:
 ~/theonionbox $ source bin/activate
 (theonionbox) ~/theonionbox $ 
 ```
+> On a Windows system, use `Scripts\activate` to activate the virtual environment. You may as well refer to the [documentation of _virtualenv_](https://virtualenv.pypa.io/en/stable/userguide/) if you encounter any issues, e.g. if using _Powershell_.
+
 > The fact that the virtual environment is activated is indicated by the name of the virtualenv in parentheses preceding the path info, e.g. here via `(theonionbox)`.
 
 > If you're working with the `csh` or `fish` shell, you have to use a dedicated file / command to activate the virtual environment:  
