@@ -147,6 +147,21 @@ class sdist(setuptools.command.sdist.sdist):
 
     def run(self):
 
+        from shutil import rmtree
+
+        try:
+            print("Removing ./dist ...")
+            rmtree('dist')
+        except:
+            print('Removing ./dist FAILED!')
+
+
+        try:
+            print("Removing ./theonionbox.egg-info ...")
+            rmtree('theonionbox.egg-info')
+        except:
+            print('Removing ./theonionbox.egg-info FAILED!')
+
         # CompileOSXTemp()
         CompileREADME()
 
@@ -154,7 +169,7 @@ class sdist(setuptools.command.sdist.sdist):
         setuptools.command.sdist.sdist.run(self)
 
 
-def generate_package_data(package_data, package_dir=None):
+def generate_package_data(package_data, exclude=None, package_dir=None):
     """
     :param package_data: package_data as expected by setup.py, recursive dir wildcards
     :type package_data: dict
@@ -172,6 +187,7 @@ def generate_package_data(package_data, package_dir=None):
         out_path = []
 
         base_path = package_dir[key] if key in package_dir else ''
+        exclude_paths = exclude[key] if key in exclude else []
 
         for path_item in paths:
             root = os.path.join(base_path, path_item)
@@ -183,7 +199,9 @@ def generate_package_data(package_data, package_dir=None):
             root_dir, root_file = os.path.split(root)
 
             for (dirpath, dirnames, filenames) in os.walk(root_dir):
-                out_path.append(os.path.relpath(os.path.join(dirpath, root_file), base_path))
+                relpath = os.path.relpath(os.path.join(dirpath, root_file), base_path)
+                if relpath not in exclude_paths:
+                    out_path.append(relpath)
 
         out[key] = out_path
 
@@ -262,6 +280,11 @@ package_data = {
                     ]
 }
 
+package_data_exclude = {
+    'theonionbox': ['sections/controlcenter/*',
+                    ]
+}
+
 data_files = [
     ('docs', ['docs/*.*']),
     ('', ['readme/README.html']),
@@ -326,7 +349,10 @@ setup(
     # py_modules=['theonionbox.py'],
     packages=packages,
     package_dir=package_dir,
-    package_data=generate_package_data(package_data, package_dir),
+    package_data=generate_package_data(package_data=package_data,
+                                       exclude=package_data_exclude,
+                                      package_dir=package_dir),
+    #package_data = package_data,
     data_files=generate_data_files(data_files),
     url='https://github.com/ralphwetzel/theonionbox',
     license='MIT',
