@@ -3,11 +3,13 @@ from __future__ import absolute_import
 import requests
 from hashlib import sha1
 from binascii import a2b_hex
-from time import strptime
+from time import strptime, time, gmtime
+from datetime import datetime
 from calendar import timegm
 import logging
 import sys
 from threading import RLock, Semaphore
+from math import log10, floor
 
 from concurrent.futures import ThreadPoolExecutor
 
@@ -18,7 +20,7 @@ from .proxy import Proxy
 py = sys.version_info
 py30 = py >= (3, 0, 0)
 
-__supported_protocol__ = ['5.1', '5.2', '6.0']
+__supported_protocol__ = ['6.2', '7.0']
 
 
 class Mode(object):
@@ -114,11 +116,12 @@ ONIONOO_HIDDEN = ['http://onionoorcazzotwa.onion', 'http://tgel7v4rpcllsrk2.onio
 
 class Document(object):
 
-    history_object_keys = ['5_years', '1_year', '3_months', '1_month', '1_week', '3_days']
+    history_object_keys = ['5_years', '1_year', '6_months', '3_months', '1_month', '1_week', '3_days']
     # result_object_keys = ['y5', 'y1', 'm3', 'm1', 'w1', 'd3']
 
     result_object_keys = {'5_years': 'y5',
                           '1_year':'y1',
+                          '6_months': 'm6',
                           '3_months': 'm3',
                           '1_month': 'm1',
                           '1_week': 'w1',
@@ -150,10 +153,10 @@ class Document(object):
 
         v = self.version()
         if v not in __supported_protocol__:
-            self.log.warning("Onionoo protocol version mismatch! Supported: {} | Received: {}."
-                     .format(__supported_protocol__, v))
-            self.update(None)
-            return
+            self.log.warning("Onionoo protocol version mismatch! Received: {} / Prepared for: {}."
+                     .format(v, __supported_protocol__))
+            # self.update(None)
+            # return
 
         rlys = self.relays()
         brdgs = self.bridges()
@@ -246,6 +249,8 @@ class Document(object):
         except Exception:
             return None
 
+        # print(go)
+
         result = []
 
         data = go['values']
@@ -254,7 +259,17 @@ class Document(object):
         data_interval = go['interval']
         data_factor = go['factor']
 
-        utc_timestruct = strptime(go['first'], '%Y-%m-%d %H:%M:%S')
+        # mitigation of broken protocol @ 20180808
+        ts = go['first']
+        if type(ts) is int:
+            ts_now = time()
+            # check if ts is in ms?
+            base = floor(log10(ts)) - floor(log10(ts_now))
+            utc_timestruct = gmtime(ts / (10**base))
+        else:
+            # if it's neither an int nor a string, this will raise!
+            utc_timestruct = strptime(ts, '%Y-%m-%d %H:%M:%S')
+
         data_timestamp = timegm(utc_timestruct)
 
         while data_index < data_count:
@@ -341,7 +356,7 @@ class DocumentInterface(object):
 
 class Details(DocumentInterface):
 
-    # onionoo protocol v3.1
+    # onionoo protocol v7.0
     relay_detail = {
         'nickname': 'Unnamed',
         'fingerprint': '',
@@ -360,9 +375,13 @@ class Details(DocumentInterface):
         'city_name': None,
         'latitude': None,
         'longitude': None,
-        'as_number': None,
+        'as': None,
+        # 'as_number': None,
+        'as_name': None,
         'consensus_weight': 0,
-        'host_name': None,
+        # 'host_name': None,
+        'verified_host_names': None,
+        'unverified_host_names': None,
         'last_restarted': None,
         'bandwidth_rate': None,
         'bandwidth_burst': None,
@@ -373,7 +392,9 @@ class Details(DocumentInterface):
         'exit_policy_v6_summary': None,
         'contact': None,
         'platform': None,
+        'version': None,
         'recommended_version': None,
+        'version_status': None,
         'effective_family': None,
         'alleged_family': None,
         'indirect_family': None,
@@ -381,7 +402,8 @@ class Details(DocumentInterface):
         'guard_probability': None,
         'middle_probability': None,
         'exit_probability': None,
-        'measured': None
+        'measured': None,
+        'unreachable_or_addresses': None
     }
 
     # onionoo protocol v3.1
@@ -416,7 +438,9 @@ class Details(DocumentInterface):
         # 'exit_policy_v6_summary': None,
         # 'contact': None,
         'platform': None,
-        # 'recommended_version': None,
+        'version': None,
+        'recommended_version': None,
+        'version_status': None,
         # 'effective_family': None,
         # 'alleged_family': None,
         # 'indirect_family': None,
@@ -424,7 +448,8 @@ class Details(DocumentInterface):
         # 'guard_probability': None,
         # 'middle_probability': None,
         # 'exit_probability': None,
-        # 'measured': None
+        # 'measured': None,
+        # 'unreachable_or_addresses': None
         'transports': None
     }
 
@@ -646,6 +671,9 @@ class OnionOOFactory(object):
             }
             query_base = ONIONOO_HIDDEN[self.hidden_index]
 
+
+        # query_base = ONIONOO_OPEN
+
         query_address = query_base + '/' + data_type
 
         r = None
@@ -685,11 +713,15 @@ class OnionOOFactory(object):
         if r.status_code == requests.codes.not_modified:
             return
 
+        # print(r)
+
         try:
             data = r.json()
         except Exception as exc:
             lgr.debug("Onionoo: Failed to un-json network data; error code says '{}'.".format(exc))
             return
+
+        # print(data)
 
         for_document.update(data)
 
