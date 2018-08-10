@@ -1248,7 +1248,7 @@ Bootstrap = {
 
 # Glide.js
 Glide = {
-    'dir': os.path.join('glide-3.0.4', 'dist'),
+    'dir': os.path.join('glide-3.2.3', 'dist'),
     'js': 'glide.js',
     'core.css': 'glide.core.css',
     'theme.css': 'glide.theme.css'

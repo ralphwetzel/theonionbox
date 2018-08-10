@@ -1,14 +1,8 @@
 /*!
- * Glide.js v3.0.4
+ * Glide.js v3.2.3
  * (c) 2013-2018 Jędrzej Chałubek <jedrzej.chalubek@gmail.com> (http://jedrzejchalubek.com/)
  * Released under the MIT License.
  */
-
-(function (global, factory) {
-	typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
-	typeof define === 'function' && define.amd ? define(factory) :
-	(global.Glide = factory());
-}(this, (function () { 'use strict';
 
 var defaults = {
   /**
@@ -76,6 +70,16 @@ var defaults = {
   keyboard: true,
 
   /**
+   * Stop running `perView` number of slides from the end. Use this
+   * option if you don't want to have an empty space after
+   * a slider. Works only with `slider` type and a
+   * non-centered `focusAt` setting.
+   *
+   * @type {Boolean}
+   */
+  bound: false,
+
+  /**
    * Minimal swipe distance needed to change the slide. Use `false` for turning off a swiping.
    *
    * @type {Number|Boolean}
@@ -116,6 +120,13 @@ var defaults = {
    * @type {Number}
    */
   animationDuration: 400,
+
+  /**
+   * Allows looping the `slider` type. Slider will rewind to the first/last slide when it's at the start/end.
+   *
+   * @type {Boolean}
+   */
+  rewind: true,
 
   /**
    * Duration of the rewinding animation of the `slider` type in milliseconds.
@@ -212,16 +223,6 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
   return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
 };
 
-
-
-
-
-
-
-
-
-
-
 var classCallCheck = function (instance, Constructor) {
   if (!(instance instanceof Constructor)) {
     throw new TypeError("Cannot call a class as a function");
@@ -245,12 +246,6 @@ var createClass = function () {
     return Constructor;
   };
 }();
-
-
-
-
-
-
 
 var _extends = Object.assign || function (target) {
   for (var i = 1; i < arguments.length; i++) {
@@ -307,16 +302,6 @@ var inherits = function (subClass, superClass) {
   if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass;
 };
 
-
-
-
-
-
-
-
-
-
-
 var possibleConstructorReturn = function (self, call) {
   if (!self) {
     throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
@@ -334,6 +319,17 @@ var possibleConstructorReturn = function (self, call) {
  */
 function toInt(value) {
   return parseInt(value);
+}
+
+/**
+ * Converts value entered as number
+ * or string to flat value.
+ *
+ * @param {String} value
+ * @returns {Number}
+ */
+function toFloat(value) {
+  return parseFloat(value);
 }
 
 /**
@@ -478,6 +474,10 @@ function mergeOptions(defaults, settings) {
     }
   }
 
+  if (settings.hasOwnProperty('breakpoints')) {
+    options.breakpoints = _extends({}, defaults.breakpoints, settings.breakpoints);
+  }
+
   return options;
 }
 
@@ -558,7 +558,7 @@ var EventsBus = function () {
   return EventsBus;
 }();
 
-var Glide$2 = function () {
+var Glide = function () {
   /**
    * Construct glide.
    *
@@ -570,6 +570,7 @@ var Glide$2 = function () {
     classCallCheck(this, Glide);
 
     this._c = {};
+    this._t = [];
     this._e = new EventsBus();
 
     this.disabled = false;
@@ -605,6 +606,27 @@ var Glide$2 = function () {
     }
 
     /**
+     * Collects an instance `translate` transformers.
+     *
+     * @param  {Array} transformers Collection of transformers.
+     * @return {Void}
+     */
+
+  }, {
+    key: 'mutate',
+    value: function mutate() {
+      var transformers = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : [];
+
+      if (isArray(transformers)) {
+        this._t = transformers;
+      } else {
+        warn('You need to provide a array on `mutate()`');
+      }
+
+      return this;
+    }
+
+    /**
      * Updates glide with specified settings.
      *
      * @param {Object} settings
@@ -616,7 +638,7 @@ var Glide$2 = function () {
     value: function update() {
       var settings = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 
-      this.settings = _extends({}, this.settings, settings);
+      this.settings = mergeOptions(this.settings, settings);
 
       if (settings.hasOwnProperty('startAt')) {
         this.index = settings.startAt;
@@ -855,7 +877,7 @@ var Glide$2 = function () {
   return Glide;
 }();
 
-var Run = function (Glide, Components, Events) {
+function Run (Glide, Components, Events) {
   var Run = {
     /**
      * Initializes autorunning of the glide.
@@ -920,9 +942,11 @@ var Run = function (Glide, Components, Events) {
           if (steps === '>') {
             Glide.index = length;
           } else if (this.isEnd()) {
-            this._o = true;
+            if (!(Glide.isType('slider') && !Glide.settings.rewind)) {
+              this._o = true;
 
-            Glide.index = 0;
+              Glide.index = 0;
+            }
 
             Events.emit('run.end', move);
           } else if (countableSteps) {
@@ -936,9 +960,11 @@ var Run = function (Glide, Components, Events) {
           if (steps === '<') {
             Glide.index = 0;
           } else if (this.isStart()) {
-            this._o = true;
+            if (!(Glide.isType('slider') && !Glide.settings.rewind)) {
+              this._o = true;
 
-            Glide.index = length;
+              Glide.index = length;
+            }
 
             Events.emit('run.start', move);
           } else if (countableSteps) {
@@ -1018,7 +1044,25 @@ var Run = function (Glide, Components, Events) {
      * @return {Number}
      */
     get: function get() {
-      return Components.Html.slides.length - 1;
+      var settings = Glide.settings;
+      var length = Components.Html.slides.length;
+
+      // While number of slides inside instance is smaller
+      // that `perView` settings we should't run at all.
+      // Running distance has to be zero.
+
+      if (settings.perView > length) {
+        return 0;
+      }
+
+      // If the `bound` option is acitve, a maximum running distance should be
+      // reduced by `perView` and `focusAt` settings. Running distance
+      // should end before creating an empty space after instance.
+      if (Glide.isType('slider') && settings.focusAt !== 'center' && settings.bound) {
+        return length - 1 - (toInt(settings.perView) - 1) + toInt(settings.focusAt);
+      }
+
+      return length - 1;
     }
   });
 
@@ -1034,7 +1078,7 @@ var Run = function (Glide, Components, Events) {
   });
 
   return Run;
-};
+}
 
 /**
  * Returns a current time.
@@ -1105,18 +1149,8 @@ var MARGIN_TYPE = {
   rtl: ['marginRight', 'marginLeft']
 };
 
-var Gaps = function (Glide, Components, Events) {
+function Gaps (Glide, Components, Events) {
   var Gaps = {
-    /**
-     * Setups gap value based on settings.
-     *
-     * @return {Void}
-     */
-    mount: function mount() {
-      this.value = Glide.settings.gap;
-    },
-
-
     /**
      * Applies gaps between slides. First and last
      * slides do not receive it's edge margins.
@@ -1167,18 +1201,7 @@ var Gaps = function (Glide, Components, Events) {
      * @returns {Number}
      */
     get: function get() {
-      return Gaps._v;
-    },
-
-
-    /**
-     * Sets value of the gap.
-     *
-     * @param {String} value
-     * @return {Void}
-     */
-    set: function set(value) {
-      Gaps._v = toInt(value);
+      return toInt(Glide.settings.gap);
     }
   });
 
@@ -1209,14 +1232,6 @@ var Gaps = function (Glide, Components, Events) {
   });
 
   /**
-   * Remount component:
-   * - on updating via API, to update gap value
-   */
-  Events.on('update', function () {
-    Gaps.mount();
-  });
-
-  /**
    * Apply calculated gaps:
    * - after building, so slides (including clones) will receive proper margins
    * - on updating via API, to recalculate gaps with new options
@@ -1234,7 +1249,7 @@ var Gaps = function (Glide, Components, Events) {
   });
 
   return Gaps;
-};
+}
 
 /**
  * Finds siblings nodes of the passed node.
@@ -1243,16 +1258,20 @@ var Gaps = function (Glide, Components, Events) {
  * @return {Array}
  */
 function siblings(node) {
-  var n = node.parentNode.firstChild;
-  var matched = [];
+  if (node && node.parentNode) {
+    var n = node.parentNode.firstChild;
+    var matched = [];
 
-  for (; n; n = n.nextSibling) {
-    if (n.nodeType === 1 && n !== node) {
-      matched.push(n);
+    for (; n; n = n.nextSibling) {
+      if (n.nodeType === 1 && n !== node) {
+        matched.push(n);
+      }
     }
+
+    return matched;
   }
 
-  return matched;
+  return [];
 }
 
 /**
@@ -1271,7 +1290,7 @@ function exist(node) {
 
 var TRACK_SELECTOR = '[data-glide-el="track"]';
 
-var Html = function (Glide, Components) {
+function Html (Glide, Components) {
   var Html = {
     /**
      * Setup slider HTML nodes.
@@ -1353,9 +1372,9 @@ var Html = function (Glide, Components) {
   });
 
   return Html;
-};
+}
 
-var Peek = function (Glide, Components, Events) {
+function Peek (Glide, Components, Events) {
   var Peek = {
     /**
      * Setups how much to peek based on settings.
@@ -1423,9 +1442,9 @@ var Peek = function (Glide, Components, Events) {
   });
 
   return Peek;
-};
+}
 
-var Move = function (Glide, Components, Events) {
+function Move (Glide, Components, Events) {
   var Move = {
     /**
      * Constructs move component.
@@ -1522,9 +1541,9 @@ var Move = function (Glide, Components, Events) {
   });
 
   return Move;
-};
+}
 
-var Sizes = function (Glide, Components, Events) {
+function Sizes (Glide, Components, Events) {
   var Sizes = {
     /**
      * Setups dimentions of slides.
@@ -1630,9 +1649,9 @@ var Sizes = function (Glide, Components, Events) {
   });
 
   return Sizes;
-};
+}
 
-var Build = function (Glide, Components, Events) {
+function Build (Glide, Components, Events) {
   var Build = {
     /**
      * Init glide building. Adds classes, sets
@@ -1669,11 +1688,13 @@ var Build = function (Glide, Components, Events) {
       var classes = Glide.settings.classes;
       var slide = Components.Html.slides[Glide.index];
 
-      slide.classList.add(classes.activeSlide);
+      if (slide) {
+        slide.classList.add(classes.activeSlide);
 
-      siblings(slide).forEach(function (sibling) {
-        sibling.classList.remove(classes.activeSlide);
-      });
+        siblings(slide).forEach(function (sibling) {
+          sibling.classList.remove(classes.activeSlide);
+        });
+      }
     },
 
 
@@ -1720,9 +1741,9 @@ var Build = function (Glide, Components, Events) {
   });
 
   return Build;
-};
+}
 
-var Clones = function (Glide, Components, Events) {
+function Clones (Glide, Components, Events) {
   var Clones = {
     /**
      * Create pattern map and collect slides to be cloned.
@@ -1731,38 +1752,8 @@ var Clones = function (Glide, Components, Events) {
       this.items = [];
 
       if (Glide.isType('carousel')) {
-        this.pattern = this.map();
         this.items = this.collect();
       }
-    },
-
-
-    /**
-     * Generate pattern of the cloning.
-     *
-     * @return {Void}
-     */
-    map: function map() {
-      var pattern = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : [];
-
-      var perView = Glide.settings.perView;
-      var length = Components.Html.slides.length;
-
-      // Repeat creating pattern based on the ratio calculated
-      // by number in `perView` per actual number of slides.
-      for (var r = 0; r < Math.max(1, Math.floor(perView / length)); r++) {
-        // Fill pattern with indexes of slides at the beginning of track.
-        for (var i = 0; i <= length - 1; i++) {
-          pattern.push('' + i);
-        }
-
-        // Fill pattern with indexes of slides from the end of track.
-        for (var _i = length - 1; _i >= 0; _i--) {
-          pattern.unshift('-' + _i);
-        }
-      }
-
-      return pattern;
     },
 
 
@@ -1773,15 +1764,31 @@ var Clones = function (Glide, Components, Events) {
      */
     collect: function collect() {
       var items = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : [];
-      var pattern = this.pattern;
+      var slides = Components.Html.slides;
+      var _Glide$settings = Glide.settings,
+          perView = _Glide$settings.perView,
+          classes = _Glide$settings.classes;
 
 
-      for (var i = 0; i < pattern.length; i++) {
-        var clone = Components.Html.slides[Math.abs(pattern[i])].cloneNode(true);
+      var start = slides.slice(0, perView);
+      var end = slides.slice(-perView);
 
-        clone.classList.add(Glide.settings.classes.cloneSlide);
+      for (var r = 0; r < Math.max(1, Math.floor(perView / slides.length)); r++) {
+        for (var i = 0; i < start.length; i++) {
+          var clone = start[i].cloneNode(true);
 
-        items.push(clone);
+          clone.classList.add(classes.cloneSlide);
+
+          items.push(clone);
+        }
+
+        for (var _i = 0; _i < end.length; _i++) {
+          var _clone = end[_i].cloneNode(true);
+
+          _clone.classList.add(classes.cloneSlide);
+
+          items.unshift(_clone);
+        }
       }
 
       return items;
@@ -1794,22 +1801,26 @@ var Clones = function (Glide, Components, Events) {
      * @return {Void}
      */
     append: function append() {
-      var items = this.items,
-          pattern = this.pattern;
+      var items = this.items;
+      var _Components$Html = Components.Html,
+          wrapper = _Components$Html.wrapper,
+          slides = _Components$Html.slides;
 
 
-      for (var i = 0; i < items.length; i++) {
-        var item = items[i];
+      var half = Math.floor(items.length / 2);
+      var prepend = items.slice(0, half).reverse();
+      var append = items.slice(half, items.length);
 
-        item.style.width = Components.Sizes.slideWidth + 'px';
+      for (var i = 0; i < append.length; i++) {
+        wrapper.appendChild(append[i]);
+      }
 
-        // Append clone if pattern position is positive.
-        // Prepend clone if pattern position is negative.
-        if (pattern[i][0] === '-') {
-          Components.Html.wrapper.insertBefore(item, Components.Html.slides[0]);
-        } else {
-          Components.Html.wrapper.appendChild(item);
-        }
+      for (var _i2 = 0; _i2 < prepend.length; _i2++) {
+        wrapper.insertBefore(prepend[_i2], slides[0]);
+      }
+
+      for (var _i3 = 0; _i3 < items.length; _i3++) {
+        items[_i3].style.width = Components.Sizes.slideWidth + 'px';
       }
     },
 
@@ -1824,7 +1835,7 @@ var Clones = function (Glide, Components, Events) {
 
 
       for (var i = 0; i < items.length; i++) {
-        items[i].remove();
+        Components.Html.wrapper.removeChild(items[i]);
       }
     }
   };
@@ -1869,7 +1880,7 @@ var Clones = function (Glide, Components, Events) {
   });
 
   return Clones;
-};
+}
 
 var EventsBinder = function () {
   /**
@@ -1895,6 +1906,8 @@ var EventsBinder = function () {
   createClass(EventsBinder, [{
     key: 'on',
     value: function on(events, el, closure) {
+      var capture = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : false;
+
       if (isString(events)) {
         events = [events];
       }
@@ -1902,7 +1915,7 @@ var EventsBinder = function () {
       for (var i = 0; i < events.length; i++) {
         this.listeners[events[i]] = closure;
 
-        el.addEventListener(events[i], this.listeners[events[i]], false);
+        el.addEventListener(events[i], this.listeners[events[i]], capture);
       }
     }
 
@@ -1941,7 +1954,7 @@ var EventsBinder = function () {
   return EventsBinder;
 }();
 
-var Resize = function (Glide, Components, Events) {
+function Resize (Glide, Components, Events) {
   /**
    * Instance of the binder for DOM Events.
    *
@@ -1991,7 +2004,7 @@ var Resize = function (Glide, Components, Events) {
   });
 
   return Resize;
-};
+}
 
 var VALID_DIRECTIONS = ['ltr', 'rtl'];
 var FLIPED_MOVEMENTS = {
@@ -2000,7 +2013,7 @@ var FLIPED_MOVEMENTS = {
   '=': '='
 };
 
-var Direction = function (Glide, Components, Events) {
+function Direction (Glide, Components, Events) {
   var Direction = {
     /**
      * Setups gap value based on settings.
@@ -2113,7 +2126,7 @@ var Direction = function (Glide, Components, Events) {
   });
 
   return Direction;
-};
+}
 
 /**
  * Reflects value of glide movement.
@@ -2122,7 +2135,7 @@ var Direction = function (Glide, Components, Events) {
  * @param  {Object} Components
  * @return {Object}
  */
-var Rtl = function (Glide, Components) {
+function Rtl (Glide, Components) {
   return {
     /**
      * Negates the passed translate if glide is in RTL option.
@@ -2138,7 +2151,7 @@ var Rtl = function (Glide, Components) {
       return translate;
     }
   };
-};
+}
 
 /**
  * Updates glide movement with a `gap` settings.
@@ -2147,7 +2160,7 @@ var Rtl = function (Glide, Components) {
  * @param  {Object} Components
  * @return {Object}
  */
-var Gap = function (Glide, Components) {
+function Gap (Glide, Components) {
   return {
     /**
      * Modifies passed translate value with number in the `gap` settings.
@@ -2159,7 +2172,7 @@ var Gap = function (Glide, Components) {
       return translate + Components.Gaps.value * Glide.index;
     }
   };
-};
+}
 
 /**
  * Updates glide movement with width of additional clones width.
@@ -2168,7 +2181,7 @@ var Gap = function (Glide, Components) {
  * @param  {Object} Components
  * @return {Object}
  */
-var Grow = function (Glide, Components) {
+function Grow (Glide, Components) {
   return {
     /**
      * Adds to the passed translate width of the half of clones.
@@ -2180,7 +2193,7 @@ var Grow = function (Glide, Components) {
       return translate + Components.Clones.grow / 2;
     }
   };
-};
+}
 
 /**
  * Updates glide movement with a `peek` settings.
@@ -2189,7 +2202,7 @@ var Grow = function (Glide, Components) {
  * @param  {Object} Components
  * @return {Object}
  */
-var Peeking = function (Glide, Components) {
+function Peeking (Glide, Components) {
   return {
     /**
      * Modifies passed translate value with a `peek` setting.
@@ -2211,7 +2224,7 @@ var Peeking = function (Glide, Components) {
       return translate;
     }
   };
-};
+}
 
 /**
  * Updates glide movement with a `focusAt` settings.
@@ -2220,7 +2233,7 @@ var Peeking = function (Glide, Components) {
  * @param  {Object} Components
  * @return {Object}
  */
-var Focusing = function (Glide, Components) {
+function Focusing (Glide, Components) {
   return {
     /**
      * Modifies passed translate value with index in the `focusAt` setting.
@@ -2241,18 +2254,7 @@ var Focusing = function (Glide, Components) {
       return translate - slideWidth * focusAt - gap * focusAt;
     }
   };
-};
-
-/**
- * Collection of transformers.
- *
- * @type {Array}
- */
-var MUTATORS = [Gap, Grow, Peeking, Focusing,
-// It's important that the Rtl component
-// be last on the list, so it reflects
-// all previous transformations.
-Rtl];
+}
 
 /**
  * Applies diffrent transformers on translate value.
@@ -2261,7 +2263,16 @@ Rtl];
  * @param  {Object} Components
  * @return {Object}
  */
-var transformer = function (Glide, Components) {
+function mutator (Glide, Components, Events) {
+  /**
+   * Merge instance transformers with collection of default transformers.
+   * It's important that the Rtl component be last on the list,
+   * so it reflects all previous transformations.
+   *
+   * @type {Array}
+   */
+  var TRANSFORMERS = [Gap, Grow, Peeking, Focusing].concat(Glide._t, [Rtl]);
+
   return {
     /**
      * Piplines translate value with registered transformers.
@@ -2270,16 +2281,22 @@ var transformer = function (Glide, Components) {
      * @return {Number}
      */
     mutate: function mutate(translate) {
-      for (var i = 0; i < MUTATORS.length; i++) {
-        translate = MUTATORS[i](Glide, Components).modify(translate);
+      for (var i = 0; i < TRANSFORMERS.length; i++) {
+        var transformer = TRANSFORMERS[i];
+
+        if (isFunction(transformer) && isFunction(transformer().modify)) {
+          translate = transformer(Glide, Components, Events).modify(translate);
+        } else {
+          warn('Transformer should be a function that returns an object with `modify()` method');
+        }
       }
 
       return translate;
     }
   };
-};
+}
 
-var Translate = function (Glide, Components, Events) {
+function Translate (Glide, Components, Events) {
   var Translate = {
     /**
      * Sets value of translate on HTML element.
@@ -2288,7 +2305,7 @@ var Translate = function (Glide, Components, Events) {
      * @return {Void}
      */
     set: function set(value) {
-      var transform = transformer(Glide, Components).mutate(value);
+      var transform = mutator(Glide, Components).mutate(value);
 
       Components.Html.wrapper.style.transform = 'translate3d(' + -1 * transform + 'px, 0px, 0px)';
     },
@@ -2346,9 +2363,9 @@ var Translate = function (Glide, Components, Events) {
   });
 
   return Translate;
-};
+}
 
-var Transition = function (Glide, Components, Events) {
+function Transition (Glide, Components, Events) {
   /**
    * Holds inactivity status of transition.
    * When true transition is not applied.
@@ -2488,14 +2505,14 @@ var Transition = function (Glide, Components, Events) {
   });
 
   return Transition;
-};
+}
 
 var START_EVENTS = ['touchstart', 'mousedown'];
 var MOVE_EVENTS = ['touchmove', 'mousemove'];
 var END_EVENTS = ['touchend', 'touchcancel', 'mouseup', 'mouseleave'];
 var MOUSE_EVENTS = ['mousedown', 'mousemove', 'mouseup', 'mouseleave'];
 
-var Swipe = function (Glide, Components, Events) {
+function swipe (Glide, Components, Events) {
   /**
    * Instance of the binder for DOM Events.
    *
@@ -2550,7 +2567,11 @@ var Swipe = function (Glide, Components, Events) {
      */
     move: function move(event) {
       if (!Glide.disabled) {
-        var settings = Glide.settings;
+        var _Glide$settings = Glide.settings,
+            touchAngle = _Glide$settings.touchAngle,
+            touchRatio = _Glide$settings.touchRatio,
+            classes = _Glide$settings.classes;
+
 
         var swipe = this.touches(event);
 
@@ -2558,20 +2579,17 @@ var Swipe = function (Glide, Components, Events) {
         var subEySy = toInt(swipe.pageY) - swipeStartY;
         var powEX = Math.abs(subExSx << 2);
         var powEY = Math.abs(subEySy << 2);
-        var swipeHypotenuse = Math.sqrt(powEX + powEY);
-        var swipeCathetus = Math.sqrt(powEY);
+        var swipeHypotenuse = (powEX + powEY) * (powEX + powEY);
+        var swipeCathetus = powEY * powEY;
 
         swipeSin = Math.asin(swipeCathetus / swipeHypotenuse);
 
-        if (swipeSin * 180 / Math.PI < settings.touchAngle) {
-          Components.Move.make(subExSx * parseFloat(settings.touchRatio));
-        }
+        Components.Move.make(subExSx * toFloat(touchRatio));
 
-        if (swipeSin * 180 / Math.PI < settings.touchAngle) {
+        if (swipeSin * 180 / Math.PI < touchAngle) {
           event.stopPropagation();
-          event.preventDefault();
 
-          Components.Html.root.classList.add(settings.classes.dragging);
+          Components.Html.root.classList.add(classes.dragging);
 
           Events.emit('swipe.move');
         } else {
@@ -2643,14 +2661,20 @@ var Swipe = function (Glide, Components, Events) {
      * @return {Void}
      */
     bindSwipeStart: function bindSwipeStart() {
+      var _this = this;
+
       var settings = Glide.settings;
 
       if (settings.swipeThreshold) {
-        Binder.on(START_EVENTS[0], Components.Html.wrapper, this.start.bind(this));
+        Binder.on(START_EVENTS[0], Components.Html.wrapper, function (event) {
+          _this.start(event);
+        });
       }
 
       if (settings.dragThreshold) {
-        Binder.on(START_EVENTS[1], Components.Html.wrapper, this.start.bind(this));
+        Binder.on(START_EVENTS[1], Components.Html.wrapper, function (event) {
+          _this.start(event);
+        });
       }
     },
 
@@ -2672,7 +2696,11 @@ var Swipe = function (Glide, Components, Events) {
      * @return {Void}
      */
     bindSwipeMove: function bindSwipeMove() {
-      Binder.on(MOVE_EVENTS, Components.Html.wrapper, throttle(this.move.bind(this), Glide.settings.throttle));
+      var _this2 = this;
+
+      Binder.on(MOVE_EVENTS, Components.Html.wrapper, throttle(function (event) {
+        _this2.move(event);
+      }, Glide.settings.throttle));
     },
 
 
@@ -2692,7 +2720,11 @@ var Swipe = function (Glide, Components, Events) {
      * @return {Void}
      */
     bindSwipeEnd: function bindSwipeEnd() {
-      Binder.on(END_EVENTS, Components.Html.wrapper, this.end.bind(this));
+      var _this3 = this;
+
+      Binder.on(END_EVENTS, Components.Html.wrapper, function (event) {
+        _this3.end(event);
+      });
     },
 
 
@@ -2784,9 +2816,9 @@ var Swipe = function (Glide, Components, Events) {
   });
 
   return Swipe;
-};
+}
 
-var Images = function (Glide, Components, Events) {
+function images (Glide, Components, Events) {
   /**
    * Instance of the binder for DOM Events.
    *
@@ -2845,9 +2877,9 @@ var Images = function (Glide, Components, Events) {
   });
 
   return Images;
-};
+}
 
-var Anchors = function (Glide, Components, Events) {
+function anchors (Glide, Components, Events) {
   /**
    * Instance of the binder for DOM Events.
    *
@@ -2964,8 +2996,6 @@ var Anchors = function (Glide, Components, Events) {
           this.items[i].draggable = true;
 
           this.items[i].setAttribute('href', this.items[i].getAttribute('data-href'));
-
-          this.items[i].setAttribute('data-href', undefined);
         }
 
         detached = false;
@@ -3015,12 +3045,12 @@ var Anchors = function (Glide, Components, Events) {
   });
 
   return Anchors;
-};
+}
 
 var NAV_SELECTOR = '[data-glide-el="controls[nav]"]';
 var CONTROLS_SELECTOR = '[data-glide-el^="controls"]';
 
-var Controls = function (Glide, Components, Events) {
+function controls (Glide, Components, Events) {
   /**
    * Instance of the binder for DOM Events.
    *
@@ -3050,7 +3080,7 @@ var Controls = function (Glide, Components, Events) {
        * @private
        * @type {HTMLCollection}
        */
-      this._i = Components.Html.root.querySelectorAll(CONTROLS_SELECTOR);
+      this._c = Components.Html.root.querySelectorAll(CONTROLS_SELECTOR);
 
       this.addBindings();
     },
@@ -3115,8 +3145,8 @@ var Controls = function (Glide, Components, Events) {
      * @return {Void}
      */
     addBindings: function addBindings() {
-      for (var i = 0; i < this._i.length; i++) {
-        this.bind(this._i[i].children);
+      for (var i = 0; i < this._c.length; i++) {
+        this.bind(this._c[i].children);
       }
     },
 
@@ -3127,8 +3157,8 @@ var Controls = function (Glide, Components, Events) {
      * @return {Void}
      */
     removeBindings: function removeBindings() {
-      for (var i = 0; i < this._i.length; i++) {
-        this.unbind(this._i[i].children);
+      for (var i = 0; i < this._c.length; i++) {
+        this.unbind(this._c[i].children);
       }
     },
 
@@ -3181,7 +3211,7 @@ var Controls = function (Glide, Components, Events) {
      * @return {HTMLElement[]}
      */
     get: function get() {
-      return Controls._i;
+      return Controls._c;
     }
   });
 
@@ -3205,9 +3235,9 @@ var Controls = function (Glide, Components, Events) {
   });
 
   return Controls;
-};
+}
 
-var Keyboard = function (Glide, Components, Events) {
+function keyboard (Glide, Components, Events) {
   /**
    * Instance of the binder for DOM Events.
    *
@@ -3291,9 +3321,9 @@ var Keyboard = function (Glide, Components, Events) {
   });
 
   return Keyboard;
-};
+}
 
-var Autoplay = function (Glide, Components, Events) {
+function autoplay (Glide, Components, Events) {
   /**
    * Instance of the binder for DOM Events.
    *
@@ -3443,7 +3473,7 @@ var Autoplay = function (Glide, Components, Events) {
   });
 
   return Autoplay;
-};
+}
 
 /**
  * Sorts keys of breakpoint object so they will be ordered from lower to bigger.
@@ -3461,7 +3491,7 @@ function sortBreakpoints(points) {
   return {};
 }
 
-var Breakpoints = function (Glide, Components, Events) {
+function breakpoints (Glide, Components, Events) {
   /**
    * Instance of the binder for DOM Events.
    *
@@ -3477,17 +3507,13 @@ var Breakpoints = function (Glide, Components, Events) {
   var settings = Glide.settings;
 
   /**
-   * Holds reference to breakpoints object in settings
+   * Holds reference to breakpoints object in settings. Sorts breakpoints
+   * from smaller to larger. It is required in order to proper
+   * matching currently active breakpoint settings.
    *
    * @type {Object}
    */
-  var points = settings.breakpoints;
-
-  /**
-   * Sort breakpoints from smaller to larger. It is required in order
-   * to proper matching currently active breakpoint settings.
-   */
-  points = sortBreakpoints(points);
+  var points = sortBreakpoints(settings.breakpoints);
 
   /**
    * Cache initial settings before overwritting.
@@ -3529,7 +3555,7 @@ var Breakpoints = function (Glide, Components, Events) {
    * - window resize to update slider
    */
   Binder.on('resize', window, throttle(function () {
-    _extends(settings, Breakpoints.match(points));
+    Glide.settings = mergeOptions(settings, Breakpoints.match(points));
   }, Glide.settings.throttle));
 
   /**
@@ -3551,12 +3577,9 @@ var Breakpoints = function (Glide, Components, Events) {
   });
 
   return Breakpoints;
-};
+}
 
-// Required components
-// Optional components
 var COMPONENTS = {
-  // Required
   Html: Html,
   Translate: Translate,
   Transition: Transition,
@@ -3568,37 +3591,27 @@ var COMPONENTS = {
   Clones: Clones,
   Resize: Resize,
   Build: Build,
-  Run: Run,
-
-  // Optional
-  Swipe: Swipe,
-  Images: Images,
-  Anchors: Anchors,
-  Controls: Controls,
-  Keyboard: Keyboard,
-  Autoplay: Autoplay,
-  Breakpoints: Breakpoints
+  Run: Run
 };
 
-var Glide = function (_Core) {
-  inherits(Glide, _Core);
+var Glide$1 = function (_Core) {
+  inherits(Glide$$1, _Core);
 
-  function Glide() {
-    classCallCheck(this, Glide);
-    return possibleConstructorReturn(this, (Glide.__proto__ || Object.getPrototypeOf(Glide)).apply(this, arguments));
+  function Glide$$1() {
+    classCallCheck(this, Glide$$1);
+    return possibleConstructorReturn(this, (Glide$$1.__proto__ || Object.getPrototypeOf(Glide$$1)).apply(this, arguments));
   }
 
-  createClass(Glide, [{
+  createClass(Glide$$1, [{
     key: 'mount',
     value: function mount() {
       var extensions = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
 
-      return get(Glide.prototype.__proto__ || Object.getPrototypeOf(Glide.prototype), 'mount', this).call(this, _extends({}, COMPONENTS, extensions));
+      return get(Glide$$1.prototype.__proto__ || Object.getPrototypeOf(Glide$$1.prototype), 'mount', this).call(this, _extends({}, COMPONENTS, extensions));
     }
   }]);
-  return Glide;
-}(Glide$2);
+  return Glide$$1;
+}(Glide);
 
-return Glide;
-
-})));
+export default Glide$1;
+export { swipe as Swipe, images as Images, anchors as Anchors, controls as Controls, keyboard as Keyboard, autoplay as Autoplay, breakpoints as Breakpoints };
