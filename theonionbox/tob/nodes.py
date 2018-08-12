@@ -198,8 +198,7 @@ class TorNode(object):
                                                           connection=conn)
                     counter += 1
             except Exception as e:
-                log.warning('Failed to establish LiveData connection: {}'.format(e))
-                return
+                log.warning('Failed to get cached bandwidth data from Tor. Recently started the node?')
 
             if conn is not None:
                 conn.commit()
