@@ -144,9 +144,25 @@ boxHost = {
 }
 
 # The user running this script
-import getpass
+def get_user():
+    '''
+    Get the current user
+    '''
+
+    # Try to load pwd, fallback to getpass if unsuccessful
+    try:
+        import pwd
+    except ImportError:
+        import getpass
+        pwd = None
+
+    if pwd is not None:
+        return pwd.getpwuid(os.geteuid()).pw_name
+    else:
+        return getpass.getuser()
+
 try:
-    boxHost['user'] = getpass.getuser()
+    boxHost['user'] = get_user()
 except:
     pass
 
