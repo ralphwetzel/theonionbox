@@ -8,7 +8,7 @@
 # theonionbox_enable (bool):	Set it to "YES" to enable TheOnionBox. Default: NO
 
 # To achieve this, run the following line from the shell:
-# echo “theonionbox_enable=YES” >>/etc/rc.conf
+# echo "theonionbox_enable=YES" >>/etc/rc.conf
 
 . /etc/rc.subr
 
@@ -46,7 +46,7 @@ command_interpreter="/usr/local/bin/python"
 
 # That's out script
 command="${theonionbox_dir}/theonionbox.py --mode=service --config='${theonionbox_conf}'"
-start_cmd="/usr/sbin/daemon -u ${theonionbox_user} -p ${pidfile} ${command}"
+start_cmd="/usr/sbin/daemon -f -u ${theonionbox_user} -p ${pidfile} ${command}"
 
 # Let's go!
 run_rc_command "$1"
