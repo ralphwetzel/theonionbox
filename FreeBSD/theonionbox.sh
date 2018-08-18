@@ -4,6 +4,8 @@
 # REQUIRE: DAEMON FILESYSTEMS
 # BEFORE: LOGIN
 
+# FreeBSD tutorial for rc.d: https://www.freebsd.org/doc/en_US.ISO8859-1/articles/rc-scripting/rcng-dummy.html
+
 # Add the following line to /etc/rc.conf to enable TheOnionBox.
 # theonionbox_enable (bool):	Set it to "YES" to enable TheOnionBox. Default: NO
 
@@ -45,7 +47,7 @@ pidfile=${theonionbox_pidfile}
 command_interpreter="/usr/local/bin/python"
 
 # That's out script
-command="${theonionbox_dir}/theonionbox.py --mode=service --config='${theonionbox_conf}'"
+command="${theonionbox_dir}/theonionbox.py --config='${theonionbox_conf}' 1> >( logger -t $name --id=\$\$) 2>&1"
 start_cmd="/usr/sbin/daemon -u ${theonionbox_user} -p ${pidfile} ${command}"
 
 # Let's go!
