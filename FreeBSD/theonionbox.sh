@@ -46,8 +46,20 @@ pidfile=${theonionbox_pidfile}
 # Please ensure that there is this symlink to the python version you intend to use!
 command_interpreter="/usr/local/bin/python"
 
-# That's out script
-command="${theonionbox_dir}/theonionbox.py --config='${theonionbox_conf}' 1> >( logger -t $name --id=\$\$) 2>&1"
+# Redirecting to syslog!
+# For FreeBSD / bourne shell: http://tomecat.com/jeffy/tttt/shredir.html
+
+# Attention:
+# We're @ FreeBSD, thus '--id' command line parameter is not available (checked with: 12-current)
+# https://www.freebsd.org/cgi/man.cgi?query=logger&apropos=0&sektion=1&manpath=FreeBSD+12-current&arch=default&format=html
+# => Consider implementing this once supported:
+
+## logger -t $name --id=\$\$
+## Notice the '--id=\$\$"? This ensures that the PID of the daemon
+## (which is the PPID of the launching bash) is appended to the syslog identifier!
+
+# That's our script
+command="${theonionbox_dir}/theonionbox.py --config='${theonionbox_conf}' 2>&1 | logger -t $name"
 start_cmd="/usr/sbin/daemon -u ${theonionbox_user} -p ${pidfile} ${command}"
 
 # Let's go!
