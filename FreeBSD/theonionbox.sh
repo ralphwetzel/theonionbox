@@ -54,12 +54,12 @@ command_interpreter="/usr/local/bin/python"
 # https://www.freebsd.org/cgi/man.cgi?query=logger&apropos=0&sektion=1&manpath=FreeBSD+12-current&arch=default&format=html
 # => Consider implementing this once supported:
 
-## logger -t $name --id=\$\$
+## logger -t ${name} --id=\$\$
 ## Notice the '--id=\$\$"? This ensures that the PID of the daemon
 ## (which is the PPID of the launching bash) is appended to the syslog identifier!
 
 # That's our script
-command="${theonionbox_dir}/theonionbox.py --config='${theonionbox_conf}' 2>&1 | logger -t $name"
+command="${theonionbox_dir}/theonionbox.py --config='${theonionbox_conf}' 2>&1 | logger -t ${name}"
 start_cmd="/usr/sbin/daemon -u ${theonionbox_user} -p ${pidfile} ${command}"
 
 # Let's go!
