@@ -27,41 +27,34 @@ load_rc_config ${name}
 #
 
 # theonionbox_dir (str):        Points to your theonionbox directory
-#			                    Default: /your/path/to/theonionbox ... which you obviously have to alter!
+#                               Default: /your/path/to/theonionbox ... which you obviously have to alter!
 : ${theonionbox_dir="/your/path/to/theonionbox"}
 
-# theonionbox_conf (str):       Points to your onionbox.cfg file.
-#                               Default: $(theonionbox_dir)/config/theonionbox.cfg
-: ${theonionbox_conf="${theonionbox_dir}/config/theonionbox.cfg"}
+# theonionbox_start_args (str): Command line parameters to be provided to theonionbox at start
+#                               Refer to README for further details
+#                               Default: (not used)
+# Example: To define a configuration file
+# : ${theonionbox_start_args="--config='${theonionbox_dir}/config/theonionbox.example'"}
+# Another example: To switch on DEBUG mode
+# : ${theonionbox_start_args="-d"}
 
-# theonionbox_user (str):	    TheOnionBox daemon user.
+# theonionbox_user (str):       TheOnionBox daemon user.
 #                               Default: _tor
-#                               Please ensure that this user has write privileges to '{theonionbox_dir}/log'
 : ${theonionbox_user="_tor"}
 
-required_files=${theonionbox_conf}
+# required_files=${theonionbox_conf}
 required_dirs=${theonionbox_dir}
 pidfile=${theonionbox_pidfile}
 
-# Please ensure that there is this symlink to the python version you intend to use!
-command_interpreter="/usr/local/bin/python"
-
-# Redirecting to syslog!
-# For FreeBSD / bourne shell: http://tomecat.com/jeffy/tttt/shredir.html
-
-# Attention:
-# We're @ FreeBSD, thus '--id' command line parameter is not available (checked with: 12-current)
-# https://www.freebsd.org/cgi/man.cgi?query=logger&apropos=0&sektion=1&manpath=FreeBSD+12-current&arch=default&format=html
-# => Consider implementing this once supported:
-
-## logger -t ${name} --id=\$\$
-## Notice the '--id=\$\$"? This ensures that the PID of the daemon
-## (which is the PPID of the launching bash) is appended to the syslog identifier!
+# Please ensure that this points to the python executable you intend to use!
+# If you receive a "WARNING: $command_interpreter /[...]/python != /[...]/python3" (or similar), you most probably defined a path to a symlink.
+# To avoid this WARNING, you should reference directly to the executable!
+command_interpreter="${theonionbox_dir}/bin/python"
 
 # That's our script
-command="${theonionbox_dir}/theonionbox.py --config='${theonionbox_conf}' 2>&1 | logger -t ${name}"
-start_cmd="/usr/sbin/daemon -u ${theonionbox_user} -p ${pidfile} ${command}"
+command="${theonionbox_dir}/bin/theonionbox"
+procname="${command}"
+start_cmd="/usr/sbin/daemon -S -T 'theonionbox' -u ${theonionbox_user} -p ${pidfile} ${command} ${theonionbox_start_args}"
 
 # Let's go!
 run_rc_command "$1"
-
