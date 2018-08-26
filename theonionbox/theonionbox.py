@@ -1257,7 +1257,7 @@ jQuery = {
 
 # Bootstrap
 Bootstrap = {
-    'dir': 'bootstrap-4.1.1',
+    'dir': 'bootstrap-4.1.3',
     'js': 'bootstrap.bundle.min.js',
     'css': 'bootstrap.min.css'
 }
