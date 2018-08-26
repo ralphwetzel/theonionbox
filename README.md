@@ -1108,29 +1108,28 @@ The next steps differ based on your operating system:
 
 
 ### ... on FreeBSD
-> This description is a bit outdated! Use with caution.
+Let's assume, you've created the virtual environment for your _Onion Box_ at `/usr/home/pi/theonionbox`.
 
-Let's assume, you've stored your OnionBox files in a directory called `/usr/home/pi/theonionbox`. Your intension is to run your box as user `pi` (which is by far better then operating it as `root`!).
-
-* Change to the directory where you stored the OnionBox files: `cd /usr/home/pi/theonionbox`
-* Ensure that `theonionbox.py` is executable: `sudo chmod 755 ./theonionbox.py`
-* Change to the `FreeBSD` directory within `/usr/home/pi/theonionbox`: `cd FreeBSD`
-* Within this directory you'll find the script [`theonionbox.sh`](FreeBSD/theonionbox.sh) prepared to launch your box as a background service.
+* Change to that directory: `cd /usr/home/pi/theonionbox`
+* Change to the `FreeBSD` directory within `service`: `cd service/FreeBSD`
+* Within this directory you'll find the script [`theonionbox.sh`](https://github.com/ralphwetzel/theonionbox/blob/master/FreeBSD/theonionbox.sh) prepared to launch your OnionBox as a background service.
 * Ensure that you set the path to the OnionBox files and the user to run the service as intended. Therefore open the file with an editor (here we use _nano_): `nano theonionbox.sh`
-* According to our assumptions above, set line 29 to `: ${theonionbox_dir="/usr/home/pi/theonionbox"}`.
-* Additionally set line 28 to `: ${theonionbox_user="pi"}`.
+* According to our assumptions above, set line 31 to `: ${theonionbox_dir="/usr/home/pi/theonionbox"}`.
+* If necessary, you may define commandline arguments via `${theonionbox_start_args}` (as shown in the examples around line 35)
 * Close _nano_ and save the changes to `theonionbox.sh`. (Press _Strg+X_ then follow the instructions given!)
 * Copy the altered init script to `/usr/local/etc/rc.d`: `sudo cp ./theonionbox.sh /usr/local/etc/rc.d/theonionbox`
 * Change to `/usr/local/etc/rc.d`: `cd /usr/local/etc/rc.d`
 * Make sure the script you've copied before to `/usr/local/etc/rc.d` is executable: `sudo chmod 755 ./theonionbox`
 * Register this service to the system: `sudo echo 'theonionbox_enable="YES"' >>/etc/rc.conf`
-* Check that everything works so far: Launch your box for the first time as a service `sudo service theonionbox start`. This should give you no error messages.
-* Check that your Onion Box is active: `sudo service theonionbox status` should tell you `theonionbox is running as pid xxx.` ... yet might complain about a `$command_interpreter` mismatch - which isn't polite but doesn't hurt.
-* That's it!
+* Alternatively - e.g. if the former command failed - you may alter `/etc/rc.conf` directly: `sudo nano /etc/rc.conf`, append `theonionbox_enable="YES"` at the end of the file and save the changes: Press _Strg+X_ then follow the instructions given!
+* Check that everything works so far: Launch your Onion Box for the first time as a service `sudo service theonionbox start`. This should give you no error messages.
+* Check that your Onion Box is active: `sudo service theonionbox status` should tell you `theonionbox is running as pid xxx.`
+* That's it! Next time you reboot your system, your _Onion Box_ will be relaunched as well.
 
 **Troubleshooting**
 * Please ensure that `/usr/sbin/daemon` is a valid path. If not either edit `/usr/local/etc/rc.d/theonionbox` line 49 or create a symbolic link to your installation's path to `daemon` as `/usr/sbin/daemon`.
-* `/usr/local/bin/python` should be defined as well being a symbolic link to the python version you intend to operate with.
+* `command_interpreter` shall point to the python executable within your virtual environment.
+
 
 ### ... using init.d
 Change to the `init.d` directory within `service`:
