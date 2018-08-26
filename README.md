@@ -17,7 +17,7 @@ _The Onion Box_ supports whatever authentication method the Tor node provides.
 
 A single instance of _The Onion Box_ is able to provide monitoring functionality for as many nodes as you like.
 
-Above that, _The Onion Box_ is able to display Tor network status protocol data for any Tor node known by [Onionoo](http://onionoo.torproject.org).
+Above that, _The Onion Box_ is able to display Tor network status protocol data for any Tor node known by [Onionoo](https://metrics.torproject.org/onionoo.html).
 
 [TOC levels=3 markdown bullet formatted hierarchy]: # "## Table of Contents"
 
