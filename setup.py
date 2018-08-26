@@ -290,6 +290,7 @@ package_data = {
 
 package_data_exclude = {
     'theonionbox': ['sections/controlcenter/*',
+                    'sections/cc/*',
                     ]
 }
 

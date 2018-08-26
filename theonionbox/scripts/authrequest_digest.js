@@ -16,6 +16,7 @@
 
     base_path = get('virtual_basepath', '') + '/'
 	session_id = get('session_id')
+    proceed_to = get('proceed_to', 'index.html')
 %>
 
 
@@ -167,7 +168,7 @@ function authRequest(username, password) {
 				if (self.authenticatedRequest.responseText !== 'undefined') {
 					if (self.authenticatedRequest.responseText.length > 0) {
 					    var location_id = self.authenticatedRequest.responseText;
-					    redirect_location = '{{base_path}}' + location_id + '/index.html';
+					    redirect_location = '{{base_path}}' + location_id + '/{{proceed_to}}';
 					}
 				}
 			}

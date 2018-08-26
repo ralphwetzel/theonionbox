@@ -34,7 +34,6 @@ def get_script_dir(follow_symlinks=True):
         path = os.path.realpath(path)
     return os.path.dirname(path)
 
-
 # to ensure that our directory structure works as expected!
 os.chdir(get_script_dir())
 
@@ -1416,7 +1415,7 @@ def get_open(session_id):
     raise HTTPError(404)
 
 
-def connect_session_to_node(session, node_id):
+def connect_session_to_node(session, node_id, proceed_to_page="index.html"):
     from stem import SocketError
     from stem.connection import MissingPassword, IncorrectPassword
     from tob.nodes import TorNode
@@ -1534,6 +1533,7 @@ def connect_session_to_node(session, node_id):
             , 'virtual_basepath': box_basepath
             , 'sections': login_sections
             , 'section_config': section_config
+            , 'proceed_to': proceed_to_page
             , 'box.js_login': True  # flag to manipulate the creation process of 'box.js'
         }
 
@@ -1566,7 +1566,7 @@ def connect_session_to_node(session, node_id):
     # owning_pid = node.tor.get_conf('__OwningControllerProcess', None)
     # print(owning_pid)
     session['status'] = 'auto'  # this indicates that there is no login necessary; therefore no logout possible!
-    redirect(box_basepath + '/{}/index.html'.format(session.id()))
+    redirect(box_basepath + '/{}/{}'.format(session.id(), proceed_to_page))
 
 
 def create_error_page(session, display_error=None):
@@ -1717,7 +1717,6 @@ def perform_login(login_id):
     box_sessions.delete(login_session.id())
 
     return active_session.id()
-
 
 
 # This is the standard page!
@@ -1923,7 +1922,7 @@ def get_index(session_id):
     sections = ['!header', 'header',
                 '!content']
 
-    sections += ['controlcenter']
+    # sections += ['controlcenter']
 
     if tor.is_localhost():
         sections += ['host']
@@ -2458,30 +2457,30 @@ def post_data(session_id):
         session['monitor'] = its_now if 'monitor' in session else 0
 
     # operations monitoring
-    if 'controlcenter' in box_sections:
-
-        return_data_dict['cc'] = {}
-        last_ts = None
-        if 'controlcenter' in session:
-            last_ts = session['controlcenter']
-            if last_ts == 0:
-                last_ts = None
-
-        # try:
-        #     retval = node.livedata.get_data(since_timestamp=last_ts)
-        #     if len(retval) > 0:
-        #         return_data_dict['cc']['1s'] = retval
-        # except Exception as e:
-        #     print(e)
-        #     pass
-
-        retval = node.livedata.get_data(since_timestamp=last_ts)
-        if len(retval) > 0:
-            return_data_dict['cc']['1s'] = retval
-
-        # this little hack ensures, that we deliver data on the
-        # first *two* calls after launch!
-        session['controlcenter'] = its_now if 'cc' in session else 0
+    # if 'controlcenter' in box_sections:
+    # 
+    #     return_data_dict['cc'] = {}
+    #     last_ts = None
+    #     if 'controlcenter' in session:
+    #         last_ts = session['controlcenter']
+    #         if last_ts == 0:
+    #             last_ts = None
+    # 
+    #     # try:
+    #     #     retval = node.livedata.get_data(since_timestamp=last_ts)
+    #     #     if len(retval) > 0:
+    #     #         return_data_dict['cc']['1s'] = retval
+    #     # except Exception as e:
+    #     #     print(e)
+    #     #     pass
+    # 
+    #     retval = node.livedata.get_data(since_timestamp=last_ts)
+    #     if len(retval) > 0:
+    #         return_data_dict['cc']['1s'] = retval
+    # 
+    #     # this little hack ensures, that we deliver data on the
+    #     # first *two* calls after launch!
+    #     session['controlcenter'] = its_now if 'cc' in session else 0
 
     if 'network' in box_sections:
         # Once there was code here.
@@ -2655,7 +2654,6 @@ def send_js(session_id, filename):
             return static_file(filename, root='scripts', mimetype='text/javascript')
 
     raise HTTPError(404)
-
 
 # def handle_livedata(event):
 #

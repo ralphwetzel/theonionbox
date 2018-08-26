@@ -1320,7 +1320,9 @@ tor is running. (Default: none)</p>
    If this option is set to 0, Tor will not perform any scrubbing, if it is
    set to 1, all potentially sensitive strings are replaced. If it is set to
    relay, all log messages generated when acting as a relay are sanitized, but
-   all messages generated when acting as a client are not. (Default: 1)</p>
+   all messages generated when acting as a client are not.
+   Note: Tor may not heed this option when logging at log levels below Notice.
+   (Default: 1)</p>
 </dd>
 <dt class="hdlist1"><a id="User"></a> <strong>User</strong> <em>Username</em></dt>
 <dd>
@@ -3671,7 +3673,9 @@ least 2. (Default: 3)</p>
 <dd>
 <p>V3 authoritative directories only. Configures the location of the
 bandwidth-authority generated file storing information on relays' measured
-bandwidth capacities. (Default: unset)</p>
+bandwidth capacities. To avoid inconsistent reads, bandwidth data should
+be written to temporary file, then renamed to the configured filename.
+(Default: unset)</p>
 </dd>
 <dt class="hdlist1"><a id="V3AuthUseLegacyKey"></a> <strong>V3AuthUseLegacyKey</strong> <strong>0</strong>|<strong>1</strong></dt>
 <dd>
@@ -4526,7 +4530,7 @@ authorized clients.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2018-05-17 22:11:42 CEST
+Last updated 2018-08-13 19:39:20 CEST
 </div>
 </div>
 </body>
