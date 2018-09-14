@@ -1329,7 +1329,7 @@ ProxyPass "/theonionbox" "http://192.168.178.46:8080"
 After a restart of Apache, browsing to `localhost/theonionbox` on your proxy server should then redirect to `http://192.168.178.46:8080`.
 Doing so should open your *Box* page - yet it looks scrumbled and doesn't operate as it should.
 
-To solve that issue you have to set the parameter `proxy_path` in your `theonionbox.cfg` configuration file to match the `<proxyname>` you defined earlier:
+To solve that issue you have to set the parameter `base_path` in your `theonionbox.cfg` configuration file to match the `<proxyname>` you defined earlier:
 
 ```
 # Per default, the Box operates at the root level of a domain e.g. http://localhost:8080/.
@@ -1337,7 +1337,7 @@ To solve that issue you have to set the parameter `proxy_path` in your `theonion
 # you have to define that base path here. You are not limited to a single path element.
 # Please assure that this is an absolute filepath yet without the domain:port, beginning with a leading slash,
 # no trailing slash, no quotation marks:
-proxy_path = /theonionbox
+base_path = /theonionbox
 ```
 Now everything should work as expected.
 
