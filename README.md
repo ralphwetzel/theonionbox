@@ -506,7 +506,7 @@ If you intend to operate _The Onion Box_ in SSL mode, you have to install as wel
 
 These modules are usually installed using `pip`, e.g.: `pip install psutil`
 
-Please use always the latest version available for your Python release. Remember that you (usually) need to have root privileges to operate `pip`, e.g. `sudo -u pip install psutil`.  
+Please use always the ~~latest~~ version ~~available~~ demanded for your Python release. Remember that you (usually) need to have root privileges to operate `pip`, e.g. `sudo -u pip install psutil`.  
 My advice is yet to always operate within a [Python Virtual Environment](#system-preparation) - which eliminates the demand to run `pip` with root privileges.
 
 > Check this [Q&A](#i-receive-a-not-supported-proxy-scheme-socks5h-warning-what-shall-i-do) if your `pip` installation is broken or if you receive a `socks5h proxy not supported` warning.

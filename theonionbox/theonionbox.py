@@ -513,7 +513,7 @@ required_modules = {
         'info': "Check 'https://pypi.python.org/pypi/psutil' for installation instructions."
     },
     'stem': {
-        'version': '>=1.5.4'
+        'version': '>=1.5.4, <=1.6'
     },
     'bottle': {
         'version': '>=0.12.13'
@@ -686,8 +686,8 @@ for key in required_modules:
         module_missing = True
 
         boxLog.warning(
-            "Required python module '{}' is outdated (version '{}' found). Please run '{} install --upgrade {}'."
-            .format(vc.req, vc.dist, pip_version, distribution_name))
+            "Required python module version '{}' not installed (version '{}' found). Please run '{} install \"{}\"'."
+            .format(vc.req, vc.dist, pip_version, vc.req))
 
     except DistributionNotFound as dnf:
         module_missing = True
@@ -695,8 +695,8 @@ for key in required_modules:
         if 'info' in module:
             boxLog.warning(module['info'].format(distribution_name))
         else:
-            boxLog.warning("Required python module '{}' is missing. You have to install it via '{} install {}'."
-                           .format(dnf.req, pip_version, distribution_name))
+            boxLog.warning("Required python module '{}' is missing. You have to install it via '{} install \"{}\"'."
+                           .format(dnf.req, pip_version, dnf.req))
 
     except Exception as exc:
         module_missing = True

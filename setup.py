@@ -380,7 +380,7 @@ setup(
         'requests>2.18',
         'PySocks>=1.6.7',
         'bottle>=0.12.13',
-        'stem>=1.5.4',
+        'stem>=1.5.4, <=1.6',
         'tzlocal>=1.5',
         'futures>=3.2; python_version<"3.0"',
         'urllib3>=1.22'
