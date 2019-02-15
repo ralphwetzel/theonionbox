@@ -2967,7 +2967,8 @@ def main(run_debug=False, open_browser=True):
         # ... so this never emits!!
         log.notice("Received SIGINT signal.")
     except Exception as exc:
-        raise exc
+        log.error(exc)
+        # raise exc
     finally:
         exit_procedure()
         sys.exit(0)
