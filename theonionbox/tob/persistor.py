@@ -16,38 +16,43 @@ class Storage(object):
 
         if path is None:
             path = tempfile.gettempdir()
+            log.debug("Temp directory identified as {}.".format(path))
 
         path = os.path.abspath(path)
 
-        if os.access(path, os.F_OK | os.R_OK | os.W_OK) is True:
+        if user is None or user == '':
+            path = os.path.join(path, '.theonionbox.persist')
+        else:
+            path = os.path.join(path, '.theonionbox.{}'.format(user))
 
-            if user is None or user == '':
-                path = os.path.join(path, '.theonionbox.persist')
-            else:
-                path = os.path.join(path, '.theonionbox.{}'.format(user))
-        else:
-            log.warning("No permissions to access '{}' for data persistance. Trying to operate with in-memory database.".format(path))
-            path = ':memory:'
-        try:
-            with sqlite3.connect(path) as conn:
-                sql = "CREATE TABLE IF NOT EXISTS nodes (fp string PRIMARY KEY NOT NULL UNIQUE );"
-                # The UNIQUE constraint ensures that there's always only one record per interval
-                sql += """
-                            CREATE TABLE IF NOT EXISTS bandwidth (fp int,
-                                                                  interval text(2),
-                                                                  timestamp int,
-                                                                  read int,
-                                                                  write int,
-                                                                  UNIQUE (fp, interval, timestamp)
-                                                                  ON CONFLICT REPLACE
-                                                                  );
-                        """
-                conn.executescript(sql)
-        except:
-            log.warning("Failed to create persistance database @ '{}'.".format(path))
-        else:
-            log.notice("Persistance data will be written to '{}'.".format(path))
-            self.path = path
+        attempts = 0
+        while attempts < 2:
+            try:
+                with sqlite3.connect(path) as conn:
+                    sql = "CREATE TABLE IF NOT EXISTS nodes (fp string PRIMARY KEY NOT NULL UNIQUE );"
+                    # The UNIQUE constraint ensures that there's always only one record per interval
+                    sql += """CREATE TABLE IF NOT EXISTS bandwidth (fp int,
+                                                                    interval text(2),
+                                                                    timestamp int,
+                                                                    read int,
+                                                                    write int,
+                                                                    UNIQUE (fp, interval, timestamp)
+                                                                    ON CONFLICT REPLACE
+                                                                    );"""
+                    conn.executescript(sql)
+
+                log.notice("Persistance data will be written to '{}'.".format(path))
+                self.path = path
+                return
+
+            except:
+                log.notice("Failed to create persistance database @ '{}'.".format(path))
+                path = ':memory:'
+                attempts += 1
+
+        # At this point there's no persistance db created.
+        # That's domague - yet inevitable.
+        self.path = None
 
     def get_path(self):
         return self.path
