@@ -385,8 +385,8 @@ Second finding! There were three additional subdirectories created:
 * `docs`, that holds the images used in this document.
 * `service`, to provide the launchers if you intend to run your box as a [system service / daemon](#the-onion-box-as-system-service-aka-daemon).
 
-The python packages - for the box and all it's dependencies - are located in `lib/python2.7/site-packages/`. Be aware, that the `python ` path segment might be different (e.g. `lib/python3.6/site-packages/`) if your virtual environment operates with another version of python!  
-_The Box Launcher_ (named as well `theonionbox`) is located in `bin/`, next to the executables of the python version used in your virtual environment.
+The Python packages - for the box and all it's dependencies - are located in `lib/python2.7/site-packages/`. Be aware, that the `python` path segment might be different (e.g. `lib/python3.6/site-packages/`) if your virtual environment operates with another version of Python!
+_The Box Launcher_ (named as well `theonionbox`) is located in `bin/`, next to the executables of the Python version used in your virtual environment.
 
 If the structure of your installation looks equivalent, your box is now cleared for takeoff!
 
@@ -506,7 +506,7 @@ If you intend to operate _The Onion Box_ in SSL mode, you have to install as wel
 
 These modules are usually installed using `pip`, e.g.: `pip install psutil`
 
-Please use always the latest version available for your Python release. Remember that you (usually) need to have root privileges to operate `pip`, e.g. `sudo -u pip install psutil`.  
+Please use always the ~~latest~~ version ~~available~~ demanded for your Python release. Remember that you (usually) need to have root privileges to operate `pip`, e.g. `sudo -u pip install psutil`.  
 My advice is yet to always operate within a [Python Virtual Environment](#system-preparation) - which eliminates the demand to run `pip` with root privileges.
 
 > Check this [Q&A](#i-receive-a-not-supported-proxy-scheme-socks5h-warning-what-shall-i-do) if your `pip` installation is broken or if you receive a `socks5h proxy not supported` warning.
@@ -1130,7 +1130,7 @@ Let's assume, you've stored your OnionBox files in a directory called `/usr/home
 
 **Troubleshooting**
 * Please ensure that `/usr/sbin/daemon` is a valid path. If not either edit `/usr/local/etc/rc.d/theonionbox` line 49 or create a symbolic link to your installation's path to `daemon` as `/usr/sbin/daemon`.
-* `/usr/local/bin/python` should be defined as well being a symbolic link to the python version you intend to operate with.
+* `/usr/local/bin/python` should be defined as well being a symbolic link to the Python version you intend to operate with.
 
 ### ... using init.d
 Change to the `init.d` directory within `service`:
