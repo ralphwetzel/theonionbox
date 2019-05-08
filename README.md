@@ -65,7 +65,7 @@ Above that, _The Onion Box_ is able to display Tor network status protocol data 
     - [... using init.d](#-using-initd)
     - [... using systemd](#-using-systemd)
 - [*The Onion Box* behind Apache's mod_proxy](#the-onion-box-behind-apaches-mod_proxy)
-- [The Onion Box Docker support]()
+- [_The_Onion_Box_ Docker support](#the-onion-box-docker-support)
 - [Usage Monitoring](#usage-monitoring)
 - [Q&A](#qa)
     - [I receive a _Not supported proxy scheme socks5h_ warning. What shall I do?](#i-receive-a-not-supported-proxy-scheme-socks5h-warning-what-shall-i-do)
