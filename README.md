@@ -65,6 +65,7 @@ Above that, _The Onion Box_ is able to display Tor network status protocol data 
     - [... using init.d](#-using-initd)
     - [... using systemd](#-using-systemd)
 - [*The Onion Box* behind Apache's mod_proxy](#the-onion-box-behind-apaches-mod_proxy)
+- [The Onion Box Docker support]()
 - [Usage Monitoring](#usage-monitoring)
 - [Q&A](#qa)
     - [I receive a _Not supported proxy scheme socks5h_ warning. What shall I do?](#i-receive-a-not-supported-proxy-scheme-socks5h-warning-what-shall-i-do)
@@ -1343,6 +1344,20 @@ To solve that issue you have to set the parameter `proxy_path` in your `theonion
 proxy_path = /theonionbox
 ```
 Now everything should work as expected.
+
+## _The Onion Box_ Docker Support
+_The Onion Box_ Docker image only support password authentication.
+- Linux users, use the automated [tips_setup.py](https://github.com/ruped24/tor_ip_switcher#setup-controlport) tool to configure the Password [Authentication](https://github.com/ruped24/theonionbox#password-authentication) and [ControlPort](https://github.com/ruped24/theonionbox#controlport).
+
+To build theonionbox docker image, use the `Dockerfile` and `theonionbox.cfg` files in the Docker folder.
+```
+sudo docker build -t theonionbox .
+```
+To launch theonionbox
+```
+sudo docker run --network host -p 8080:8080 theonionbox
+```
+
 
 ## Usage Monitoring
 To create a small survey of its usage, _The Onion Box_ sends the following information to `t527moy64zwxsfhb.onion`, the hidden service acting as _The Onion Box Update Service_ when requesting the latest version information of Tor and _The Onion Box_:
