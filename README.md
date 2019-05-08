@@ -1342,8 +1342,8 @@ proxy_path = /theonionbox
 Now everything should work as expected.
 
 ## _The Onion Box_ Docker support
-_The Onion Box_ Docker image only support password authentication.
-- Linux users, use the automated [tips_setup.py](https://github.com/ruped24/tor_ip_switcher#setup-controlport) tool to configure the Password [Authentication](https://github.com/ruped24/theonionbox#password-authentication) and [ControlPort](https://github.com/ruped24/theonionbox#controlport).
+_The Onion Box_ Docker image only support [password authentication](https://github.com/ruped24/theonionbox#password-authentication).
+- Linux users, use the automated [tips_setup.py](https://github.com/ruped24/tor_ip_switcher#setup-controlport) tool to configure the password authentication and [ControlPort](https://github.com/ruped24/theonionbox#controlport).
 
 To build theonionbox docker image, use the `Dockerfile` and `theonionbox.cfg` files in the Docker folder.
 ```
