@@ -65,7 +65,7 @@ Above that, _The Onion Box_ is able to display Tor network status protocol data 
     - [... using init.d](#-using-initd)
     - [... using systemd](#-using-systemd)
 - [*The Onion Box* behind Apache's mod_proxy](#the-onion-box-behind-apaches-mod_proxy)
-- [_The_Onion_Box_ Docker support](#the-onion-box-docker-support)
+- [_The Onion Box_ Docker support](#the-onion-box-docker-support)
 - [Usage Monitoring](#usage-monitoring)
 - [Q&A](#qa)
     - [I receive a _Not supported proxy scheme socks5h_ warning. What shall I do?](#i-receive-a-not-supported-proxy-scheme-socks5h-warning-what-shall-i-do)
@@ -346,11 +346,7 @@ To **later** close the Virtual Environment, issue a `deactivate` command:
 ```
 
 ### Installation
-
-**Docker** -- See [wiki](https://github.com/ruped24/theonionbox/wiki/Theonionbox-Docker-Installation#welcome-to-the-theonionbox-docker-installation) for installation instructions.
-
-**Virtual environment:**
-The latest release package of [_The Onion Box_](https://testpypi.python.org/pypi/theonionbox/) is always available in [PyPi](https://testpypi.python.org), the Python Package Index. You can download and install it with `pip install theonionbox`. Please ensure, that you're doing this within the virtual environment created for your box; (re-)activate it if necessary with:
+Virtual environment the latest release package of [_The Onion Box_](https://testpypi.python.org/pypi/theonionbox/) is always available in [PyPi](https://testpypi.python.org), the Python Package Index. You can download and install it with `pip install theonionbox`. Please ensure, that you're doing this within the virtual environment created for your box; (re-)activate it if necessary with:
 ```
 ~/theonionbox $ source bin/activate
 (theonionbox) ~/theonionbox $ pip install theonionbox
