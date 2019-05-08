@@ -346,7 +346,7 @@ To **later** close the Virtual Environment, issue a `deactivate` command:
 ```
 
 ### Installation
-Virtual environment the latest release package of [_The Onion Box_](https://testpypi.python.org/pypi/theonionbox/) is always available in [PyPi](https://testpypi.python.org), the Python Package Index. You can download and install it with `pip install theonionbox`. Please ensure, that you're doing this within the virtual environment created for your box; (re-)activate it if necessary with:
+The latest release package of [_The Onion Box_](https://testpypi.python.org/pypi/theonionbox/) is always available in [PyPi](https://testpypi.python.org), the Python Package Index. You can download and install it with `pip install theonionbox`. Please ensure, that you're doing this within the virtual environment created for your box; (re-)activate it if necessary with:
 ```
 ~/theonionbox $ source bin/activate
 (theonionbox) ~/theonionbox $ pip install theonionbox
