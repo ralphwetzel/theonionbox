@@ -368,7 +368,7 @@ setup(
     author='Ralph Wetzel',
     author_email='theonionbox@gmx.com',
     description=__description__,
-    long_description=open('docs/description.rst', 'rb').read().decode('utf-8'),
+    #long_description=open('docs/description.rst', 'rb').read().decode('utf-8'),
     entry_points={
         'console_scripts': [
             'theonionbox = theonionbox.__main__:main']
