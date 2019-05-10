@@ -383,7 +383,7 @@ setup(
         'stem>=1.5.4, <=1.6',
         'tzlocal>=1.5',
         'futures>=3.2; python_version<"3.0"',
-        'urllib3>=1.22'
+        'urllib3==1.22'
     ],
     long_description_content_type='text/x-rst; charset=UTF-8',
     classifiers=[
