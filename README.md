@@ -65,7 +65,7 @@ Above that, _The Onion Box_ is able to display Tor network status protocol data 
     - [... using init.d](#-using-initd)
     - [... using systemd](#-using-systemd)
 - [*The Onion Box* behind Apache's mod_proxy](#the-onion-box-behind-apaches-mod_proxy)
-- [*The Onion Box* [Docker](http://www.docker.com) support](#the-onion-box-docker-support)
+- [*The Onion Box* Docker support](#the-onion-box-docker-support)
 - [Usage Monitoring](#usage-monitoring)
 - [Q&A](#qa)
     - [I receive a _Not supported proxy scheme socks5h_ warning. What shall I do?](#i-receive-a-not-supported-proxy-scheme-socks5h-warning-what-shall-i-do)
@@ -1341,7 +1341,7 @@ proxy_path = /theonionbox
 ```
 Now everything should work as expected.
 
-## *The Onion Box* [Docker](http://www.docker.com) support
+## *The Onion Box* Docker support
 The [Docker](Docker) directory holds a [Dockerfile](https://docs.docker.com/engine/reference/builder/) and a dedicated configuration file (`theonionbox.cfg`) to support the operation of *The Onion Box* from a [Docker](http://www.docker.com) image. Please be aware, that this Docker image for *The Onion Box* only supports [password authentication](#password-authentication).
 
 To build the image, change to the Docker directory and run `sudo docker build -t theonionbox .`.
