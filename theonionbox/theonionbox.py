@@ -322,7 +322,7 @@ tor_WARN = True
 tor_NOTICE = True
 
 # Standard configuration of a 'The Onion Box' server
-box_host = '0.0.0.0'
+box_host = '127.0.0.1'
 box_port = 8080
 box_session_ttl = 300
 
