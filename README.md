@@ -65,7 +65,7 @@ Above that, _The Onion Box_ is able to display Tor network status protocol data 
     - [... using init.d](#-using-initd)
     - [... using systemd](#-using-systemd)
 - [*The Onion Box* behind Apache's mod_proxy](#the-onion-box-behind-apaches-mod_proxy)
-- [_The Onion Box_ Docker support](#the-onion-box-docker-support)
+- [*The Onion Box* Docker support](#the-onion-box-docker-support)
 - [Usage Monitoring](#usage-monitoring)
 - [Q&A](#qa)
     - [I receive a _Not supported proxy scheme socks5h_ warning. What shall I do?](#i-receive-a-not-supported-proxy-scheme-socks5h-warning-what-shall-i-do)
@@ -384,7 +384,7 @@ First finding: This file, `README.html`, was placed into the root of your virtua
 Second finding! There were three additional subdirectories created:
 * `config`, where to place a [configuration file](#configuration-by-file) - if you need one. You'll find there as well an example for such a configuration file.
 * `docs`, that holds the images used in this document.
-* `service`, to provide the launchers if you intend to run your box as a [system service / daemon](#the-onion-box-as-system-service-aka-daemon).
+* `service`, to provide the launchers if you intend to run your box as a [system service / daemon](#the-onion-box-as-system-service-aka-daemon) and the files to support the [Docker](#the-onion-box-docker-support) image setup.
 
 The python packages - for the box and all it's dependencies - are located in `lib/python2.7/site-packages/`. Be aware, that the `python ` path segment might be different (e.g. `lib/python3.6/site-packages/`) if your virtual environment operates with another version of python!  
 _The Box Launcher_ (named as well `theonionbox`) is located in `bin/`, next to the executables of the python version used in your virtual environment.
@@ -552,8 +552,8 @@ _The Onion Box_ as of version 4 only supports configuration file protocol `2`.
 ```
 [TheOnionBox]
 ## Address of your Onion Box:
-## This defaults to 0.0.0.0 to listen on all interfaces.
-# host = 0.0.0.0
+## This defaults to 127.0.0.1 to listen *only* on the local loopback interface.
+# host = 127.0.0.1
 ## If 'localhost', connections are limited to the local system.
 # host = localhost
 ## Of course you may define a dedicated IP4 address as well.
@@ -1341,18 +1341,13 @@ proxy_path = /theonionbox
 ```
 Now everything should work as expected.
 
-## _The Onion Box_ Docker support
-_The Onion Box_ Docker image only support [password authentication](https://github.com/ruped24/theonionbox#password-authentication).
-- Linux users, use the automated [tips_setup.py](https://github.com/ruped24/tor_ip_switcher#setup-controlport) tool to configure the password authentication and [ControlPort](https://github.com/ruped24/theonionbox#controlport).
+## *The Onion Box* Docker support
+The [Docker](Docker) directory holds a [Dockerfile](https://docs.docker.com/engine/reference/builder/) and a dedicated configuration file (`theonionbox.cfg`) to support the operation of *The Onion Box* from a [Docker](http://www.docker.com) image. Please be aware, that this Docker image for *The Onion Box* only supports [password authentication](#password-authentication).
 
-To build theonionbox docker image, use the `Dockerfile` and `theonionbox.cfg` files in the Docker folder.
-```
-sudo docker build -t theonionbox .
-```
-To launch theonionbox
-```
-sudo docker run --network host -p 8080:8080 theonionbox
-```
+To build the image, change to the Docker directory and run `sudo docker build -t theonionbox .`.
+> If you've run `pip` to perform the [installation](#installation)  of your Onion Box, you'll find the Docker directory within the [`service`](#verification-of-the-installation) directory.
+
+To then launch *The Onion Box* within the created Docker image, run `sudo docker run --network host -p 8080:8080 theonionbox`.
 
 
 ## Usage Monitoring
@@ -1470,6 +1465,8 @@ The [JetBrains](http://www.jetbrains.com) team - for their support to _The Onion
 </table>
 
 Olaf - who provided great support and endless patience while testing the `pip` installation system and its dedicated documentation.
+
+[Rupert Edwards](https://github.com/ruped24) - who contributed the Docker support setup.
 
 > I apologize sincerely being convinced it is impossible to mention everyone who gave me the opportunity to participate from his or her experience.  
 Please raise your hand if you think someone should be added to this list!
