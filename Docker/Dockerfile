@@ -2,9 +2,8 @@ FROM python:2.7
 
 EXPOSE 8080
 
-RUN pip install theonionbox \
-	&& pip install urllib3==1.22
+RUN pip install theonionbox
 
-COPY theonionbox.cfg /usr/local/lib/python2.7/site-packages/theonionbox/config/
+COPY theonionbox.cfg /usr/local/lib/python2.7/site-packages/theonionbox
 
-ENTRYPOINT ["/usr/local/bin/theonionbox"]
+ENTRYPOINT ["/usr/local/bin/theonionbox", "-c", "/usr/local/lib/python2.7/site-packages/theonionbox/theonionbox.cfg"]
