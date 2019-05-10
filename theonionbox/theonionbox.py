@@ -527,7 +527,7 @@ required_modules = {
         'version': '>=3.4; python_version>="3.0"'
     },
     'requests': {
-        'version': '>=2.18.0'
+        'version': '>=2.21.0'
     },
     'tzlocal': {
         'version': '>=1.5'
@@ -539,7 +539,7 @@ required_modules = {
         'version': '>=3.2; python_version<"3.0"'
     },
     'urllib3': {
-        'version': '>=1.22'
+        'version': '>=1.24.2, <1.25'
     }
 }
 

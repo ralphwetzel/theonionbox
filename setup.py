@@ -378,13 +378,13 @@ setup(
         'psutil>=5.4.0',
         'apscheduler>=2.1.2, <3.*; python_version<"3.0"',
         'apscheduler>=3.4; python_version>="3.0"',
-        'requests>2.18',
+        'requests>=2.21',
         'PySocks>=1.6.7',
         'bottle>=0.12.13',
         'stem>=1.5.4, <=1.6',
         'tzlocal>=1.5',
         'futures>=3.2; python_version<"3.0"',
-        'urllib3>=1.24.2'
+        'urllib3>=1.24.2, <1.25'    # '<1.25' due to requests 2.21 requirement
     ],
     long_description_content_type='text/x-rst; charset=UTF-8',
     classifiers=[
