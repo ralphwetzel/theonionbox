@@ -9,8 +9,8 @@ protocol = 2
 
 [TheOnionBox]
 ## Address of your Onion Box:
-## This defaults to 0.0.0.0 to listen on all interfaces.
-# host = 0.0.0.0
+## This defaults to 127.0.0.1 to listen *only* on the local loopback interface.
+# host = 127.0.0.1
 ## If 'localhost', connections are limited to the local system.
 # host = localhost
 ## Of course you may define a dedicated IP4 address as well.
