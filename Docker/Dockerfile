@@ -2,7 +2,7 @@ FROM python:2.7
 
 EXPOSE 8080
 
-RUN pip install theonionbox
+RUN pip install pip --upgrade && pip install theonionbox
 
 COPY theonionbox.cfg /usr/local/lib/python2.7/site-packages/theonionbox
 
