@@ -7,6 +7,40 @@
 ![Supported Python versions](https://img.shields.io/pypi/pyversions/theonionbox.svg?style=flat-square)
 ![Status](https://img.shields.io/pypi/status/theonionbox.svg?style=flat-square)
 
+---
+### The Onion Box v19: Preliminary documentation
+## The ControlCenter
+
+This latest version of The Onion Box introduces two changes of relevance:
+* The current versioning scheme was dropped in preference for [Calendar Versioning](www.calver.org). Thus v19.1 will become the successor of v4.3.1.
+* In addition to the well known (legacy) dashboard, suitable to monitor just a single Tor instance, The Onion Box now provides a ControlCenter mode to monitor a(ny) number of Tor nodes in parallel. That's how it looks like:
+
+![image](docs/images/cc.png)
+
+This is the shorttrack way to enable the ControlCenter mode:
+
+1) Setup your Onion Box as you did before - and you'll get the legacy dashboard (as before).
+2) Create a configuration file, that shall be used to store the configuration data of the ControlCenter. The easiest way to do this on a *nix-type system:
+    ```
+    (theonionbox) ~/theonionbox $ touch cc.cfg
+    ```
+    Please ensure write privileges for that file to the user running your Onion Box.
+3) Tell your Onion Box where to find this configuration file - via the command line parameter `--controlcenter` or `-x`:
+
+```
+(theonionbox) ~/theonionbox $ theonionbox -x cc.cfg
+```
+
+4) Use the + - button in the upper right corner of the ControlCenter to add additional Tor nodes to be monitored.
+
+5) The legacy dashboard with detail data for each node will show up if you follow the dedicated 'Show Details' link of each node.
+
+6) To re-arrange the nodes in your ControlCenter, just Drag & Drop them around.
+
+Enjoy!
+
+
+---
 
 _The Onion Box_ provides a web interface to monitor the operation of
 a [Tor](https://www.torproject.org) node. It is able to monitor any Tor node operated as relay, as bridge and even as client - as long as it can establish a connection to the node and authenticate successfully.
@@ -172,17 +206,16 @@ _Weights_ displays the weights history data as known to Onionoo.
 The number of available charts depends on the age of the Tor node monitored. You may switch the chart displayed via the _History Charts_ buttons.
 
 ---
-
 ### Control Center
-Do you intend to monitor more than one Tor node? Are you interested in the Oninooo data of other Tor nodes? The section _Box | Control Center_ provides that functionality.
+~~Do you intend to monitor more than one Tor node? Are you interested in the Oninooo data of other Tor nodes? The section _Box | Control Center_ provides that functionality.~~
 
 ![image](docs/images/control.png)
 
 #### Search
-Enter a search phrase - which should be a (part of a) nickname of a Tor node or a (portion of a) fingerprint - into the _Search_ field and press enter. This search phrase will be used to query Onionoo - and the result presented in a popup bubble. If the search was successful, you may click on the links provided to display the Tor network status protocol data of that Tor node.
+~~Enter a search phrase - which should be a (part of a) nickname of a Tor node or a (portion of a) fingerprint - into the _Search_ field and press enter. This search phrase will be used to query Onionoo - and the result presented in a popup bubble. If the search was successful, you may click on the links provided to display the Tor network status protocol data of that Tor node.~~
 
 #### Controlled Hosts
-If you provided access control information for additional Tor nodes in the configuration file of your box, those nodes are listed under _Controlled Hosts_. Click on the fingerprint and you will be connected to that Tor node.
+~~If you provided access control information for additional Tor nodes in the configuration file of your box, those nodes are listed under _Controlled Hosts_. Click on the fingerprint and you will be connected to that Tor node.~~
 
 ---
 
