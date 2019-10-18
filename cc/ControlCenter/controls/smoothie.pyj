@@ -1,0 +1,652 @@
+from RapydSmoothie.smoothie import RapydSmoothie, DefaultChartOptions, DefaultSeriesPresentationOptions
+from RapydSmoothie.timeseries import TimeSeries as RSTimeSeries
+from RapydSmoothie.util import extend
+
+class TimeSeries(RSTimeSeries):
+
+    def resetBounds(self, oldestValidTime = None):
+        # patched to stop at oldestValidTime
+
+        if oldestValidTime is None:
+            return RSTimeSeries.resetBounds(self)
+
+        if len(self.data) == 0:
+            self.maxValue = None
+            self.minValue = None
+            return
+
+        self.maxValue = self.data[0][1]
+        self.minValue = self.data[0][1]
+
+        for element in reversed(self.data):
+
+            if element[0] < oldestValidTime:
+                break
+
+            value = element[1]
+            if value > self.maxValue:
+                self.maxValue = value
+            elif value < self.minValue:
+                self.minValue = value
+
+
+class Smoothie(RapydSmoothie):
+
+    def __init__(self, options = DefaultChartOptions()):
+
+        # to ensure that the new chartOptions (used for rendering) are handled correctly
+        if not options.timeLabelLeftAlign?:
+            options.timeLabelLeftAlign = False
+        if not options.timeLabelSeparation?:
+            options.timeLabelSeparation = 0
+        if not options.grid.strokeStyleHor?:
+            options.grid.strokeStyleHor = '#d4d4d4'
+
+        RapydSmoothie.__init__(self, options)
+
+        # 20190421 RDW: What for ... ?
+        if not options.yMinFormatter?:
+            self.options.yMinFormatter = None
+
+        if not options.yMaxFormatter?:
+            self.options.yMaxFormatter = None
+
+        # Flag to size the chart to the dimensions of the parent element
+        self.options.sizeToParent = True
+
+        # this.mousemove = this.mousemove.bind(this);
+        # this.mouseout = SmoothieChart.prototype.mouseout.bind(this);
+
+        # self.options.responsive = True
+
+    def streamTo(self, canvas, delayMillis):
+        # Overrides standard streamTo
+        # You need to call .start() to launch rendering!
+
+        self.canvas = canvas
+        self.delay = delayMillis
+
+    def resize(self):
+
+        # Customized resize function to respect the size of the parent container
+        # as well as the DPI scaling of the screen
+        # To ensure that this works as expected, canvas elements have to have
+        # the style="vertical-align: middle" assigned!
+
+        if not window?:
+            return False
+
+        haveResized = False
+
+        if self.options.sizeToParent:
+            if not self.css_style_parent?:
+                self.css_style_parent = window.getComputedStyle(self.canvas.parentNode)
+            width = parseFloat(self.css_style_parent.getPropertyValue('width'))
+            height = parseFloat(self.css_style_parent.getPropertyValue('height'))
+        else:
+            if not self.css_style?:
+                self.css_style = window.getComputedStyle(self.canvas)
+            width = parseFloat(self.css_style.getPropertyValue('width'))
+            height = parseFloat(self.css_style.getPropertyValue('height'))
+
+        dpr = window.devicePixelRatio if self.options.enableDpiScaling else 1
+        dprWidth = Math.floor(parseFloat(self.canvas.getAttribute('width')))
+        dprHeight = Math.floor(parseFloat(self.canvas.getAttribute('height')))
+
+        width = Math.floor(width)
+        height = Math.floor(height)
+        # dprWidth = Math.floor(dprWidth)
+        # dprHeight = Math.floor(dprHeight)
+
+        if not self.originalWidth? or (Math.floor(self.originalWidth * dpr) != dprWidth or self.originalWidth != width):
+            self.originalWidth = width
+            self.canvas.setAttribute('width', (Math.floor(width * dpr)).toString())
+            self.canvas.style.width = width + 'px'
+            self.canvas.getContext('2d').scale(dpr, dpr)
+
+            haveResized = True
+
+        if not self.originalHeight? or (Math.floor(self.originalHeight * dpr) != dprHeight or self.originalHeight != height):
+            self.originalHeight = height
+            self.canvas.setAttribute('height', (Math.floor(height * dpr)).toString())
+            self.canvas.style.height = height + 'px'
+            self.canvas.getContext('2d').scale(dpr, dpr)
+
+            haveResized = True
+
+        return haveResized
+
+    def render(self, canvas, time):
+
+        nowMillis = Date.now()
+        if self.options.limitFPS > 0:
+            if nowMillis - self.lastRenderTImeMillis < (1000 / self.options.limitFPS):
+                return
+
+        if self.isAnimatingScale is False:
+            maxIdleMillis = min(1000/6, self.options.millisPerPixel)
+            if nowMillis - self.lastRenderTimeMillis < maxIdleMillis:
+                return
+
+
+        self.resize()
+        self.updateTooltip()
+
+        self.lastRenderTimeMillis = nowMillis
+
+        canvas = canvas or self.canvas
+        time = time or nowMillis - (self.delay or 0)
+
+        # Round time down to pixel granularity, so motion appears smoother.
+        time -= time % self.options.millisPerPixel
+
+        self.lastChartTimestamp = time
+
+        context = canvas.getContext('2d')
+        chartOptions = self.options
+        dimensions = {
+            'top': 0,
+            'left': 0,
+            'width': canvas.clientWidth,
+            'height': canvas.clientHeight
+        }
+
+        # Calculate the threshold time for the oldest data points.
+        oldestValidTime = time - (dimensions.width * chartOptions.millisPerPixel)
+
+        valueToYPixel = def(value):
+            offset = value - self.currentVisMinValue
+            if this.currentValueRange == 0:
+                return dimensions.height
+            return dimensions.height - (Math.round((offset / this.currentValueRange) * dimensions.height))
+        .bind(self)
+
+        def timeToXPixel(t):
+            if chartOptions.scrollBackwards is True:
+                return Math.round((time - t) / chartOptions.millisPerPixel)
+            return Math.round(dimensions.width - ((time - t) / chartOptions.millisPerPixel))
+
+        self.updateValueRange()
+
+        context.font = chartOptions.labels.fontSize + 'px ' + chartOptions.labels.fontFamily
+
+        # Move origin, create clipping rectangle, clear area
+        self.render_10(context, chartOptions, dimensions)
+
+        # Grid lines: Vertical & Horizontal, Bounding Rect
+        # self.render_20(context, chartOptions, dimensions, time, oldestValidTime, timeToXPixel)
+
+        # Horizontal
+        self.render_25(context, chartOptions, dimensions, time, oldestValidTime, timeToXPixel)
+        # Vertical
+        vertical_dividers = self.render_23(context, chartOptions, dimensions, time, oldestValidTime, timeToXPixel)
+
+        # Rect -> pushed to later stage
+        # self.render_27(context, chartOptions, dimensions, time, oldestValidTime, timeToXPixel)
+
+        # Draw any horizontal lines...
+        self.render_30(context, chartOptions, dimensions, valueToYPixel)
+
+        # Draw the TimeSeries
+        # self.render_40(context, chartOptions, dimensions, oldestValidTime, timeToXPixel, valueToYPixel)
+        self.render_41(context, chartOptions, dimensions, oldestValidTime, timeToXPixel, valueToYPixel)
+
+        # Draw the y0 - line
+        self.render_48(context, chartOptions, dimensions, valueToYPixel)
+
+        # Draw vertical bar to show tooltip position
+        self.render_50(context, chartOptions, dimensions)
+
+        # to catch the calculations in _61
+        minValueRect = {'left': 0, 'top': 0, 'width': 0, 'height': chartOptions.labels.fontSize}
+        maxValueRect = {'left': 0, 'top': 0, 'width': 0, 'height': chartOptions.labels.fontSize}
+
+        # Draw the axis values on the chart.
+        # self.render_60(context, chartOptions, dimensions)
+        self.render_61(context, chartOptions, dimensions, minValueRect, maxValueRect)
+
+        # Display intermediate y axis labels along y-axis to the left of the chart
+        # RDW 20190425: Don't need this...
+        # self.render_70(context, chartOptions, dimensions)
+
+        # Display timestamps along x-axis at the bottom of the chart.
+        # 20190425 RDW: Replaced by _81
+        # self.render_80(context, chartOptions, dimensions, time, oldestValidTime, timeToXPixel)
+
+        # Optimized version of _80
+        self.render_81(context, chartOptions, dimensions, time, oldestValidTime, timeToXPixel, valueToYPixel,
+                       minValueRect, maxValueRect, vertical_dividers)
+
+    # 20190425 RDW:
+    #   1: returns vertical_dividers (list)
+    #   2: adapted to allow drawing of 'weekly', 'monthly' lines
+    def render_23(self, context, chartOptions, dimensions, time, oldestValidTime, timeToXPixel):
+
+        vertical_dividers = []
+
+        context.save()
+        context.lineWidth = chartOptions.grid.lineWidth
+        context.strokeStyle = chartOptions.grid.strokeStyle
+
+        # Vertical (time) dividers.
+        if (chartOptions.grid.millisPerLine > 0):
+            context.beginPath()
+            t = time - (time % chartOptions.grid.millisPerLine)
+
+            while t>= oldestValidTime:
+
+                vertical_dividers.push(t)
+
+                gx = timeToXPixel(t)
+                if chartOptions.grid.sharpLines:
+                    gx -= 0.5
+                context.moveTo(gx, 0)
+                context.lineTo(gx, dimensions.height)
+
+                t -= chartOptions.grid.millisPerLine
+
+            # to allow rendering of the vertical divider label
+            # even when the divider scolled out of view
+            vertical_dividers.push(t);
+
+            context.stroke()
+            context.closePath()
+
+        # inserted to draw 'weekly', 'monthly' lines
+        elif chartOptions.grid.timeDividers in ['weekly', 'monthly', 'yearly']:
+
+            start_time = None
+            next_time_div = None
+
+            if chartOptions.grid.timeDividers == 'weekly':
+
+                # http://stackoverflow.com/questions/4156434/javascript-get-the-first-day-of-the-week-from-current-date
+                def getMonday(date):
+                    day = date.getDay() or 7
+                    if day != 1:
+                        date.setHours(-24 * (day - 1))
+                    return date
+
+                this_monday = Date(time)
+                this_monday = getMonday(this_monday)
+                this_monday.setHours(0)
+                this_monday.setMinutes(0)
+                this_monday.setSeconds(0)
+
+                start_time = this_monday.getTime()
+                next_time_div = def(t):
+                    return t - 604800000  # 1000 * 60 * 60 * 24 * 7
+
+            elif chartOptions.grid.timeDividers == 'monthly':
+
+                this_month = Date(time)
+                this_month.setMinutes(0)
+                this_month.setHours(0)
+                this_month.setDate(1)
+
+                start_time = this_month.getTime()
+                next_time_div = def(t):
+                    nm = Date(t)
+                    cm = nm.getMonth()
+                    if cm:
+                        nm.setMonth(cm - 1)
+                    else:
+                        nm.setFullYear(nm.getFullYear() - 1)
+                        nm.setMonth(11)
+
+                    return nm.getTime()
+            elif chartOptions.grid.timeDividers == 'yearly':
+
+                this_year = Date(time)
+                this_year.setMinutes(0)
+                this_year.setHours(0)
+                this_year.setDate(1)
+                this_year.setMonth(0)
+
+                start_time = this_year.getTime()
+                next_time_div = def(t):
+                    ny = Date(t)
+                    ny.setFullYear(ny.getFullYear() - 1)
+                    return ny.getTime()
+
+            if start_time is not None:
+
+                context.beginPath()
+
+                t = start_time
+
+                while t >= oldestValidTime:
+
+                    vertical_dividers.push(t)
+
+                    gx = timeToXPixel(t)
+                    if chartOptions.grid.sharpLines:
+                        gx -= 0.5
+                    context.moveTo(gx, 0)
+                    context.lineTo(gx, dimensions.height)
+
+                    t = next_time_div(t)
+
+                # to allow rendering of the vertical divider label
+                # even when the divider scolled out of view
+                vertical_dividers.push(t)
+
+                context.stroke()
+                context.closePath()
+
+        context.restore()
+        return vertical_dividers
+
+    # 20190425 RDW: 'strokeStyleHor'
+    def render_25(self, context, chartOptions, dimensions, time, oldestValidTime, timeToXPixel):
+
+        # Horizontal (value) dividers.
+        context.save()
+        context.lineWidth = chartOptions.grid.lineWidth
+        context.strokeStyle = chartOptions.grid.strokeStyleHor
+
+        v = 1
+        while v < chartOptions.grid.verticalSections:
+
+            gy = Math.round(v * dimensions.height / chartOptions.grid.verticalSections)
+            if chartOptions.grid.sharpLines:
+                gy -= 0.5
+
+            context.beginPath()
+            context.moveTo(0, gy)
+            context.lineTo(dimensions.width, gy)
+            context.stroke()
+            context.closePath()
+
+            v += 1
+
+        context.restore()
+
+    # 20190425 RDW: calling sequence (now after render_80)
+    def render_27(self, context, chartOptions, dimensions, time, oldestValidTime, timeToXPixel):
+
+        # Bounding rectangle
+        if chartOptions.grid.borderVisible:
+            context.save()
+
+            br = $(self.canvas).css('border-radius')
+            br = parseFloat(br)
+
+            context.save()
+            context.lineWidth = 2
+
+            if br == 0:
+                context.beginPath()
+                context.strokeRect(0, 0, dimensions.width, dimensions.height)
+                context.closePath()
+            else:
+                dw = dimensions.width
+                dh = dimensions.height
+                context.beginPath()
+                context.moveTo(br, 0)
+                context.lineTo(dw - br, 0)
+                context.quadraticCurveTo(dw, 0, dw, br)
+                context.lineTo(dw, dh - br)
+                context.quadraticCurveTo(dw, dh, dw - br, dh)
+                context.lineTo(br, dh)
+                context.quadraticCurveTo(0, dh, 0, dh - br)
+                context.lineTo(0, br)
+                context.quadraticCurveTo(0, 0, br, 0)
+                context.closePath()
+                context.stroke()
+
+            context.restore()
+
+    # 20190425 RDW: modified for alternate filling algo
+    def render_41(self, context, chartOptions, dimensions, oldestValidTime, timeToXPixel, valueToYPixel):
+
+        # For each data set...
+        for serie in self.seriesSet:
+            context.save()
+            ts = serie.timeSeries
+            if ts.disabled is True:
+                continue
+
+            dataSet = ts.data
+            seriesOptions = serie.options
+
+            # Delete old data that's moved off the left of the chart.
+            ts.dropOldData(oldestValidTime, chartOptions.maxDataSetLength)
+
+            # Set style for this dataSet.
+            context.lineWidth = seriesOptions.lineWidth
+            context.strokeStyle = seriesOptions.strokeStyle
+
+            # Draw the line...
+            context.beginPath()
+
+            # Retain lastX, lastY for calculating the control points of bezier curves.
+            firstX = 0
+            lastX = 0
+            lastY = 0
+
+            if len(dataSet) > 1:
+                for index, set in enumerate(dataSet):
+
+                    has_null = False
+                    x = None
+                    y = None
+
+                    x = timeToXPixel(set[0])
+                    y_data = set[1]
+                    if y_data is not None:
+                        y = valueToYPixel(y_data)
+                    elif seriesOptions.nullTo0 == True:
+                        y = valueToYPixel(0)
+                    else:
+                        has_null = True
+
+                    if index == 0:
+                        firstX = x
+                        context.moveTo(x, 0 if y is None else y)
+                    elif y is not None:
+                        if chartOptions.interpolation in ['linear', 'line']:
+                            context.lineTo(x, y)
+
+                        elif chartOptions.interpolation == 'step':
+                            if lastY is None:
+                                context.moveTo(x, y)
+                            else:
+                                context.lineTo(x, lastY)
+                                context.lineTo(x, y)
+
+                        else:
+                          # Great explanation of Bezier curves: http://en.wikipedia.org/wiki/Bezier_curve#Quadratic_curves
+                          #
+                          # Assuming A was the last point in the line plotted and B is the new point,
+                          # we draw a curve with control points P and Q as below.
+                          #
+                          # A---P
+                          #      |
+                          #      |
+                          #      |
+                          #      Q---B
+                          #
+                          # Importantly, A and P are at the same y coordinate, as are B and Q. This is
+                          # so adjacent curves appear to flow as one.
+                          #
+
+
+                            context.bezierCurveTo(    # startPoint (A) is implicit from last iteration of loop
+                                Math.round((lastX + x) / 2), lastY, # controlPoint1 (P)
+                                Math.round((lastX + x)) / 2, y,     # controlPoint2 (Q)
+                                x, y)                               # endPoint (B)
+
+
+                    lastX = x
+                    lastY = y
+
+            y0 = valueToYPixel(0)
+
+            if len(dataSet) > 1:
+                if seriesOptions.fillStyle and not has_null:
+                  # Close up the fill region.
+                    context.lineTo(dimensions.width + seriesOptions.lineWidth + 1, lastY)
+                    context.lineTo(dimensions.width + seriesOptions.lineWidth + 1, y0)
+                    context.lineTo(firstX, y0)
+
+                    context.fillStyle = seriesOptions.fillStyle
+                    context.fill()
+
+                if seriesOptions.strokeStyle and seriesOptions.strokeStyle is not 'none':
+                  context.stroke()
+
+                context.closePath()
+
+            context.restore()
+
+    def render_48(self, context, chartOptions, dimensions, valueToYPixel):
+        # Draw the y0 - line
+
+        y0 = valueToYPixel(0)
+
+        context.save()
+        context.lineWidth = chartOptions.grid.lineWidth
+        context.strokeStyle = chartOptions.grid.strokeStyleHor
+        context.beginPath()
+        context.moveTo(0, y0)
+        context.lineTo(dimensions.width, y0)
+        context.stroke()
+        context.closePath()
+        context.restore()
+
+    def render_61(self, context, chartOptions, dimensions, minValueRect, maxValueRect):
+
+        maxValueString = ""
+        minValueString = ""
+
+        # Draw the axis values on the chart.
+        if chartOptions.labels.disabled is False and self.valueRange.min is not NaN and self.valueRange.max is not NaN:
+
+            context.save()
+
+            if chartOptions.yMaxFormatter?:
+                maxValueString = chartOptions.yMaxFormatter(self.valueRange.max, chartOptions.labels.precision)
+                maxValueRect.width = context.measureText(maxValueString).width
+
+            if chartOptions.yMinFormatter?:
+                minValueString = chartOptions.yMinFormatter(self.valueRange.min, chartOptions.labels.precision)
+                minValueRect.width = context.measureText(minValueString).width
+
+            if chartOptions.scrollBackwards is True:
+                maxLabelPos = 0
+                minLabelPos = 0
+            else:
+                maxLabelPos = dimensions.width - context.measureText(maxValueString).width - 2
+                minLabelPos = dimensions.width - context.measureText(minValueString).width - 2
+
+            context.fillStyle = chartOptions.labels.fillStyle
+
+            if len(maxValueString) > 0:
+                context.fillText(maxValueString, maxLabelPos, chartOptions.labels.fontSize)
+                maxValueRect.left += maxLabelPos
+                maxValueRect.top += chartOptions.labels.fontSize
+
+            if len(minValueString) > 0:
+                context.fillText(minValueString, minLabelPos, dimensions.height - 2)
+                minValueRect.left += minLabelPos
+                minValueRect.top += dimensions.height - 2
+
+            context.restore()
+
+    def render_81(self, context, chartOptions, dimensions, time, oldestValidTime, timeToXPixel, valueToYPixel,
+                  minValueRect, maxValueRect, vertical_dividers):
+        # Display timestamps along x-axis at the bottom of the chart.
+        def intersect(a, b):
+            return (a.left <= b.left + b.width
+                    and b.left <= a.left + a.width
+                    and a.top <= b.top + b.height
+                    and b.top <= a.top + a.height)
+
+        if chartOptions.timestampFormatter? and len(vertical_dividers) > 0:
+
+            y0 = valueToYPixel(0)
+            context.save()
+
+            if chartOptions.scrollBackwards is True or chartOptions.timeLabelLeftAlign is True:
+                textUntilX = dimensions.width
+            else:
+                textUntilX = 0
+
+            for t in vertical_dividers:
+                # Formats the timestamp based on user specified formatting function
+                # SmoothieChart.timeFormatter function above is one such formatting option
+                tx = Date(t);
+                ts = chartOptions.timestampFormatter(tx)
+                tsRect = {'left': 0, 'top': 0, 'width': context.measureText(ts).width, 'height': chartOptions.labels.fontSize}
+
+                gx = timeToXPixel(t)
+                tsRect.top += y0 - 2
+
+                if tsRect.top < tsRect.height:
+                    tsRect.top += tsRect.height + 2 * 2
+
+                if chartOptions.scrollBackwards? or chartOptions.timeLabelLeftAlign is True:
+
+                    tsRect.left = gx + chartOptions.timeLabelSeparation + 2
+
+                    if ((tsRect.left + tsRect.width) < textUntilX
+                            and intersect(tsRect, minValueRect) is False
+                            and intersect(tsRect, maxValueRect) is False):
+                        context.fillStyle = chartOptions.labels.fillStyle
+                        context.fillText(ts, tsRect.left, tsRect.top)
+                        textUntilX = tsRect.left + tsRect.width
+                else:
+                    tsRect.left = gx - tsRect.width - chartOptions.timeLabelSeparation - 2
+
+                    if ((tsRect.left + tsRect.width) > textUntilX
+                            and intersect(tsRect, minValueRect) is False
+                            and intersect(tsRect, maxValueRect) is False):
+                        context.fillStyle = chartOptions.labels.fillStyle
+                        context.fillText(ts, tsRect.left, tsRect.top)
+                        textUntilX = tsRect.left + tsRect.width
+
+            context.restore()
+
+    def addTimeSeries(self, ts: TimeSeries, options: dict = {}):
+
+        # patched to calculate & forward 'oldestValidTime' to resetBounds
+
+        opt = extend({}, DefaultSeriesPresentationOptions(), options)
+        new_series = {'timeSeries': ts, 'options': opt}
+        self.seriesSet.push(new_series)
+
+        if ts.options.resetBounds and ts.options.resetBoundsInterval > 0:
+            ts.resetBounds()
+            ts.resetBoundsTimerId = setInterval(def():
+                oldestValidTime = None
+                # out = "xxx"
+                if (self.canvas?):
+                    now = new Date().getTime()
+                    width = self.canvas.clientWidth
+                    oldestValidTime = now - (width * this.options.millisPerPixel) - 10000    # 10s more...
+
+                    # t = new Date(oldestValidTime)
+                    # out = t.getHours() + ':' + t.getMinutes() + ':' + t.getSeconds()
+
+                # console.log(out)
+                ts.resetBounds(oldestValidTime)
+            .bind(self)
+            , ts.options.resetBoundsInterval
+            )
+
+    def snapshot_to(self, canvas):
+
+        dpr = window.devicePixelRatio if self.options.enableDpiScaling else 1
+
+        width = self.canvas.getAttribute('width')
+        canvas.setAttribute('width', width.toString())
+        canvas.style.width = self.canvas.style.width
+
+        height = self.canvas.getAttribute('height')
+        canvas.setAttribute('height', height.toString())
+        canvas.style.height = self.canvas.style.height
+
+        context = canvas.getContext('2d')
+        context.scale(dpr, dpr)
+        context.drawImage(self.canvas, 0, 0, width / dpr, height / dpr)

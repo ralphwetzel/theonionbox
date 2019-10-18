@@ -1,0 +1,395 @@
+from dialogs.base import Base as DialogBase
+
+class Properties(DialogBase):
+
+    def __init__(self, session_id, base_path = '', config = None, title = None):
+        DialogBase.__init__(self)
+        self.session_id = session_id
+        # self.config = config or []
+        self.base_path = base_path
+        self.title = title
+
+        if config is None:
+            self.config = []
+            self.remove_button = False
+        else:
+            self.config = config
+            self.remove_button = True
+
+        self.password_modified = False
+        self.cookie_modified = False
+
+    def create(self):
+
+        html = """
+            <div class="modal fade tobcc-font" id="node_property_modal" tabindex="-1" role="dialog"
+                aria-labelledby="exampleModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header cc-dialog-header">
+                            <h5 class="modal-title cc-dialog-title">Properties of the Node{title}</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div class='row'>
+                                <label for="Label" class="col-sm-2 col-form-label">Label</label>
+                                <div class='col-sm-10' id='Label'>
+                                    <div class='input-group '>                    
+                                        <input id="iLabel" class="form-control"
+                                            aria-describedby="labelHelp"
+                                            value='$nickname$'>
+                                        <div class="input-group-append">
+                                            <button class="btn btn-outline-secondary dropdown-toggle" type="button"
+                                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                Add Makro
+                                            </button>
+                                            <div class="dropdown-menu">
+                                                <button class="dropdown-item label-makro" type="button"
+                                                    data-makro="$nickname$">
+                                                    Nickname
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <small id="labelHelp" class="form-text text-muted">
+                                        The label of this Tor node for display in the ControlCenter. You can use 
+                                        <code>$nickname$</code> as makro value to be automatically filled in.
+                                    </small>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <label for="Connect" class="col-md-2 col-form-label">Connect to</label>
+                                <div class='col-md-10' id="Connect">
+                                    <div class="row">
+                                        <div class="col-4">
+                                            <div class="list-group" id="connect-tab" role="tablist">
+                                                <a class="list-group-item list-group-item-action list-group-item-light
+                                                    active text-truncate" id="port" data-toggle="list"
+                                                    href="#list-port" role="tab" aria-controls="port">
+                                                    ControlPort
+                                                </a>
+                                                <a class="list-group-item list-group-item-action list-group-item-light
+                                                    text-truncate" id="socket" data-toggle="list"
+                                                    href="#list-socket" role="tab" aria-controls="socket">
+                                                    ControlSocket
+                                                </a>
+                                                <a class="list-group-item list-group-item-action list-group-item-light
+                                                    text-truncate" id="proxy" data-toggle="list"
+                                                    href="#list-proxy" role="tab" aria-controls="proxy">
+                                                    Hidden Service
+                                                </a>
+                                            </div>
+                                        </div>
+                                        <div class="col-8">
+                                            <div class="tab-content" id="nav-tabContent">
+                                                <div class="tab-pane fade show active" id="list-port" role="tabpanel"
+                                                    aria-labelledby="list-port-list">
+                                                    <small>
+                                                        Choose this option to connect to the ControlPort of a Tor node.
+                                                        <i>Address</i> shall either be defined as IPv4 or by hostname
+                                                        (e.g. my.server.com), yet <b>no hidden service descriptor</b>
+                                                        and (currently) <b>no IPv6</b>.
+                                                        <br><i>Port</i> usually is 9051.
+                                                    </small>
+                                                </div>
+                                                <div class="tab-pane fade" id="list-socket" role="tabpanel"
+                                                    aria-labelledby="list-socket-list">
+                                                    <small>
+                                                        Choose this option to connect to the ControlSocket of a Tor
+                                                        node.
+                                                    </small>
+                                                </div>
+                                                <div class="tab-pane fade" id="list-proxy" role="tabpanel"
+                                                    aria-labelledby="list-propxy-list">
+                                                    <small>
+                                                        Choose this option to connect to the ControlPort of a Tor node
+                                                        by proxying through the Tor network. <i>Address</i> shall be the 
+                                                        hidden service descriptor providing access to the ControlPort of
+                                                        this Tor node (e.g. myhiddenservice.onion). Choose <i>Port</i>
+                                                        according to the hidden service setup.
+                                                        <br>You may define the <i>Cookie</i> below as well - 
+                                                        to support Tor's 
+                                                        <a href='{base_path}/{session_id}/manpage.html#HidServAuth'
+                                                            target='_blank'>HiddenServiceAuthorizeClient</a> option.
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <label for="Address" class="col-sm-2 col-form-label">Host</label>
+                                <div class='col-sm-10' id="Address">
+                                    <div class='input-group'>
+                                        <input type="text" id="iAddress" class="form-control"
+                                            aria-label="Text input to define Address:Port of Node"
+                                            placeholder='IPv4:Port or URL:Port or Socket e.g. /var/run/tor/control'>
+                                        <div class="input-group-append">
+                                            <button class="btn btn-outline-secondary"
+                                            type="button" id="vAddress" disabled>Verify</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <label for="Password" class="col-sm-2 col-form-label">Password</label>
+                                <div class='col-sm-10' id='Password'>
+                                    <input type="password" id="iPassword" class="form-control"
+                                        aria-label="Text input for password"
+                                        aria-describedby="passwordHelp"
+                                        placeholder='Password - but not the HashedControlPassword value!'>
+                                    <small id="passwordHelp" class="form-text">
+                                        If the access to the node is protected by a <a 
+                                        href='{base_path}/{session_id}/manpage.html#HashedControlPassword' 
+                                        target='_blank'>password</a>, you may provide it here. This <i>password</i> will be
+                                        used to establish the connection to the node - <b>without asking the user
+                                        to authenticate</b>.
+                                        <br>A password defined here will <i>not</i> be validated as part of the host
+                                        connection verification process.
+                                    </small>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <label for="Cookie" class="col-sm-2 col-form-label">Cookie</label>
+                                <div class='col-sm-10' id="Cookie">
+                                    <input type="text" class="form-control" id="iCookie"
+                                        aria-label="Text input for cookie".
+                                        aria-describedby="connectionCookieHelp"
+                                        placeholder='Hidden Service Authorization Cookie - as created by Tor.'>
+                                    <small id="connectionCookieHelp" class="form-text">
+                                        Hidden Services can be setup to allow access only for clients <a
+                                        href='{base_path}/{session_id}/manpage.html#HidServAuth' target='_blank'>
+                                        providing a valid authorization cookie</a>. To access the ControlPort of a Tor 
+                                        node guarded by this method, you need to provide this cookie value here.
+                                        <br>If a cookie is defined here, it will be validated as part of the host
+                                        connection verification process - if connecting to a Hidden Service.
+                                        {trunc_cookie}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            {btn_remove}
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                            <button type="button" id="bSave" class="btn btn-primary">Save changes</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        """
+
+        trunc_cookie = ''
+        if self.cookie? and self.cookie[-3:] == '...':
+            trunc_cookie = '<br><b>Please be aware, that the value displayed here was truncated for safety reasons.</b>'
+
+        btn_remove = ''
+        if self.remove_button is True:
+            btn_remove = '<button type="button" id="bDelete" class="btn btn-outline-dark mr-auto"><i class="fas fa-trash-alt"></i> Remove Node</button>'
+
+        title = ''
+        if self.title is not None:
+            title = ': ' + self.title
+
+        html = str.format(html,
+                          base_path=self.base_path,
+                          session_id=self.session_id,
+                          trunc_cookie=trunc_cookie,
+                          btn_remove=btn_remove,
+                          title=title
+                          )
+
+        DialogBase.create(self, html)
+
+    def host(self):
+        address = $('#iAddress').val()
+        match = address.match(v'/(.*)(?::)(?:[0-9]+)$/')
+
+        if match is None:
+            return ''
+        return match[1] if len(match) > 1 else ''
+
+    def port(self):
+        address = $('#iAddress').val()
+        match = address.match(v'/(?:.*)(?::)([0-9]+)$/')
+
+        if match is None:
+            return ''
+        return match[1] if len(match) > 1 else ''
+
+    def connect(self):
+        $selected = $('div#connect-tab a.active')
+        return $selected.attr('id')
+
+    def confirm_delete(self):
+        $('#bDelete').removeClass('btn-outline-dark')
+        .addClass('btn-danger')
+        .html('<i class="fas fa-cog fa-spin"></i> Confirm: Remove Node')
+        .off()
+        .on('click', def(e):
+            $('#bDelete').prop("disabled", True)
+            .html('<i class="fas fa-spinner fa-spin"></i> Confirm: Remove Node')
+            $.post({
+                'url': self.base_path + "/" + self.session_id + "/cc/" + "remove",
+                'timeout': 5000})
+            .done(def(data):
+                self.modal.modal('hide')
+            )
+            .fail(def(data):
+                $('#bDelete').removeClass('btn-danger')
+                .addClass('btn-outline-dark')
+                .html('<i class="far fa-question-circle"></i> Remove Node')
+                .prop("disabled", False)
+                .off()
+                .on('click', def():
+                    self.confirm_delete()
+                )
+            )
+        )
+
+    def show(self):
+        if self.modal is None:
+            self.create()
+
+        p = DialogBase.show(self)
+
+        # $('#bLogin' + self.id).on('click', def(e):
+        #
+        #     pwd = $('#iPassword' + self.id).val()
+        #     self.dfd.resolve({'password': pwd})
+        #     self.modal.modal('hide')
+        #     return
+        # )
+
+        connect_to = ['port', 'socket', 'proxy']
+        connect = self.config.connect or 'port'
+        for c in connect_to:
+            if c == connect:
+                $('#' + c).addClass('active')
+            else:
+                $('#' + c).removeClass('active')
+
+        if self.config.label?:
+            $('#iLabel').val(self.config.label)
+
+        $('.label-makro').click(def(e):
+            makro = $(this).data('makro')
+
+            console.log(makro)
+
+            # based on:
+            # AlfaTeK @ https://stackoverflow.com/questions/1064089/inserting-a-text-where-cursor-is-using-javascript-jquery/1064139
+            # JSFiddle: http://jsfiddle.net/NaHTw/1028/
+
+            label = $('#iLabel')
+
+            txt = label.val()
+            caretPos = label.prop('selectionStart') ? len(txt)
+            caretEnd = label.prop('selectionEnd') ? len(txt)
+
+            label.val(txt.substring(0, caretPos) + makro + txt.substring(caretEnd))
+            label.focus()
+            label.selectionStart = caretPos + len(makro)
+            label.selectionEnd = caretPos + len(makro)
+        )
+
+        $('div#connect-tab a').on('show.bs.tab', def(e):
+            $('#vAddress').removeClass().addClass("btn btn-outline-secondary")
+            $("#vAddress").prop("disabled", len($('#iAddress').val()) == 0)
+        )
+
+        $('#iAddress').val(self.config.address or None)
+        $('#iAddress').on('input', def(e):
+            $('#vAddress').removeClass().addClass("btn btn-outline-secondary")
+            $("#vAddress").prop("disabled", len($('#iAddress').val()) == 0)
+            $('#iPassword').val('')
+            self.password_modified = True
+        )
+
+        $("#vAddress").prop("disabled", len($('#iAddress').val()) == 0)
+        $('#vAddress').on('click', def(e):
+            $("#vAddress").prop("disabled", True)
+
+            connect = self.connect()
+            query = {'connect': connect,
+                     'host': $('#iAddress').val() if connect == 'socket' else self.host(),
+                     'port': '' if connect == 'socket' else self.port(),
+                     # 'password': $('#iPassword').val(),
+                     'cookie': self.config.unmod if self.cookie_modified is False else $('#iCookie').val()
+            }
+
+            $.post(self.base_path + "/" + self.session_id + "/cc/" + "check", query)
+            .done(def(data):
+                if data == '250 OK':
+                    $('#vAddress').removeClass().addClass("btn btn-success")
+                else:
+                    $('#vAddress').removeClass().addClass("btn btn-danger")
+            )
+            .fail(def(data):
+                $('#vAddress').removeClass().addClass("btn btn-danger")
+            )
+            .always(def(data):
+                $("#vAddress").prop("disabled", len($('#iAddress').val()) == 0)
+            )
+        )
+
+        if self.config.pwd?:
+            $('#iPassword').val('******')
+
+        $('#iPassword').on('keydown',def(e):
+            if self.password_modified is False:
+                self.password_modified = True
+                $('#iPassword').val('')
+        )
+        # $('#iPassword').on('input', def(e):
+        #     $('#vAddress').removeClass().addClass("btn btn-outline-secondary")
+        #     $("#vAddress").prop("disabled", len($('#iAddress').val()) == 0)
+        # )
+
+        $('#iCookie').val(self.config.cookie or None)
+        $('#iCookie').on('keydown',def(e):
+            if self.cookie_modified is False:
+                self.cookie_modified = True
+                $('#iCookie').val('')
+        )
+        $('#iCookie').on('input', def(e):
+            $('#vAddress').removeClass().addClass("btn btn-outline-secondary")
+            $("#vAddress").prop("disabled", len($('#iAddress').val()) == 0)
+        )
+
+        $('#bDelete').on('click', def():
+            self.confirm_delete()
+        )
+
+        $('#bSave').on('click', def(e):
+            $("#bSave").prop("disabled", True)
+
+            connect = self.connect()
+
+            query = {'label': $('#iLabel').val(),
+                     'connect': connect,
+                     'host': $('#iAddress').val() if connect == 'socket' else self.host(),
+                     'port': '' if connect == 'socket' else self.port(),
+                     'password': self.config.unmod if self.password_modified is False else $('#iPassword').val(),
+                     'cookie': self.config.unmod if self.cookie_modified is False else $('#iCookie').val()
+            }
+
+            $.post(self.base_path + "/" + self.session_id + "/cc/" + "save", query)
+            .done(def(data):
+                    self.modal.modal('hide')
+            )
+            .fail(def(data):
+                $('#bSave').removeClass().addClass("btn btn-danger")
+            )
+            .always(def(data):
+                $("#bSave").prop("disabled", False)
+            )
+        )
+
+        return p

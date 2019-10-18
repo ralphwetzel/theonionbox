@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+import contextlib
 
 import requests
 from hashlib import sha1
@@ -11,9 +12,9 @@ import sys
 from threading import RLock, Semaphore
 from math import log10, floor
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor as ThreadPoolExecutor_CF
 
-from .proxy import Proxy
+from tob.proxy import Proxy
 
 #####
 # Python version detection
@@ -33,7 +34,8 @@ class TorType(object):
     BRIDGE = 1
 
 ONIONOO_OPEN = 'https://onionoo.torproject.org'
-ONIONOO_HIDDEN = ['http://onionoorcazzotwa.onion', 'http://tgel7v4rpcllsrk2.onion']
+# ONIONOO_HIDDEN = ['http://onionoorcazzotwa.onion', 'http://tgel7v4rpcllsrk2.onion']
+ONIONOO_HIDDEN = ['http://tgel7v4rpcllsrk2.onion']
 
 
 # class Query(object):
@@ -547,7 +549,7 @@ class OnionOOFactory(object):
         self.onionoo = {}
         self.proxy = proxy
 
-        self.executor = ThreadPoolExecutor(max_workers=30)     # enough to query > 100 Tors at once...
+        self.executor = ThreadPoolExecutor_CF(max_workers=30)     # enough to query > 100 Tors at once...
         self.query_lock = RLock()
         self.nodes_lock = RLock()
         self.hidden_index = 1
@@ -706,11 +708,11 @@ class OnionOOFactory(object):
         if r is None:
             return
 
-        if r.status_code != requests.codes.ok:
-            return
-
         for_document.ifModSince = r.headers['last-modified']
         if r.status_code == requests.codes.not_modified:
+            return
+
+        if r.status_code != requests.codes.ok:
             return
 
         # print(r)
@@ -849,3 +851,154 @@ class OnionOOFactory(object):
             return
 
         return data
+
+
+# v5.x implementation
+
+from enum import Enum, auto
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.executors.pool import ThreadPoolExecutor
+from datetime import datetime, timedelta
+from random import randint
+
+
+class OnionooData:
+
+    def __init__(self, documents: dict):
+        self.documents = documents
+
+    @property
+    def details(self):
+        return Details(self.documents[OnionooDocument.DETAILS])
+
+    @property
+    def bandwidth(self):
+        return Bandwidth(self.documents[OnionooDocument.BANDWIDTH])
+
+    @property
+    def weights(self):
+        return Weights(self.documents[OnionooDocument.WEIGHTS])
+
+
+class OnionooDocument(Enum):
+    DETAILS = 'details'
+    BANDWIDTH = 'bandwidth'
+    WEIGHTS = 'weights'
+
+
+class OnionooManager():
+
+    def __init__(self, proxy: Proxy = None):
+
+        self.log = logging.getLogger('theonionbox')
+
+        self.proxy = proxy
+        self.documents = {}
+
+        executors = {
+            'default': ThreadPoolExecutor(50)
+        }
+        job_defaults = {
+            'coalesce': True,
+            'max_instances': 10
+        }
+        self.scheduler = BackgroundScheduler(logger=self.log, executors=executors, job_defaults=job_defaults)
+        self.scheduler.start()
+
+    def shutdown(self):
+        self.scheduler.shutdown()
+
+    def query(self, update: Document, document: OnionooDocument, fingerprint: str):
+
+        # https://trac.torproject.org/projects/tor/ticket/6320
+        hash = sha1(a2b_hex(fingerprint)).hexdigest()
+        payload = {'lookup': hash}
+
+        headers = {'accept-encoding': 'gzip'}
+        if len(update.ifModSince) > 0:
+            headers['if-modified-since'] = update.ifModSince
+
+        proxy_address = self.proxy.address() if self.proxy is not None else None
+
+        if proxy_address is None:
+            proxies = {}
+            query_base = ONIONOO_OPEN
+        else:
+            proxies = {
+                'http': 'socks5h://' + proxy_address,
+                'https': 'socks5h://' + proxy_address
+            }
+            query_base = ONIONOO_HIDDEN[randint(0,len(ONIONOO_HIDDEN) - 1)]
+
+        query_address = '{}/{}'.format(query_base, document.value)
+
+        r = None
+
+        self.log.debug(f"OoM|{fingerprint[:6]}: Launching query @ '{query_address}'.")
+
+        try:
+            r = requests.get(query_address, params=payload, headers=headers, proxies=proxies, timeout=10)
+        except requests.exceptions.ConnectTimeout:
+            self.log.info(f"OoM|{fingerprint[:6]}/{document.value}: Connection timeout @ '{query_base}'.")
+            # We'll try again next time...
+        except Exception as exc:
+            self.log.warning(f"OoM|{fingerprint[:6]}: Failed querying '{query_address}' -> {exc}.")
+        else:
+            self.log.debug(f"OoM|{fingerprint[:6]}/{document.value}: {r.status_code}; {len(r.text)} chars received.")
+
+        if r is None:
+            return
+
+        update.ifModSince = r.headers['last-modified']
+        if r.status_code != requests.codes.ok:
+            return
+
+        try:
+            data = r.json()
+        except Exception as exc:
+            self.log.debug(f"OoM|{fingerprint[:6]}/{document.value}: Failed to un-json network data -> {exc}.")
+            return
+
+        update.update(data)
+
+    def register(self, fingerprint: str) -> OnionooData:
+
+        import hashlib
+
+        self.log.debug(f'Registering OoM|{fingerprint[:6]}.')
+
+        documents = {}
+
+        for d in OnionooDocument:
+            hash = hashlib.sha256(f'{fingerprint.lower()}|{d.value}'.encode('UTF-8')).hexdigest()
+
+            if hash not in self.documents:
+                self.documents[hash] = Document()
+
+                self.scheduler.add_job(self.query,
+                                       trigger='interval', hours=2, jitter=3600,
+                                       next_run_time=datetime.now(),  # to trigger once immediately!
+                                       kwargs={'update': self.documents[hash], 'document': d, 'fingerprint': fingerprint},
+                                       id=hash
+                                       )
+
+            documents[d] = self.documents[hash]
+
+        return OnionooData(documents)
+
+    def trigger(self, fingerprint: str):
+        import hashlib
+
+        for d in OnionooDocument:
+            hash = hashlib.sha256(f'{fingerprint.lower()}|{d.value}'.encode('UTF-8')).hexdigest()
+            with contextlib.suppress(Exception):
+                self.scheduler.get_job(job_id=hash).modify(next_run_time=datetime.now())
+
+
+__ONIONOO__ = None
+
+def getOnionoo():
+    global __ONIONOO__
+    if not __ONIONOO__:
+        __ONIONOO__ = OnionooManager()
+    return __ONIONOO__

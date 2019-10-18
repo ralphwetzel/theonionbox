@@ -1,180 +1,61 @@
 import uuid
-from time import time
+import time
+from bottle import BaseRequest
+from typing import Optional, Callable
+import logging
 
 # This is the TTL (in seconds) of the Session on server side;
 # Accessing the session resets the counter!
 SESSION_MAX_TTL = 3600  # one hour
 
 
-class SessionFactory(object):
-
-    session_data_pool = {}
-    session_ping_pool = {}
-    session_addr_pool = {}
-    latest_ping = None
-    _time = None
-
-    def __init__(self, time_manager, session_lifetime=SESSION_MAX_TTL, delete_session_callback = None):
-
-        self.session_lifetime = session_lifetime if session_lifetime < SESSION_MAX_TTL else SESSION_MAX_TTL
-        self._time = time_manager
-        self.reset()
-        self.del_callback = delete_session_callback
-
-    def create(self, remote_addr, status):
-
-        if remote_addr is None:
-            return None
-
-        # create a new session
-        session_id = uuid.uuid4().hex
-        self.session_data_pool[session_id] = {'status': status}
-
-        self.latest_ping = self._time()
-        self.session_ping_pool[session_id] = self.latest_ping
-
-        self.session_addr_pool[session_id] = remote_addr
-
-        return Session(session_id=session_id
-                       , remote_addr=remote_addr
-                       , session_data=self.session_data_pool[session_id]
-                       , last_visit=self.latest_ping
-                       , session_lifetime=self.session_lifetime
-                       )
-
-    def recall(self, session_id, remote_addr):
-
-        if session_id not in self.session_data_pool:
-            return None
-
-        if self.session_addr_pool[session_id] != remote_addr:
-            return None
-
-        thats_now = self._time()
-        seen_before = self.session_ping_pool[session_id]
-        since_last_ping = thats_now - seen_before
-
-        if since_last_ping > self.session_lifetime:
-            return None
-
-        self.latest_ping = thats_now
-        self.session_ping_pool[session_id] = self.latest_ping
-
-        return Session(session_id=session_id
-                       , remote_addr=self.session_addr_pool[session_id]
-                       , session_data=self.session_data_pool[session_id]
-                       , last_visit=seen_before
-                       , session_lifetime=self.session_lifetime
-                       )
-
-    def recall_unsafe(self, session_id, do_not_ping=True):
-
-        if session_id not in self.session_data_pool:
-            return None
-
-        # if skip_addr_check is False:
-        #     if self.session_addr_pool[session_id] != remote_addr:
-        #         return None
-
-        seen_before = self.session_ping_pool[session_id]
-
-        if do_not_ping is False:
-            self.latest_ping = self._time()
-            self.session_ping_pool[session_id] = self.latest_ping
-
-        return Session(session_id=session_id
-                       , remote_addr=self.session_addr_pool[session_id]
-                       , session_data=self.session_data_pool[session_id]
-                       , last_visit=seen_before
-                       , session_lifetime=self.session_lifetime
-                       )
-
-    def delete(self, session_id):
-        if session_id in self.session_data_pool:
-            # ensure external cleanuo
-            if self.del_callback is not None:
-                try:
-                    self.del_callback(session_id)
-                except:
-                    pass
-
-            del self.session_data_pool[session_id]
-            del self.session_ping_pool[session_id]
-            del self.session_addr_pool[session_id]
-
-    # helpers for housekeeping!
-    def latest_visit(self):
-        return self.latest_ping
-
-    def reset(self):
-        self.session_data_pool = {}
-        self.session_ping_pool = {}
-        self.session_addr_pool = {}
-        self.latest_ping = None
-
-    def check_for_expired_session(self, remove_expired_session=False):
-
-        keys = self.session_ping_pool.keys()
-        thats_now = self._time()
-
-        for key in keys:
-            since_last_ping = thats_now - self.session_ping_pool[key]
-            if since_last_ping > self.session_lifetime:
-                if remove_expired_session is True:
-                    self.delete(key)
-                return key
-
-        return None
-
-    def sessions_count(self):
-        return len(self.session_ping_pool.keys())
-
-
 class Session(object):
 
-    session_data = {}
-    session_id = ''
-    session_addr = '***'
+    _data = {}
+    _id = ''
+    # session_addr = '***'
 
-    def __init__(self, session_id, remote_addr, session_data, last_visit, session_lifetime=None):
-        self.session_data = session_data
-        self.session_id = session_id
-        self.session_addr = remote_addr
-        self.last_visit = last_visit
+    def __init__(self, id, data, expired: bool = False):
+        self._id = id
+        self._data = data
+        self._expired = expired
 
     def __contains__(self, key):
-        return key in self.session_data
+        return key in self._data
 
     def __delitem__(self, key):
         if self.__contains__(key):
-            del self.session_data[key]
+            del self._data[key]
 
     def __getitem__(self, key):
         if self.__contains__(key):
-            return self.session_data[key]
+            return self._data[key]
         return None
 
     def __setitem__(self, key, value):
-        self.session_data[key] = value
+        self._data[key] = value
 
     def __len__(self):
-        return len(self.session_data)
+        return len(self._data)
 
     def __iter__(self):
-        for t in self.session_data:
+        for t in self._data:
             yield t
 
+    @property
     def id(self):
-        return self.session_id
+        return self._id
 
     def id_short(self, chars=4):
-        return make_short_id(self.session_id, chars)
+        return make_short_id(self._id, chars)
 
-    def remote_addr(self):
-        return self.session_addr
-
-    def last_visit(self):
-        return self.last_visit
+    # @property
+    # def remote_addr(self):
+    #     return self._data.get('address', None)
+    #
+    # @property
+    # def last_visit(self):
+    #     return self._data.get('ping', None)
 
     def get(self, key, default=None):
         retval = self.__getitem__(key)
@@ -182,18 +63,160 @@ class Session(object):
             retval = default
         return retval
 
-    def has_key(self, key):
-        return self.__contains__(key)
+    @property
+    def node(self):
+        return self._data.get('node', None)
 
-    def items(self):
-        return self.session_data.items()
+    @node.setter
+    def node(self, value):
+        self._data['node'] = value
 
-    def keys(self):
-        return self.session_data.keys()
+    @property
+    def expired(self):
+        return self._expired
 
-    def values(self):
-        return self.session_data.values()
+    # def has_key(self, key):
+    #     return self.__contains__(key)
 
+    # def items(self):
+    #     return self._data.items()
+    #
+    # def keys(self):
+    #     return self._data.keys()
+    #
+    # def values(self):
+    #     return self._data.values()
+
+
+class SessionManager(object):
+
+    sessions = {}
+
+    def __init__(self, lifetime=SESSION_MAX_TTL, delete_session_callback=None):
+
+        self.lifetime = lifetime if lifetime < SESSION_MAX_TTL else SESSION_MAX_TTL
+        self.delete_callback = delete_session_callback
+        self.reset()
+        self.log = logging.getLogger('theonionbox')
+
+    def reset(self):
+        self.sessions = {}
+
+    def create_session(self, request: BaseRequest, status: Optional[str] = None):
+
+        assert isinstance(request, BaseRequest)
+
+        addr = request.environ.get('REMOTE_ADDR', None)
+        port = request.environ.get('REMOTE_PORT', None)
+        agent = request.environ.get('HTTP_USER_AGENT', None)
+
+        if addr is None or port is None or agent is None:
+            return None
+
+        # create a new session
+        id = uuid.uuid4().hex
+        session = {
+            'id': id,
+            'address': addr,
+            'port': port,
+            'agent': agent,
+            'data': {
+                'status': status
+            },
+            'ping': time.time()
+        }
+
+        self.sessions[id] = session
+
+        return Session(id=session['id'], data=session['data'])
+
+    def get_session_without_validation(self, id: str) -> Optional[Session]:
+
+        if id not in self.sessions:
+            return None
+
+        session = self.sessions[id]
+        expired = (time.time() - session['ping'] > self.lifetime)
+
+        return Session(id=id, data=session['data'], expired=expired)
+
+    def get_session(self, id: str, request: BaseRequest) -> Optional[Session]:
+
+        addr = request.environ.get('REMOTE_ADDR', None)
+        agent = request.environ.get('HTTP_USER_AGENT', None)
+
+        try:
+            session = self.sessions[id]
+            # print("{} => {}".format(s['port'], port))
+            if session['address'] != addr or session['agent'] != agent:
+                return None
+        except:
+            return None
+
+        now = time.time()
+        if now - session['ping'] > self.lifetime:
+            return None
+        session['ping'] = now
+
+        # secret = session.get('secret', None)
+        # value = session.get('value', None)
+        # cookie = request.get_cookie('TheOnionBox', secret=secret)
+
+        return Session(id=id, data=session['data']) # if cookie == value else None
+
+    def delete_session(self, session: Session, callback: Optional[Callable[[str], None]]=None):
+        assert isinstance(session, Session)
+        self.delete_session_by_id(session.id, callback)
+
+    def delete_session_by_id(self, id: str, callback: Optional[Callable[[str], None]]=None):
+        if id in self.sessions:
+            self.log.debug("Deleting session {}.".format(make_short_id(id)))
+            # ensure external cleanup
+            if callback is None:
+                callback = self.delete_callback
+            try:
+                callback(id)
+            except:
+                pass
+            del self.sessions[id]
+
+    # def get_id_of_expired_session_xx(self, remove_expired_session=False):
+    #
+    #     now = time.time()
+    #     for id, session in self.sessions.items():
+    #
+    #         if now - session['ping'] > self.lifetime:
+    #             if remove_expired_session is True:
+    #                 self.delete_session(session)
+    #             return id
+    #
+    #     return None
+
+    def get_remote_address(self, id):
+        if id in self.sessions:
+            return self.sessions[id].get('address', None)
+
+    def get_remote_port(self, id):
+        if id in self.sessions:
+            return self.sessions[id].get('port', None)
+
+    # def create_cookie_value(self, session: Session, secret: str) -> str:
+    #     s = self.sessions[session.id]
+    #     s['secret'] = secret
+    #     s['value'] = uuid.uuid4().hex
+    #     return s['value']
+
+    def __iter__(self) -> Session:
+
+        for key in self.sessions:
+            session = self.sessions[key]
+
+            # Do not return expired sessions!
+            now = time.time()
+            if now - session['ping'] > self.lifetime:
+                continue
+
+            yield Session(id=key, data=session['data'])
 
 # this allows us to reuse this code even if the session object is invalid!
 def make_short_id(session_id, chars=4):
@@ -201,4 +224,3 @@ def make_short_id(session_id, chars=4):
     if chars > len(retval):
         chars = 4
     return retval[:chars] + '|' + retval[-chars:]
-

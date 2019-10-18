@@ -11,8 +11,8 @@
 
 <%
 
-    md5 = get('md5_js_file')
-    include(md5)
+    # md5 = get('md5_js_file')
+    # include(md5)
 
     base_path = get('virtual_basepath', '') + '/'
 	session_id = get('session_id')
@@ -113,7 +113,7 @@ function authRequest(username, password) {
 			if (self.firstRequest.readyState === 4) {
                 // if (!(self.firstRequest.status >= 200 && self.firstRequest.status < 400)) {
                 if (self.firstRequest.status !== 401) {
-                    document.location = '{{base_path}}{{session_id}}/';
+                    document.location = '{{base_path}}{{session_id}}/failed.html';
                 }
 			}
 		};
@@ -123,7 +123,7 @@ function authRequest(username, password) {
 		// handle error
 		self.firstRequest.onerror = function() {
 			if (self.firstRequest.status !== 401) {
-		        document.location = '{{base_path}}{{session_id}}/';
+		        document.location = '{{base_path}}{{session_id}}/failed.html';
 			}
 		}
 	};
@@ -161,13 +161,13 @@ function authRequest(username, password) {
 		self.authenticatedRequest.setRequestHeader('Authorization', digestAuthHeader);
 
 		self.authenticatedRequest.onload = function() {
-		    var redirect_location = '{{base_path}}{{session_id}}/';
+		    var redirect_location = '{{base_path}}{{session_id}}/failed.html';
 			// success
   			if (self.authenticatedRequest.status >= 200 && self.authenticatedRequest.status < 400) {
 				if (self.authenticatedRequest.responseText !== 'undefined') {
 					if (self.authenticatedRequest.responseText.length > 0) {
 					    var location_id = self.authenticatedRequest.responseText;
-					    redirect_location = '{{base_path}}' + location_id + '/index.html';
+					    redirect_location = '{{base_path}}' + location_id + '/{{proceed_to}}';
 					}
 				}
 			}
@@ -176,7 +176,7 @@ function authRequest(username, password) {
 
 		// handle errors
 		self.authenticatedRequest.onerror = function() {
-		    document.location = '{{base_path}}{{session_id}}/';
+		    document.location = '{{base_path}}{{session_id}}/failed.html';
 		};
 
 		self.authenticatedRequest.send();

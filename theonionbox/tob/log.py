@@ -9,7 +9,8 @@ import sys
 from threading import RLock
 from stem import ProtocolError
 
-from .deviation import getTimer
+from tob.deviation import getTimer
+import os.path
 
 normalize_level = {'DEBUG': 'DEBUG',
                    'INFO': 'INFO',
@@ -458,8 +459,6 @@ class LoggingManager(object):
         return self.self_id
 
 
-
-
 class ForwardHandler(MemoryHandler):
 
     tag = None  # each message being forwarded is tagged with this information
@@ -494,7 +493,8 @@ class ForwardHandler(MemoryHandler):
 # http://stackoverflow.com/questions/17931426/strip-newline-and-white-spaces-from-python-logger-messages
 class WhitespaceRemovingFormatter(logging.Formatter):
     def format(self, record):
-        record.msg = record.msg.strip()
+        # record.msg = record.msg.strip()
+        record.msg = record.getMessage().strip()
         return super(WhitespaceRemovingFormatter, self).format(record)
 
 
@@ -502,7 +502,7 @@ class WhitespaceRemovingFormatter(logging.Formatter):
 class ClientFormatter(logging.Formatter):
 
     def format(self, record):
-        msg = str(record.msg).strip()
+        msg = record.getMessage().strip()
         lvlname = record.levelname
 
         out_lvlname = lvlname
@@ -548,7 +548,7 @@ def colorize(msg, record):
         'INFO': '\033[94m',       # light blue
         'NOTICE': '',             # default
         'WARNING': '\033[91m',    # light red
-        'ERROR': '\033[93;1m'     # yellow (bold)
+        'ERROR': '\033[31;1m'     # yellow (bold)
     }
 
     level = record.levelname.upper()
@@ -585,7 +585,15 @@ def prepend_timestamp(msg, record):
 
 def prepend_generated_at(msg, record):
 
-    premsg = '{}[{}'.format(record.filename, record.lineno)
+    fn = record.filename
+    if fn in ['__init__.py']:
+        # displaying those filenames is not too supportive
+        # thus we add the directory.
+        d = os.path.dirname(record.pathname)
+        b = os.path.basename(d)
+        fn = '{}/{}'.format(b, fn)
+
+    premsg = '{}[{}'.format(fn, record.lineno)
     if record.funcName != '<module>':
         premsg += '|{}'.format(record.funcName)
     premsg += ']: '
@@ -598,7 +606,8 @@ class FileFormatter(logging.Formatter):
     def format(self, record):
 
         # to perform casting to string
-        msg = '{}'.format(record.msg)
+        # msg = '{}'.format(record.msg)
+        msg = record.getMessage()
 
         if msg is None or len(msg) < 1:
             return ""
@@ -631,7 +640,8 @@ class ConsoleFormatter(logging.Formatter):
     def format(self, record):
 
         # to perform casting to string
-        msg = '{}'.format(record.msg)
+        # msg = '{}'.format(record.msg)
+        msg = record.getMessage()
 
         if msg is None or len(msg) < 1:
             return ""
@@ -705,7 +715,9 @@ class LogFormatter(logging.Formatter):
     def format(self, record):
 
         # to perform casting to string
-        msg = '{}'.format(record.msg)
+        # msg = '{}'.format(record.msg)
+        msg = record.getMessage()
+
 
         if msg is None or len(msg) < 1:
             return ""

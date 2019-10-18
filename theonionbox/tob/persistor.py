@@ -1,15 +1,17 @@
+from typing import Optional, List
 import logging
 import sqlite3
 import tempfile
 import os
 from time import time
+from sqlite3 import Connection, Row
 
 
 class Storage(object):
 
     path = None
 
-    def __init__(self, path=None, user=None):
+    def __init__(self, path: Optional[str] = None, user: Optional[str] = None):
 
         log = logging.getLogger('theonionbox')
         self.path = None
@@ -54,20 +56,20 @@ class Storage(object):
         # That's domague - yet inevitable.
         self.path = None
 
-    def get_path(self):
+    def get_path(self) -> str:
         return self.path
 
 
 class BandwidthPersistor(object):
 
-    def __init__(self, storage, fingerprint):
+    def __init__(self, storage: Storage, fingerprint: str):
 
         self.path = None
         self.fp = None
 
         if len(fingerprint) == 0:
             log = logging.getLogger('theonionbox')
-            log.info('Skipped registration for persistance of node with fingerprint of length=0.')
+            log.debug('Skipped registration for persistance of node with fingerprint of length = 0.')
             return
 
         path = storage.get_path()
@@ -108,7 +110,7 @@ class BandwidthPersistor(object):
 
         conn.close()
 
-    def open_connection(self, path=None):
+    def open_connection(self, path: Optional[str] = None) -> Optional[Connection]:
 
         if path is None:
             path = self.path
@@ -125,7 +127,8 @@ class BandwidthPersistor(object):
         return None
 
     # This does not commit!
-    def persist(self, interval, timestamp, read=0, write=0, connection=None):
+    def persist(self, interval: str, timestamp: float,
+                read: Optional[int] = 0, write: Optional[int] = 0, connection: Optional[Connection] = None) -> bool:
 
         if connection is None:
             connection = self.open_connection()
@@ -141,7 +144,8 @@ class BandwidthPersistor(object):
         return True
 
     # get the data back from the table
-    def get(self, interval, js_timestamp=int(time()*1000), limit=-1, offset=0, connection=None):
+    def get(self, interval: str, js_timestamp: Optional[int] = int(time()*1000), limit: Optional[int] = -1,
+            offset: Optional[int] = 0, connection: Optional[Connection] = None) -> Optional[List[Row]]:
         if connection is None:
             connection = self.open_connection()
             if connection is None:

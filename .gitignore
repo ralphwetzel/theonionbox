@@ -19,7 +19,7 @@ downloads/
 eggs/
 /xtor
 .eggs/
-lib/
+
 lib64/
 parts/
 sdist/

@@ -63,6 +63,7 @@ class SimpleController(object):
 class SimplePort(SimpleController):
 
     def __init__(self, host, port):
+
         self._socket = socket(AF_INET, SOCK_STREAM)
         self._socket.settimeout(2)
 
@@ -85,3 +86,20 @@ class SimpleSocket(SimpleController):
         self._socket.connect(socket_path)
 
         super(SimpleSocket, self).__init__()
+
+
+class SimpleProxy(SimpleController):
+
+    def __init__(self, host, port, proxy_host, proxy_port):
+
+        import socks
+
+        self._socket = socks.socksocket(AF_INET, SOCK_STREAM)
+        self._socket.settimeout(15)
+        self._socket.set_proxy(socks.SOCKS5, proxy_host, proxy_port, rdns=True)
+
+        # This could raise an exception ...
+        # ... which is intended!
+        self._socket.connect((host, port))
+
+        super(SimpleProxy, self).__init__()

@@ -10,6 +10,7 @@
     from tob.template_tools import *
 
     login = get('box.js_login', False)
+    token = get('token', 'ThisIsAnError')
 %>
 
 % if login is False:
@@ -63,6 +64,10 @@
                 timedelta = new Date().getTime() - data.tick;
             }
 
+            if (data && data.token) {
+                session_token_set(data.token)
+            }
+
             // console.log(data)
             for (var name in this.handlers) {
                 if (this.handlers.hasOwnProperty(name)) {
@@ -76,7 +81,7 @@
         var pull_data = function () {
 
             this.stop_flag = false;
-            var action = '';
+            var action = 'token=' + session_token_get();
 
             for (var name in this.handlers) {
                 var param = this.handlers[name].prepare();
@@ -855,12 +860,22 @@ if (typeof log !== 'function') {
 
 
 
+    var session_token = '{{token}}';
+
+    function session_token_get() {
+        return session_token;
+    }
+
+    function session_token_set(token) {
+        session_token = token;
+    }
 
 
     // Final step of the script ... to launch the site logic!
     //$(window).on('load', function() {
     $(document).ready(function() {
         log("Client Script Operation launched.");
+
         boxData.start();
     });
 

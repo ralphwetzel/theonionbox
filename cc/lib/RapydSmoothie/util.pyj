@@ -1,0 +1,70 @@
+#####
+#
+#   Part of RapydSmoothie
+#   A RapydScript-NG clone of SmoothieChart
+#
+#   SmoothieChart   Copyright (c)   2010-2013, Joe Walnes
+#                                   2013-2018, Drew Noakes
+#                   Details:        www.smoothiechart.org / https://github.com/joewalnes/smoothie
+#                   License:        MIT @ https://github.com/joewalnes/smoothie/blob/master/LICENSE.txt
+#
+#   RapydSmoothie   Copyright (c)   2018, Ralph Wetzel
+#                   License:        MIT
+#                   Language:       RapydScript-NG Transpiler
+#                                   https://github.com/kovidgoyal/rapydscript-ng
+#                   Coverage:       SmoothieChart 1.36 ("Add title option, by @mesca")
+#
+#####
+
+class DefaultOptionsBase:
+
+    def hasOwnProperty(self, key):
+        rv = key not in ['constructor', '__init__', '__repr__', '__str__', 'hasOwnProperty']
+        # console.log('hOP: ' + key + " => " + rv)
+        return rv
+
+
+def extend(*args):
+
+    def all_property_keys(o):
+        v"""var keys = [];
+                for (var k in o) {
+                    keys.push(k); 
+                }
+                return keys"""
+
+    args[0] = args[0] or {};
+
+    al = len(args)
+    i = 1
+
+    while i < al:
+        keys = all_property_keys(args[i])
+        for key in keys:
+            if args[i].hasOwnProperty(key):
+                # second test necessary as typeof(null) == 'object'
+                if v"typeof(args[i][key]) === 'object'" and args[i][key]?:
+                        if Array.isArray(args[i][key]) is True:
+                            args[0][key] = args[i][key]
+                        else:
+                            args[0][key] = extend(args[0][key], args[i][key])
+                else:
+                    args[0][key] = args[i][key]
+
+        i += 1
+
+    return args[0]
+
+def binarySearch(data, value):
+
+    low = 0
+    high = len(data)
+
+    while low < high:
+        mid = (low + high) >> 1
+        if value < data[mid][0]:
+            high = mid
+        else:
+            low = mid + 1
+
+    return low

@@ -2,6 +2,9 @@
     # Note that this file is not a valid *.html file!
     # It is intended to be a bottlepy - style template
     # used for the scripting part of TheOnionBox!
+
+    from tob.license import License
+    license = License()
 %>
 <div class="row">
     <div class="{{box_datum_grid}}">
@@ -9,7 +12,7 @@
     <div class="{{box_value_grid}}">
         <div style="color: grey; font-size: 10px; font-weight: 300">
             <a href="http://www.theonionbox.com/#readme" target="_blank">The Onion Box</a> |
-            Version v{{box_stamp}} | Copyright &copy; 2015 - 2018 Ralph Wetzel | License:
+            Version v{{box_stamp}} | Copyright &copy; 2015 - 2019 Ralph Wetzel | License:
             <a role="button" data-toggle="collapse" href="#MIT"
                aria-expanded="false" aria-controls="MIT">MIT</a>
         </div>
@@ -40,43 +43,43 @@
     </div>
 </div>
 
+<!--<div class="row">
+    <div class="{{box_datum_grid}}">
+    </div>
+    <div class="{{box_value_grid}}">
+        <div style="color: grey; font-size: 10px; font-weight: 300">
+            Icons from <a href="https://fontawesome.com" target="_blank">Font Awesome Free</a> | Copyright
+            @fontawesome | <a href="https://fontawesome.com/license/free" target="_blank">
+            License</a> @ Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT.
+        </div>
+    </div>
+</div>-->
+
 <div class="collapse" id="MIT">
 
     <hr>
 
-    {{!header_row('', 'The MIT License (MIT)')}}
-    {{!standard_row('','Copyright (c) 2015 - 2018 Ralph Wetzel')}}
+    {{!header_row('', license.get('header'))}}
+    {{!standard_row('', license.get('copyright'))}}
     <div class="row">
         <div class="{{box_datum_grid}}">
         </div>
         <div class="{{box_value_grid}} box_value_margin">
-            Permission is hereby granted, free of charge, to any person obtaining a copy
-            of this software and associated documentation files (the "Software"), to deal
-            in the Software without restriction, including without limitation the rights
-            to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-            copies of the Software, and to permit persons to whom the Software is
-            furnished to do so, subject to the following conditions:
+            {{license.get('1')}}
         </div>
     </div>
     <div class="row">
         <div class="{{box_datum_grid}}">
         </div>
         <div class="{{box_value_grid}} box_value_margin">
-            The above copyright notice and this permission notice shall be included in all
-            copies or substantial portions of the Software.
+            {{license.get('2')}}
         </div>
     </div>
     <div class="row">
         <div class="{{box_datum_grid}}">
         </div>
         <div class="{{box_value_grid}} box_value_margin">
-            THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-            IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-            FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-            AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-            LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-            OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-            SOFTWARE.
+            {{license.get('3')}}
         </div>
     </div>
     <hr>
@@ -85,8 +88,7 @@
         <div class="{{box_datum_grid}}">
         </div>
         <div class="{{box_value_grid}} box_value_margin">
-            This product is produced independently from the Tor® anonymity software and carries no
-            guarantee from The Tor Project about quality, suitability or anything else.
+            {{license.get('independence')}}
         </div>
     </div>
 </div>

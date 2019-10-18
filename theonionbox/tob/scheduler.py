@@ -1,11 +1,13 @@
 # coding=UTF-8
 
 from pytz.tzinfo import NonExistentTimeError, AmbiguousTimeError
+from apscheduler.schedulers import SchedulerNotRunningError
 
 # to compensate for 'No handlers could be found for logger "apscheduler.scheduler"' message
 import logging
 log = logging.getLogger('apscheduler.scheduler')
 log.addHandler(logging.NullHandler())
+
 
 #####
 # Class to support APScheduler v3 (default) and v2

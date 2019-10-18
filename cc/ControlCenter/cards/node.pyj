@@ -1,0 +1,866 @@
+from utils.format_bytes import format_bytes
+from utils.make_id import make_id as MakeID
+
+from controls.smoothie import Smoothie, TimeSeries
+# from utils.auth import auth_from_header
+
+from dialogs.base import Message as MessageDialog
+from dialogs.login import Login
+
+from controls.flags import Flags
+from controls.connection import Connection
+# from controls.mode import Mode
+from controls.version_check import VersionCheck
+from controls.version import Version
+
+from utils.variables import TimestampedVariable
+
+class Node:
+
+    def __init__(self, id, base_path='', position=None):
+
+        self.id = id
+        self.base_path = base_path
+
+        self.update_timer = None
+        self.updating = None
+        self.update_timestamp = None
+
+        self.chart_options = {
+            'millisPerPixel': 500,
+            'maxValueScale': 1.1,
+            'minValueScale': 1.1,
+            'maxDataSetLength': Math.max(screen.width, screen.height),
+            'interpolation': 'step',
+            'enableDpiScaling': True,
+            'timeLabelLeftAlign': True,
+            'timeLabelSeparation': 2,
+            'grid': {
+                'millisPerLine': 60000,
+                'timeDividers': '',
+                'fillStyle': '#E6E6E6',
+                'strokeStyle': '#777777',
+                'verticalSections': 1,
+                'borderVisible': False
+            },
+            'labels': {
+                'fontFamily': 'LatoLatinWebLight',
+                'fillStyle': '#000000',
+                'disabled': False,
+                'fontSize': 10,
+                'precision': 2
+            },
+            'timestampFormatter': def(date):
+                def pad2(number):
+                    return ('0' + number) if number < 10 else number
+                return pad2(date.getHours()) + ':' + pad2(date.getMinutes())
+            , 'yMaxFormatter': def(data, precision = 2):
+                return format_bytes(data) + '/s'
+            , 'yMinFormatter': def(data, precision = 2):
+                return format_bytes(Math.abs(data)) + '/s'
+            , 'limitFPS': 10
+        }
+
+        self.chart = None
+        self.read_data = None
+        self.written_data = None
+        self.chart_monitor = None
+
+        self.clone = None
+        self.card_index = TimestampedVariable(position)
+
+    def make_id(self, tag=None, jquery=True):
+        return MakeID(self.id, tag, jquery)
+
+    def attach(self, parent_element, after_element=None):
+
+        self.parent = parent_element
+        self.after = after_element
+
+        card_spinner = """
+            <div style="min-height: 100px;
+                        width: 100%;
+                        position: absolute;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center; "
+                 id="tobcc.{id}.spinner">
+                <div class="sk-three-bounce text-muted" style="text-align: center">
+                    <div class="spnnr sk-child sk-bounce1 bg-secondary"></div>
+                    <div class="spnnr sk-child sk-bounce2 bg-secondary"></div>
+                    <div class="spnnr sk-child sk-bounce3 bg-secondary"></div>
+                </div>
+            </div>
+        """
+
+        canvas_html = """
+            <div class="card-img-top">
+                <canvas class="bw_chart"
+                    id="card_canvas"
+                    height="100" width="100%"
+                    style="vertical-align: middle">
+                </canvas>
+            </div>
+        """
+
+        xxx = """
+            <span class="fa-stack fa-2x my-auto" style="color: darkgrey;">
+                <i class="far fa-circle fa-stack-2x"></i>
+                <i class="fas fa-play fa-stack-1x"></i>
+            </span>
+        """
+
+        card_html = """
+            <div id="tobcc.{id}" class='pep col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3 mb-4 tobcc-font'>
+                <div class='card droppable box-shadow' style="box-shadow: ''; transition="box-shadow 1s" id="tobcc.{id}.card">                
+                    <div class="card-header tobcc-header d-flex">
+                        <span class="h5 flex-grow-1 text-truncate" id="tobcc.{id}.label">                        
+                            {label}
+                        </span>
+                        <span class="" id="tobcc.{id}.connection" style="color: lightgrey; white-space:nowrap;font-size=14px;"></span>
+                    </div>
+                    <div class="card-img-top" id="tobcc.{id}.top">
+                        <div class="justify-content-center"
+                             style="display: flex; height: 100px; background-color: #E6E6E6">
+                            <a href="#" class="my-auto">
+                                <i class="fas fa-circle-notch fa-spin fa-4x" style="color: darkgrey;"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body tobcc.body">
+                        <div class="row" id="tobcc.{id}.version"></div>
+                        <div class="row" id="tobcc.{id}.updown" style="display:none"></div>
+                    </div>
+                    
+                    <ul class="list-group list-group-flush" id="tobcc.{id}.flags-c" style="display:none; color:grey">
+                        <li class="list-group-item card-text text-center" id="tobcc.{id}.flags"></li>
+                    </ul>
+
+                    <div class="card-footer" id="tobcc.{id}.footer">
+                        <div class="row text-center">
+                            <div class="col" style="display:none" id="tobcc.{id}.edit">
+                                <a href="#" class="card-link pep-click disabled">
+                                    Edit Node
+                                </a>
+                            </div>
+                            <div class="col" style="display:none" id="tobcc.{id}.details">
+                                <a href="{base_path}/{id}/cc/details" target="{id}"
+                                    class="card-link pep-click disabled">
+                                    Show Details
+                                </a>
+                            </div>
+                            <div class="col" style="display:none" id="tobcc.{id}.retry">
+                                <a href="#" class="card-link pep-click">
+                                    Retry
+                                </a>
+                                <span class="" style="color:grey" style="display:none">
+                                    Retry
+                                </span>
+                            </div>
+                            <div class="col" style="display:none" id="tobcc.{id}.login">
+                                <a href="#" class="card-link pep-click disabled">
+                                    Authenticate
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        """
+
+        card = str.format(card_html,
+                          id=self.id,
+                          base_path = self.base_path,
+                          label = self.label or 'Connecting...',
+                          version = self.version or ''
+                          )
+
+        self.card = $(card)
+        self.position(self.card)
+
+        $(self.make_id("retry")).on('click', def():
+            self.retry()
+            return False
+        )
+
+        $(self.make_id("login")).on('click', def():
+            self.perform_login(self.label)
+            return False
+        )
+
+        $(self.make_id("edit")).on('click', def():
+            self.edit_node()
+            return False
+        )
+
+        self.set_links(retry=False)
+
+        self.flags = Flags(self.id, 'flags')
+        self.connection = Connection(self.id, 'connection')
+        # self.tor_mode = Mode(self.id, 'mode')
+        self.version_check = VersionCheck(self.id, 'version.check')
+        self.tor_version = Version(self.id, 'version')
+
+        self.init_pep()
+
+        # This is done to decouple the inital data requests a bit from the launching sequence!
+        # Ensures as well that the fonts are loaded when we need the icons!
+        setTimeout(def():
+            self.update()
+        , Math.random()*1000
+        )
+
+    def set_links(self, edit=True, details=None, retry=None, login=None):
+
+        # print(edit, details, retry, login)
+
+        def set_link($control, status=None):
+            if status in [True, False]:
+                if $control.is(':hidden'):
+                    $control.show()
+                $a = $control.find('a')
+                $s = $control.find('span')
+                if status is True:
+                    $a.show()
+                    $s.hide()
+                else:
+                    $a.hide()
+                    $s.show()
+            else:
+                if $control.is(':visible'):
+                    $control.hide()
+
+        set_link($(self.make_id("edit")), edit)
+        set_link($(self.make_id("details")), details)
+        set_link($(self.make_id("retry")), retry)
+        set_link($(self.make_id("login")), login)
+
+    def detatch(self):
+        if self.update_timer is not None:
+            clearTimeout(self.update_timer)
+
+        self.card.fadeOut('1500', def():
+            self.card.remove()
+        )
+
+    def moveTo(self, after_element=None):
+        self.after = after_element
+        self.position(self.card)
+
+    def perform_login(self, server):
+
+        from utils.auth import Basic, Digest
+
+        Login(server, self.id).show().then(def(data):
+
+            if data? and data.password? and data.password.length > 0:
+
+                url = self.base_path + "/" + self.id + "/cc/" + "login"
+
+                # Cancel the update timer,
+                if self.update_timer is not None:
+                    clearTimeout(self.update_timer)
+
+                # display the spinner, ...
+                spinning = """
+                    <div class="justify-content-center"
+                         style="display: flex; height: 100px; background-color: #E6E6E6">
+                        <a href="#" class="my-auto">
+                            <i class="fas fa-circle-notch fa-spin fa-4x" style="color: darkgrey;"></i>
+                        </a>
+                    </div>
+                """
+                $(self.make_id("top")).html(spinning)
+
+                # ... then launch the auth sequence.
+                $.post({
+                    'url': url,
+                    'timeout': 10000
+                })
+                .fail(def(request, textStatus, errorThrown):
+                    if request.status == 401:
+                        header = request.getResponseHeader('WWW-Authenticate')
+                        # console.log(header)
+                        elements = header.split(',')
+                        if elements.length > 1:
+                            auth = Digest(header, 'POST', url)
+                        else:
+                            auth = Basic(header)
+
+                        $.post({
+                            'url': url,
+                            'timeout': 10000,
+                            'headers': {
+                                'Authorization': auth.create_auth_header(self.id, data.password)
+                            }
+                        })
+                        .done(def(data, textStatus, response):
+                            # console.log("Done Date: " + data)
+                            self.id = data
+
+                            # refetch of self.after
+                            self.after = self.card.prev()
+
+                            self.card.remove()
+                            self.attach(self.parent, self.after)
+                        )
+                        .fail(def(request, textStatus, errorThrown):
+                            # console.log("Fail textStatus: " + textStatus)
+                            pass
+                        )
+                        .always(def():
+                            self.update()
+                        )
+
+                    else:
+                        self.update()
+                )
+                .done(def():
+                    # by definition, this should not happen - yet you never know...
+                    self.update()
+                )
+        )
+
+    def edit_node(self):
+        url = self.base_path + "/" + self.id + "/cc/" + "edit"
+        $.post({
+            'url': url,
+            'timeout': 10000
+        })
+        .done(def(data, textStatus, response):
+            data = JSON.parse(data)
+
+            from dialogs.properties import Properties as NodeProperties
+            NodeProperties(self.id, self.base_path, data['config']).show()
+        )
+
+
+    def retry(self):
+            retry = """
+                <div class="justify-content-center" style="display: flex; height: 100px; background-color: #E6E6E6">
+                    <i class="fas fa-circle-notch fa-spin fa-4x my-auto" style="color: darkgrey;"></i>
+                </div>
+            """
+            $(self.make_id("top")).html(retry)
+            self.set_links(retry=False)
+            self.update()
+
+    def update(self):
+
+        if self.currently_updating is True:
+            return
+
+        self.currently_updating = True
+
+        # console.log(str.format("Now updating {id}.", id=self.id))
+
+        data = {}
+
+        # This will suppress the initial values set prior to the first update run
+        if self.update_timestamp:
+            position = self.card_index.if_modified_since(self.update_timestamp)
+            if position is not None:
+                data['position'] = position
+
+        post_params = {
+            'url': self.base_path + "/" + self.id + "/cc/" + "data"
+            , 'headers': {
+                'if-modified-since': self.ims,
+                'timeout': 2000
+            }
+        }
+
+        if len(data) > 0:
+            post_params['data'] = data
+
+        self.update_timestamp = (new Date).getTime()
+
+        $.post(post_params)
+        .done(def(data, textStatus, response):
+
+            status202 = """
+                <div class="justify-content-center" style="display: flex; height: 100px; background-color: #E6E6E6">
+                    <a href="#" class="my-auto">
+                        <i class="far fa-play-circle fa-4x" style="color: darkgrey;"></i>
+                    </a>
+                </div>
+            """
+
+            if response.status == 202:
+                top = $(self.make_id("top")).html(status202)
+                self.set_links(retry=False)
+
+            elif response.status == 200:
+
+                # if canvas area does not exist...
+                c = self.make_id('chart')
+
+                if not $(c).length:
+
+                    canv = """
+                        <canvas class="bw_chart"
+                            id="{id}"
+                            height="100" width="100%"
+                            style="vertical-align: middle">
+                        </canvas>
+                    """
+
+                    # ... create it ...
+                    $(self.make_id("top")).html(str.format(canv, id=self.make_id('chart', jquery = False)))
+
+                    # ... initialize the chart object,
+                    self.chart = Smoothie(self.chart_options)
+
+                    # ... create the TimeSeries
+                    self.read_data = TimeSeries()
+                    self.written_data = TimeSeries()
+
+                    # ... and add them to the chart.
+                    self.chart.addTimeSeries(self.read_data, { 'lineWidth': 1,
+                                                               'strokeStyle': 'rgb(132, 54, 187)',
+                                                               'fillStyle': 'rgba(132, 54, 187, 0.30)'
+                    })
+
+                    self.chart.addTimeSeries(self.written_data, { 'lineWidth': 1,
+                                                                  'strokeStyle': '#64B22B',
+                                                                  'fillStyle': 'rgba(100, 178, 43, 0.30)'
+                    })
+
+                    # Finally: The streaming logic:
+                    # Preparation...
+                    self.chart.streamTo($(c)[0], 5000)      # This does NOT launch the streaming...
+
+                    # ... & Enablement:
+                    if (scrollMonitor?):
+                        # if scrollMonitor.js is present - use this for optimization!
+                        self.chart_monitor = scrollMonitor.create($(c)[0], 100)
+                        self.chart_monitor.enterViewport(def():
+                            self.chart.start()
+                        )
+                        self.chart_monitor.exitViewport(def():
+                            self.chart.stop()
+                        )
+                    else:
+                        self.chart.start()      # ... but this does!
+
+                self.ims = response.getResponseHeader('Last-Modified')
+
+                show_edit = True
+
+                d = JSON.parse(data)
+                for key in d:
+                    if key in ['version', 'latest', 'versionflag', 'mode']:
+                        self[key] = d[key]
+                    elif key == 'flags':
+
+                        $container = $(self.make_id('flags-c'))
+                        self.flags.update(d['flags'], self.mode)
+
+                        show = d['flags'].length > 0
+                        if show is False and $container.is(':visible'):
+                            $container.hide('slow')
+                        elif show is True and $container.is(':hidden'):
+                            $container.show('slow')
+
+                    elif key == 'conn':
+                        self.connection.update(d['conn'])
+
+                        if 'h' in d['conn']:
+                            $card = $(self.make_id('card'))
+                            if $card.hasClass('droppable'):
+                                $card.addClass('border-primary').removeClass('droppable')
+
+                            $s = $(self.make_id())
+                            if $s.hasClass('pep'):
+                                $s.removeClass('pep')
+                                $.pep.unbind($s)
+
+                            show_edit = None
+
+                    elif key == 'label':
+                        label = $(self.make_id('label'))
+                        label.text(d['label'])
+                        self.label = d['label']
+
+                    elif key == 'details':
+                        details = d['details']
+                        $details = $(self.make_id('details'))
+                        if details == True:
+                            if $details.is(':hidden'):
+                                $details.show('slow')
+                        else:
+                            $details.hide('slow')
+
+                    elif key == 'bw':
+
+                        if 'representing' in d:
+                            rep = d['representing']
+                            $(document).trigger("tobcc.bandwidth", [self.id, rep, d['bw']])
+
+                        for datapoint in d['bw']:
+                            ts = datapoint.s
+                            self.read_data.append(ts, datapoint.r)
+                            self.written_data.append(ts, datapoint.w)
+
+                        # to zeroise the chart after the last datapoint added
+                        ts += 1000
+                        self.read_data.append(ts, 0)
+                        self.written_data.append(ts, 0)
+
+                        dp = d['bw'][0]
+
+                        has_html = $(self.make_id('updown')).html().length > 0
+
+                        # console.log(has_html)
+
+                        up_down = """
+                            <div class="col text-right">{down} <i class='fas fa-cloud-download-alt' style='color:rgb(132, 54, 187)'></i></div>
+                            <div class="col text-left"><i class='fas fa-cloud-upload-alt' style='color: #64B22B'></i> {up}</div>
+                        """
+                        #    <i class='fas fa-cloud-download-alt' style='color:rgb(132, 54, 187)'></i> {down} |
+                        #    <i class='fas fa-cloud-upload-alt' style='color: #64B22B'></i> {up}
+
+                        up_down = str.format(up_down,
+                                             down=format_bytes(dp.tr, '', 'si'),
+                                             up=format_bytes(dp.tw, '', 'si')
+                                  )
+
+                        $(self.make_id('updown')).html(up_down)
+
+                        if has_html == False:
+                            $(self.make_id('updown')).slideDown('slow')
+
+                    elif key == 'style':
+                        style = d['style']
+                        # console.log(style)
+                        if style == 'readonly':
+
+                            $(self.make_id()).addClass('border-secondary')
+                            pass
+
+                # self.version_check.update(self.version, self.latest, self.versionflag)
+                self.tor_version.update(self.version, self.mode, self.latest, self.versionflag)
+                # self.mode_control.update(self.mode, self.version, None, self.latest)
+                # self.mode_control_1.update(self.mode, self.version, None, self.latest)
+
+                self.set_links(edit=show_edit, details=True)
+                $(self.make_id('spinner')).hide()
+
+            self.update_timer = setTimeout(def():
+                self.update()
+            , 5000)
+
+            # self.currently_updating = False
+
+        )
+        .fail(def(request, textStatus, errorThrown):
+            # console.log(str.format("Fail Updating {id}: {status}", id=self.id, status=textStatus))
+            # console.log(request.readyState)
+
+            status_rs0 = """
+                <div class="justify-content-center" style="display: flex; height: 100px; background-color: #E6E6E6">
+                    <span class="fa-stack fa-2x my-auto pep-click" style="color: darkgrey;" id="tobcc.{id}.noconn">
+                        <i class="fas fa-wifi fa-stack-1x" style="color: black;"></i>
+                        <i class="fas fa-ban fa-stack-2x"></i>
+                    </span>
+                </div>
+            """
+
+
+            self.destroy_chart()
+
+            if request.readyState == 0:
+
+                # print("rs0!!!")
+
+                status_rs0 = str.format(status_rs0, id=self.id)
+                top = $(self.make_id("top")).html(status_rs0)
+
+                noconn = $(self.make_id("noconn"))
+                noconn.css('cursor', 'pointer')
+                noconn.on('click', def():
+                    self.retry()
+                    return False
+                )
+
+                self.set_links(retry=False)
+
+            elif request.status == 404 or request.status == 0:
+
+                status404 = """
+                    <div class="justify-content-center" style="display: flex; height: 100px; background-color: #E6E6E6">
+                        <span class="fa-stack fa-2x my-auto pep-click" style="color: darkgrey;" id="tobcc.{id}.exclam">
+                            <i class="far fa-circle fa-stack-2x"></i>
+                            <i class="fas fa-exclamation fa-stack-1x"></i>
+                        </span>
+                    </div>
+                """
+
+                status404 = str.format(status404, id=self.id)
+                top = $(self.make_id("top")).html(status404)
+
+                # print("404!!!")
+
+                exclam = $(self.make_id("exclam"))
+                exclam.css('cursor', 'pointer')
+                exclam.on('click', def():
+                    self.retry()
+                    return False
+                )
+
+                self.set_links(retry=True)
+
+            elif request.status == 401:
+
+                status401 = """
+                    <div class="justify-content-center" style="display: flex; height: 100px; background-color: #E6E6E6">
+                            <span class="fa-stack fa-2x my-auto pep-click" style="color: darkgrey;" id="tobcc.{id}.login_lock">
+                                <i class="far fa-circle fa-stack-2x"></i>
+                                <i class="fas fa-lock fa-stack-1x"></i>
+                            </span>
+                    </div>
+                """
+                status401 = str.format(status401, id=self.id)
+
+                origin = request.getResponseHeader('Content-Location')
+                if origin? and origin.length > 0:
+
+                    split = origin.split('/')
+                    if split.length == 3 and split[0] == 'Tor':
+                        self.version = split[1]
+                        if split[2].length > 0:
+                            self.label = split[2]
+                        else:
+                            label='Loading...'
+
+                        $(self.make_id("label")).text(self.label)
+                        # $(self.make_id("version")).text("Tor " + self.version)
+                        self.tor_version.update(self.version)
+
+                header = request.getResponseHeader('WWW-Authenticate')
+                if header? and header.length > 0:
+                    # console.log(header)
+                    # auth_from_header(header)
+                    pass
+
+                top = $(self.make_id("top")).html(status401)
+
+                lock = $(self.make_id("login_lock"))
+                lock.css('cursor', 'pointer')
+                lock.on('click', def():
+                    self.perform_login(self.label)
+                    return False
+                )
+
+                self.set_links(login=True)
+
+                # Keep Alive signal...
+                self.update_timer = setTimeout(def():
+                    self.update()
+                , 25000)
+        )
+        .always(def(data):
+            # # console.log(str.format("Always after Updating {id}.", id=self.id))
+            # self.update_timer = setTimeout(
+            #     def():
+            #         self.update();
+            #     , 5000
+            # )
+
+            self.currently_updating = False
+        )
+
+    def destroy_chart(self):
+
+        if self.chart_monitor is not None:
+            self.chart_monitor.destroy()
+            self.chart_monitor = None
+
+        self.chart = None
+        self.written_data = None
+        self.read_data = None
+
+    def position(self, el):
+        # print(self.after)
+        if self.after is None:
+            $(self.parent).prepend(el)
+        else:
+            $(self.after).after(el)
+
+    # Drag & Drop functionality
+    def init_pep(self):
+
+        $(self.make_id()).pep({
+            'droppable': '.droppable'
+            # , 'debug': True
+            , 'deferPlacement': True
+            , 'startThreshold': [5, 5]
+            , 'elementsWithInteraction': '.pep-click'
+            # 'useBoundingClientRect': True,
+            , 'constrainTo': 'parent'
+            # , 'callIfNotStarted': []
+            , 'initiate': def (ev, obj):
+
+                # If we have a clone, there's something already happening.
+                if self.clone?:
+                    return False
+
+                # This is the Card
+                $card = $(self.make_id())
+
+                # self is not its own droptarget
+                $card.children(":first").removeClass('droppable')
+
+                # Create a clone of this Card...
+                self.clone = $card.clone()
+                # ... but without all the stuff pep adds.
+                self.clone.removeAttr('style')
+
+                # alter all id's of the clone ...
+                self.clone.find('*').each(def(index):
+                    id = $(this).prop('id')
+                    if id? and id.substring(0, 6) == 'tobcc.':
+                        $(this).prop('id', 'clone.' + id)
+                        # console.log($(this).prop('id'))
+                )
+
+                # ... including that of the Card itself.
+                self.clone.prop('id', '')
+
+                # if there's a chart
+                chart_id = self.make_id('chart')
+                if $(chart_id).length > 0:
+                    # ... and it's clone
+                    $chart_clone = self.clone.find('canvas')
+                    if $chart_clone.length > 0:
+                        # ...copy it's content to the clone
+                        self.chart.snapshot_to($chart_clone[0])
+
+                # Opacity to distinguish the clone from the Card:
+                self.clone.css('opacity', 0.5)
+
+                # This Clone is not a droptarget
+                self.clone.children(":first").removeClass('droppable')
+
+                # The clone takes the position of the Card...
+                # ... which we re-fetch to prevent mis-ordering in case there had been d&d operations before!
+                self.after = $card.prev()
+                if self.after.length < 1:
+                    self.after = None
+
+                self.position(self.clone)
+
+                # ... and the Card is moved to the end - to be on top of the zindex of all cards.
+                $(self.parent).append($card)
+
+            , 'start': def(ev, obj):
+
+                # This is the Card
+                $card = $(self.make_id())
+                $card.children(":first").css('box-shadow',
+                                         '0 15px 10px -10px rgba(0, 0, 0, 0.5), 0 1px 1px rgba(0, 0, 0, 0.3), 0 0 40px rgba(0, 0, 0, 0.1)')
+
+            , 'drag': def(ev, obj):
+
+                mx = ev.pep.x - window.scrollX
+                my = ev.pep.y - window.scrollY
+
+                for adr in this.activeDropRegions:
+                    drop_cr = adr[0].getBoundingClientRect()
+                    if !(mx > drop_cr.right or mx < drop_cr.left or my < drop_cr.top or my > drop_cr.bottom):
+                        clone_cr = self.clone[0].getBoundingClientRect()
+                        p = adr.parent()
+                        if clone_cr.top < drop_cr.top:
+                            p.after(self.clone)
+                        elif clone_cr.top > drop_cr.top:
+                            p.before(self.clone)
+                        else:
+                            if clone_cr.left < drop_cr.left:
+                                p.after(self.clone)
+                            elif clone_cr.left > drop_cr.left:
+                                p.before(self.clone)
+
+                        # self.clone[0].scrollIntoView()
+                        break
+
+            , 'revert': True
+            , 'revertIf': def():
+
+                # We use the revert merchanic to smoothly move the card into it's position
+                # Challenge is to provide the correct coordinates of this new position
+
+                # So this is the Card - currently in motion!
+                $card = $(self.make_id())
+
+                # calculate the diff between the Card and its Clone
+                cr = $card[0].getBoundingClientRect()
+                clone_cr = self.clone[0].getBoundingClientRect()
+
+                pep = $card.data('plugin_pep')
+                dx = clone_cr.left - cr.left
+                dy = clone_cr.top - cr.top
+
+                # Prepare deltas so pep hadles them correctly
+                dx = ("+=" + dx) if (dx > 0 ) else ("-=" + Math.abs(dx))
+                dy = ("+=" + dy) if ( dy > 0 ) else ("-=" + Math.abs(dy))
+
+                # Disable the (standard) css algo...
+                pep.useCSSTranslation = False
+
+                # ... yet enable the alternative & provide the intended motion parameters
+                pep.place = True
+                pep.initialPosition.left = dx
+                pep.initialPosition.top = dy
+
+                # Now ... you may revert!
+                return True
+
+                # Just be aware that the Card still sits at the wrong position in the HTML tree.
+                # It was just moved 'visually' to its new position.
+                # Cleanup will be performed @ rest.
+
+            ,'rest': def(ev, obj):
+
+                # The Card stopped at it's final position
+                # Time for cleanup.
+
+                $card = $(self.make_id())
+
+                position_changed = False
+
+                if self.clone?:
+
+                    # Remember the id of the current position reference
+                    current_pos = self.after.attr('id') if self.after? else None
+
+                    # Then: Get the (possibly altered) position of the Clone
+                    self.after = self.clone.prev()
+                    if self.after.length < 1:
+                        self.after = None
+
+                    # Check if the position changed
+                    new_pos = self.after.attr('id') if self.after? else None
+                    position_changed = (current_pos != new_pos)
+
+                    # Then: Remove the Clone. Job Done.
+                    self.clone.remove()
+                    self.clone = None
+
+                # Move Card to new position in HTML tree
+                self.position($card)
+
+                # Notify the CC server about the change - if there was one
+                if position_changed is True and self.after is not None:
+                    after_id = self.after.attr('id')    # This begins with 'tobcc.', len(6)  ...
+                    $.post(self.base_path + "/" + self.id + "/cc/" + "position", {'position': after_id[6:]})
+
+                # Now this can be a droptarget again
+                $card.children(":first").addClass('droppable')
+                # yet needs no shadow any more
+                $card.children(":first").css('box-shadow', '')
+
+                # Reset pep
+                obj.$el.removeAttr('style')
+                $.pep.unbind(obj.$el)
+                self.init_pep()
+            })

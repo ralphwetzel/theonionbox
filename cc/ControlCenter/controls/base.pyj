@@ -1,0 +1,13 @@
+from utils.make_id import make_id as MakeID
+
+class Base():
+
+    def __init__(self, id, tag):
+        self.id = id
+        self.tag = tag
+
+    def update(self, value):
+        console.log("Base:update() Not implemented...")
+
+    def make_id(self, tag=None, jquery=True):
+        return MakeID(self.id, tag, jquery)

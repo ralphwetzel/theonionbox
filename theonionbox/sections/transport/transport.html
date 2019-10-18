@@ -1,0 +1,34 @@
+<%
+    # Note that this file is not a valid *.html file!
+    # It is intended to be a bottlepy - style template
+    # used for the scripting part of TheOnionBox!
+
+    # from tob_template_tools import *
+
+    import psutil
+    cpu_count = psutil.cpu_count()
+
+    # host = get('host')
+
+    transport = get('transport_status')
+
+%>
+
+{{!header_row('Tor', 'Transportation Status', 'transport')}}
+<div class="row">
+    <div class="{{box_datum_grid}}">Connections</div>
+    <div class="{{box_value_grid}} box_value_margin" id="transport-or">{{transport['or']}}</div>
+    <div class="{{box_right_grid}}"></div>
+</div>
+<div class="row">
+    <div class="{{box_datum_grid}}">Circuits</div>
+    <div class="{{box_value_grid}} box_value_margin" id="transport-circ">{{transport['circ']}}</div>
+    <div class="{{box_right_grid}}"></div>
+</div>
+<div class="row">
+    <div class="{{box_datum_grid}}">Streams</div>
+    <div class="{{box_value_grid}} box_value_margin" id="transport-stream">{{transport['stream']}}</div>
+    <div class="{{box_right_grid}}"></div>
+</div>
+
+<hr>

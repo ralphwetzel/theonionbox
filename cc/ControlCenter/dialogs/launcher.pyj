@@ -1,0 +1,51 @@
+from dialogs.base import Base as DialogBase
+
+class Launcher(DialogBase):
+
+    def __init__(self, session_id, base_path = None):
+        DialogBase.__init__(self)
+        self.base_path = base_path
+        self.session_id = session_id
+
+    def create(self):
+
+        html = """
+            <div class="modal fade tobcc-font" id="login_modal" tabindex="-1" role="dialog"
+                aria-labelledby="exampleModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header cc-dialog-header">
+                            <h5 class="modal-title cc-dialog-title" style="text-shadow: none"><i class="fas fa-circle-notch fa-spin"></i></h5>
+                        </div>
+                        <div class="modal-body text-center" id='about'>
+                            <div style='font-family: LatoLatinWeb; font-size: 24px;'>
+                                {{stamp.__title__}} <span style='font-family: LatoLatinWeb; font-size: 18px;'> {{stamp.__version__}}
+                            </div>
+                            <div style='font-family: LatoLatinWebLight; font-size: 18px;'>
+                                {{stamp.__description__}}
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <div style='font-family: LatoLatinWeb; font-size: 14px;'>
+                                Copyright &copy; 2015 - 2019 Ralph Wetzel
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        """
+
+        # html = str.format(html, id=self.id, server=self.server)
+        DialogBase.create(self, html)
+
+    def show(self):
+        if self.modal is None:
+            self.create()
+
+        p = DialogBase.show(self)
+
+        setTimeout(def():
+            self.modal.modal('hide')
+        , 3000)
+
+        return p

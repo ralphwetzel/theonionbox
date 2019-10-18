@@ -1,0 +1,786 @@
+#
+#   RapydSmoothie
+#   A RapydScript-NG clone of SmoothieChart
+#
+#   SmoothieChart   Copyright (c)   2010-2013, Joe Walnes
+#                                   2013-2018, Drew Noakes
+#                   Details:        www.smoothiechart.org / https://github.com/joewalnes/smoothie
+#                   License:        MIT @ https://github.com/joewalnes/smoothie/blob/master/LICENSE.txt
+#
+#   RapydSmoothie   Copyright (c)   2018, Ralph Wetzel
+#                   License:        MIT
+#                   Language:       RapydScript-NG Python to Javascript Transpiler
+#                                   https://github.com/kovidgoyal/rapydscript-ng
+#                   Coverage:       SmoothieChart 1.36 ("Add title option, by @mesca")
+#
+
+
+from RapydSmoothie.timeseries import TimeSeries
+from RapydSmoothie.util import extend, DefaultOptionsBase
+
+# Date.now polyfill
+Date.now = Date.now or def(): return Date().getTime()
+
+class DefaultChartOptions(DefaultOptionsBase):
+
+    minValue = None
+    maxValue = None
+    maxValueScale = 1
+    minValueScale = 1
+    yRangeFunction = None
+    scaleSmoothing = 0.125
+    millisPerPixel = 20
+    enableDpiScaling = True
+    yMinFormatter = def(min, precision):
+        return parseFloat(min).toFixed(precision)
+    yMaxFormatter = def(max, precision):
+        return parseFloat(max).toFixed(precision)
+    yIntermediateFormatter = def(intermediate, precision):
+        return parseFloat(intermediate).toFixed(precision)
+    maxDataSetLength = 2
+    interpolation = 'bezier'
+    timestampFormatter = None   # will become RapydSmoothie.timeFormatter at __init__
+    scrollBackwards = False
+    horizontalLines = []
+    grid = {
+        'fillStyle': '#000000',
+        'lineWidth': 1,
+        'strokeStyle': '#777777',
+        'millisPerLine': 1000,
+        'sharpLines': False,
+        'verticalSections': 2,
+        'borderVisible': True
+    }
+    labels = {
+        'disabled': False,
+        'fillStyle': '#ffffff',
+        'fontSize': 10,
+        'fontFamily': 'monospace',
+        'precision': 2,
+        'showIntermediateLabels': False,
+        'intermediateLabelSameAxis': True
+    }
+    title = {
+        'text': '',
+        'fillStyle': '#ffffff',
+        'fontSize': 15,
+        'fontFamily': 'monospace',
+        'verticalAlign': 'middle'
+    }
+    tooltip = False
+    tooltipLine = {
+        'lineWidth': 1,
+        'strokeStyle': '#BBBBBB'
+    }
+    tooltipFormatter = def():
+        return
+    nonRealtimeData = False
+    displayDataFromPercentile = 1
+    responsive = False
+    limitFPS = 25
+
+
+class DefaultSeriesPresentationOptions(DefaultOptionsBase):
+    lineWidth = 1
+    strokeStyle = '#ffffff'
+
+class RapydSmoothie:
+
+    def __init__(self, options: dict = {}):
+
+        self.options = {}
+        self.options = extend(self.options, DefaultChartOptions(), {'timestampFormatter': RapydSmoothie.timeFormatter}, options)
+
+        self.seriesSet = []
+        self.currentValueRange = 1
+        self.currentVisMinValue = 0
+        self.lastRenderTimeMillis = 0
+        self.lastChartTimestamp = 0
+
+        self.mousemove = self.on_mousemove.bind(self)
+        self.mouseout = self.on_mouseout.bind(self)
+
+        self.valueRange = { 'min': Number.NaN, 'max': Number.NaN }
+
+        self.canvas = None
+
+    # from __python__ import bound_methods
+
+    @staticmethod
+    def tooltipFormatter(timestamp, data):
+    # tooltipFormatter = def(timestamp, data):
+
+        timestampFormatter = this.options.timestampFormatter or RapydSmoothie.timeFormatter
+        lines = [timestampFormatter(new Date(timestamp))]
+
+        for item in data:
+            lines.push('<span style="color:' + item.series.options.strokeStyle + '">' +
+                       this.options.yMaxFormatter(item.value, this.options.labels.precision) + '</span>')
+
+        return lines.join('<br>')
+
+    # from __python__ import no_bound_methods
+
+    # @staticmethod
+    AnimateCompatibility = (def():
+
+        requestAF = def(callback, element):
+            r_AF = window.requestAnimationFrame or
+            window.webkitRequestAnimationFrame or
+            window.mozRequestAnimationFrame or
+            window.oRequestAnimationFrame or
+            window.msRequestAnimationFrame or
+            def(callback): return window.setTimeout(def(callback): callback(Date.now());, 16)
+
+            return r_AF.call(window, callback, element)
+
+        cancelAF = def(id):
+            c_AF = window.cancelAnimationFrame or
+            def(id): clearTimeout(id)
+
+            return c_AF.call(window, id)
+
+        return {
+            'requestAnimationFrame': requestAF
+
+            , 'cancelAnimationFrame': cancelAF
+        }
+    )()
+
+    def addTimeSeries(self, ts: TimeSeries, options: dict = {}):
+
+        opt = extend({}, DefaultSeriesPresentationOptions(), options)
+        self.seriesSet.push({'timeSeries': ts,
+                             'options': opt})
+
+        if ts.options.resetBounds and ts.options.resetBoundsInterval > 0:
+            ts.resetBoundsTimerId = setInterval(def():
+                ts.resetBounds()
+            , ts.options.resetBoundsInterval)
+
+    def removeTimeSeries(self, ts: TimeSeries):
+
+        for index, serie in enumerate(self.seriesSet):
+            if serie.timeSeries is ts:
+                del self.seriesSet[index]
+                break
+
+        if ts.resetBoundsTimerId:
+            clearInterval(ts.resetBoundsTimerId)
+
+    def getTimeSeriesOptions(self, ts: TimeSeries):
+
+        for serie in self.seriesSet:
+            if serie.timeSeries is ts:
+                return serie.options
+
+    def bringToFront(self, ts: TimeSeries):
+
+        for index, serie in enumerate(self.seriesSet):
+            if serie.timeSeries is ts:
+                del self.seriesSet[index]
+                self.seriesSet.push(serie)
+                break
+
+    def streamTo(self, canvas, delayMillis):
+        self.canvas = canvas
+        self.delay = delayMillis
+        self.start()
+
+    def getTooltipEl(self):
+
+        if not self.tooltipEl?:
+            self.tooltipEl = document.createElement('div')
+            self.tooltipEl.className = 'smoothie-chart-tooltip'
+            self.tooltipEl.style.position = 'absolute'
+            self.tooltipEl.style.display = 'none'
+            document.body.appendChild(this.tooltipEl)
+
+        return self.tooltipEl
+
+    def updateTooltip(self):
+
+        from RapydSmoothie.util import binarySearch
+
+        el = self.getTooltipEl()
+        if not self.mouseover? or self.options.tooltip is False:
+            el.style.display = 'none'
+            return
+
+        time = self.lastChartTimestamp
+        if self.options.scrollBackwards is True:
+            t = time - self.mouseX * self.options.millisPerPixel
+        else:
+            t = time - (self.canvas.offsetWidth - self.mouseX) * self.options.millisPerPixel
+
+        data = []
+
+        for serie in self.seriesSet:
+            ts = serie.timeSeries
+            if ts.disabled == True:
+                continue
+
+            closeIdx = binarySearch(ts.data, t)
+            if closeIdx > 0 and closeIdx < ts.data.length:
+                data.push({'series': serie,
+                           'index': closeIdx,
+                           'value': ts.data[closeIdx][1]})
+
+        if len(data) > 0:
+            el.innerHTML = self.options.tooltipFormatter.call(self, t, data)
+            el.style.display = 'block'
+        else:
+            el.style.display = 'none'
+
+    def on_mousemove(self, event):
+        self.mouseover = True
+        self.mouseX = event.offsetX
+        self.mouseY = event.offsetY
+        self.mousePageX = event.pageX
+        self.mousePageY = event.pageY
+
+        el = self.getTooltipEl()
+        el.style.top = Math.round(this.mousePageY) + 'px'
+        el.style.left = Math.round(this.mousePageX) + 'px'
+        self.updateTooltip()
+
+    def on_mouseout(self):
+        self.mouseover = False
+        self.mouseX = None
+        self.mouseY = None
+        if self.tooltipEl is not None:
+            self.tooltipEl.style.display = 'none'
+
+    def resize(self):
+        dpr = 1
+        if self.options.enableDpiScaling is True and window is not None:
+            dpr = window.devicePixelRatio
+
+        width = 0
+        height = 0
+
+        if self.options.responsive:
+            width = self.canvas.offsetWidth
+            height = self.canvas.offsetHeight
+
+            if width != self.lastWidth:
+                self.lastWidth = width
+                self.canvas.setAttribute('width', (Math.floor(width * dpr)).toString())
+            if height != self.lastHeight:
+                self.lastHeight = height
+                self.canvas.setAttribute('height', (Math.floor(height * dpr)).toString())
+
+        elif dpr != 1:
+
+            width = parseInt(self.canvas.getAttribute('width'))
+            height = parseInt(self.canvas.getAttribute('height'))
+
+            if self.originalWidth is None or Math.floor(self.originalWidth * dpr) != width:
+                self.originalWidth = width
+                self.canvas.setAttribute('width', (Math.floor(width * dpr)).toString())
+                self.canvas.style.width = width + 'px'
+                self.canvas.getContext('2d').scale(dpr, dpr)
+
+            if self.originalHeight is None or Math.floor(self.originalHeight * dpr) != height:
+                self.originalHeight = height
+                self.canvas.setAttribute('height', (Math.floor(height * dpr)).toString())
+                self.canvas.style.height = height + 'px'
+                self.canvas.getContext('2d').scale(dpr, dpr)
+
+    def start(self):
+        if self.frame:
+            return
+
+        self.canvas.addEventListener('mousemove', self.mousemove)
+        self.canvas.addEventListener('mouseout', self.mouseout)
+
+        animate = def():
+
+            this.frame = this.AnimateCompatibility.requestAnimationFrame(
+                def():
+                    # reducer = def(max, series):
+                    #     dataSet = series.timeSeries.data
+                    #     lds = len(dataSet)
+                    #     indexToCheck = Math.round(self.options.displayDataFromPercentile * lds) - 1
+                    #     indexToCheck = max(indexToCheck, 0)
+                    #     indexToCheck = min(indexToCheck, lds - 1)
+                    #     if dataSet is not None and lds > 0:
+                    #         lastDataTimeStamp = dataSet[indexToCheck][0]
+                    #         max = max(max, lastDataTimeStamp)
+                    #     return max
+                    # .bind(this)
+
+                    # reducer = reduce_f.bind(this)
+
+                    if this.options.nonRealtimeData:
+                        dateZero = new Date(0)
+                        maxTimeStamp = this.seriesSet.reduce(
+                            def(max, series):
+                                dataSet = series.timeSeries.data
+                                lds = len(dataSet)
+                                indexToCheck = Math.round(this.options.displayDataFromPercentile * lds) - 1
+                                indexToCheck = max(indexToCheck, 0)
+                                indexToCheck = min(indexToCheck, lds - 1)
+                                if dataSet is not None and lds > 0:
+                                    lastDataTimeStamp = dataSet[indexToCheck][0]
+                                    max = max(max, lastDataTimeStamp)
+                                return max
+                            .bind(this),
+                            dateZero)
+
+                        this.render(this.canvas, maxTimeStamp if maxTimeStamp > dateZero else None)
+
+                    else:
+                        this.render()
+
+                    animate()
+
+                .bind(this)
+            )
+
+        .bind(this)
+
+        animate()
+
+
+    def stop(self):
+        if self.frame:
+            self.AnimateCompatibility.cancelAnimationFrame(self.frame)
+            self.frame = None
+            self.canvas.removeEventListener('mousemove', self.mousemove)
+            self.canvas.removeEventListener('mouseout', self.mouseout)
+
+
+    def updateValueRange(self):
+
+        chartOptions = self.options
+        chartMaxValue = Number.NaN
+        chartMinValue = Number.NaN
+
+        for serie in self.seriesSet:
+            ts = serie.timeSeries
+            if ts.disabled is True:
+                continue
+
+            if ts.maxValue is not NaN:
+                chartMaxValue = max(chartMaxValue, ts.maxValue) if chartMaxValue is not NaN else ts.maxValue
+
+            if ts.minValue is not NaN:
+                chartMinValue = min(chartMinValue, ts.minValue) if chartMinValue is not NaN else ts.minValue
+
+        if chartOptions.maxValue?:
+            chartMaxValue = chartOptions.maxValue
+        else:
+            chartMaxValue *= chartOptions.maxValueScale
+
+        if chartOptions.minValue?:
+            chartMinValue = chartOptions.minValue
+        else:
+            chartMinValue -= Math.abs(chartMinValue * chartOptions.minValueScale - chartMinValue)
+
+        if self.options.yRangeFunction?:
+            rnge = self.options.yRangeFunction({'min': chartMinValue, 'max': chartMaxValue})
+            chartMinValue = rnge.min
+            chartMaxValue = rnge.max
+
+        if chartMaxValue is not NaN and chartMinValue is not NaN:
+            targetValueRange = chartMaxValue - chartMinValue
+            valueRangeDiff = targetValueRange - self.currentValueRange
+            minValueDiff = chartMinValue - self.currentVisMinValue
+            self.isAnimatingScale = Math.abs(valueRangeDiff) > 0.1 or Math.abs(minValueDiff) > 0.1
+            self.currentValueRange += chartOptions.scaleSmoothing * valueRangeDiff
+            self.currentVisMinValue += chartOptions.scaleSmoothing * minValueDiff
+
+        self.valueRange = { 'min': chartMinValue, 'max': chartMaxValue }
+
+    def render(self, canvas, time):
+
+        nowMillis = Date.now()
+        if self.options.limitFPS > 0:
+            if nowMillis - self.lastRenderTImeMillis < (1000 / self.options.limitFPS):
+                return
+
+        if self.isAnimatingScale is False:
+            maxIdleMillis = min(1000/6, self.options.millisPerPixel)
+            if nowMillis - self.lastRenderTimeMillis < maxIdleMillis:
+                return
+
+
+        self.resize()
+        self.updateTooltip()
+
+        self.lastRenderTimeMillis = nowMillis
+
+        canvas = canvas or self.canvas
+        time = time or nowMillis - (self.delay or 0)
+
+        # Round time down to pixel granularity, so motion appears smoother.
+        time -= time % self.options.millisPerPixel
+
+        self.lastChartTimestamp = time
+
+        context = canvas.getContext('2d')
+        chartOptions = self.options
+        dimensions = {
+            'top': 0,
+            'left': 0,
+            'width': canvas.clientWidth,
+            'height': canvas.clientHeight
+        }
+
+        # Calculate the threshold time for the oldest data points.
+        oldestValidTime = time - (dimensions.width * chartOptions.millisPerPixel)
+
+        valueToYPixel = def(value):
+            offset = value - self.currentVisMinValue
+            if self.currentValueRange == 0:
+                return dimensions.height
+            return dimensions.height - (Math.round((offset / self.currentValueRange) * dimensions.height))
+        .bind(self)
+
+        def timeToXPixel(t):
+            if chartOptions.scrollBackwards is True:
+                return Math.round((time - t) / chartOptions.millisPerPixel)
+            return Math.round(dimensions.width - ((time - t) / chartOptions.millisPerPixel))
+
+        self.updateValueRange()
+
+        context.font = chartOptions.labels.fontSize + 'px ' + chartOptions.labels.fontFamily
+
+        # Move origin, create clipping rectangle, clear area
+        self.render_10(context, chartOptions, dimensions)
+
+        # Grid lines Vertical & Horizontal, Bounding Rect
+        self.render_20(context, chartOptions, dimensions, time, oldestValidTime, timeToXPixel)
+
+        # Draw any horizontal lines...
+        self.render_30(context, chartOptions, dimensions, valueToYPixel)
+
+        # Draw the TimeSeries
+        self.render_40(context, chartOptions, dimensions, oldestValidTime, timeToXPixel, valueToYPixel)
+
+        # Draw vertical bar to show tooltip position
+        self.render_50(context, chartOptions, dimensions)
+
+        # Draw the axis values on the chart.
+        self.render_60(context, chartOptions, dimensions)
+
+        # Display intermediate y axis labels along y-axis to the left of the chart
+        self.render_70(context, chartOptions, dimensions)
+
+        # Display timestamps along x-axis at the bottom of the chart.
+        self.render_80(context, chartOptions, dimensions, time, oldestValidTime, timeToXPixel)
+
+
+    def render_10(self, context, chartOptions, dimensions):
+
+        # Save the state of the canvas context, any transformations applied in this method
+        # will get removed from the stack at the end of this method when .restore() is called.
+        context.save()
+
+        # Move the origin.
+        context.translate(dimensions.left, dimensions.top)
+
+        # Create a clipped rectangle - anything we draw will be constrained to this rectangle.
+        # This prevents the occasional pixels from curves near the edges overrunning and creating
+        # screen cheese (that phrase should need no explanation).
+        context.beginPath()
+        context.rect(0, 0, dimensions.width, dimensions.height)
+        context.clip()
+
+        # Clear the working area.
+        context.save()
+        context.fillStyle = chartOptions.grid.fillStyle
+        context.clearRect(0, 0, dimensions.width, dimensions.height)
+        context.fillRect(0, 0, dimensions.width, dimensions.height)
+
+        context.restore()
+
+    def render_20(self, context, chartOptions, dimensions, time, oldestValidTime, timeToXPixel):
+
+        # Grid lines...
+        context.save()
+        context.lineWidth = chartOptions.grid.lineWidth
+        context.strokeStyle = chartOptions.grid.strokeStyle
+        # print(chartOptions.grid.strokeStyle)
+
+        # Vertical (time) dividers.
+        if (chartOptions.grid.millisPerLine > 0):
+            context.beginPath()
+            t = time - (time % chartOptions.grid.millisPerLine)
+
+            while t>= oldestValidTime:
+
+                gx = timeToXPixel(t)
+                if chartOptions.grid.sharpLines:
+                    gx -= 0.5
+                context.moveTo(gx, 0)
+                context.lineTo(gx, dimensions.height)
+
+                t -= chartOptions.grid.millisPerLine
+
+            context.stroke()
+            context.closePath()
+
+        # Horizontal (value) dividers.
+        v = 1
+        while v < chartOptions.grid.verticalSections:
+
+            gy = Math.round(v * dimensions.height / chartOptions.grid.verticalSections)
+            if chartOptions.grid.sharpLines:
+                gy -= 0.5
+
+            context.beginPath()
+            context.moveTo(0, gy)
+            context.lineTo(dimensions.width, gy)
+            context.stroke()
+            context.closePath()
+
+            v += 1
+
+        # Bounding rectangle
+        if chartOptions.grid.borderVisible:
+            context.beginPath()
+            context.strokeRect(0, 0, dimensions.width, dimensions.height)
+            context.closePath()
+
+        context.restore()
+
+    def render_30(self, context, chartOptions, dimensions, valueToYPixel):
+
+        # Draw any horizontal lines...
+        context.save()
+
+        for line in chartOptions.horizontalLines:
+            hly = Math.round(valueToYPixel(line.value)) - 0.5
+            context.strokeStyle = line.color or '#ffffff'
+            context.lineWidth = line.lineWidth or 1
+            context.beginPath()
+            context.moveTo(0, hly)
+            context.lineTo(dimensions.width, hly)
+            context.stroke()
+            context.closePath()
+
+        context.restore()
+
+    def render_40(self, context, chartOptions, dimensions, oldestValidTime, timeToXPixel, valueToYPixel):
+
+        # For each data set...
+        for serie in self.seriesSet:
+            context.save()
+            ts = serie.timeSeries
+            if ts.disabled is True:
+                continue
+
+            dataSet = ts.data
+            seriesOptions = serie.options
+
+            # Delete old data that's moved off the left of the chart.
+            ts.dropOldData(oldestValidTime, chartOptions.maxDataSetLength)
+
+            # Set style for this dataSet.
+            context.lineWidth = seriesOptions.lineWidth
+            context.strokeStyle = seriesOptions.strokeStyle
+
+            # Draw the line...
+            context.beginPath()
+
+            # Retain lastX, lastY for calculating the control points of bezier curves.
+            firstX = 0
+            lastX = 0
+            lastY = 0
+
+            if len(dataSet) > 1:
+                for index, set in enumerate(dataSet):
+                    x = timeToXPixel(set[0])
+                    y = valueToYPixel(set[1])
+
+                    if index == 0:
+                        firstX = x
+                        context.moveTo(x, y)
+                    else:
+                        if chartOptions.interpolation in ['linear', 'line']:
+                            context.lineTo(x, y)
+
+                        elif chartOptions.interpolation == 'step':
+                            context.lineTo(x, lastY)
+                            context.lineTo(x, y)
+
+                        else:
+                          # Great explanation of Bezier curves: http://en.wikipedia.org/wiki/Bezier_curve#Quadratic_curves
+                          #
+                          # Assuming A was the last point in the line plotted and B is the new point,
+                          # we draw a curve with control points P and Q as below.
+                          #
+                          # A---P
+                          #      |
+                          #      |
+                          #      |
+                          #      Q---B
+                          #
+                          # Importantly, A and P are at the same y coordinate, as are B and Q. This is
+                          # so adjacent curves appear to flow as one.
+                          #
+
+
+                            context.bezierCurveTo(    # startPoint (A) is implicit from last iteration of loop
+                                Math.round((lastX + x) / 2), lastY, # controlPoint1 (P)
+                                Math.round((lastX + x)) / 2, y,     # controlPoint2 (Q)
+                                x, y)                               # endPoint (B)
+
+
+                    lastX = x
+                    lastY = y
+
+            if len(dataSet) > 1:
+                if seriesOptions.fillStyle:
+                  # Close up the fill region.
+                  context.lineTo(dimensions.width + seriesOptions.lineWidth + 1, lastY)
+                  context.lineTo(dimensions.width + seriesOptions.lineWidth + 1,
+                                 dimensions.height + seriesOptions.lineWidth + 1)
+                  context.lineTo(firstX, dimensions.height + seriesOptions.lineWidth)
+                  context.fillStyle = seriesOptions.fillStyle
+                  context.fill()
+
+                if seriesOptions.strokeStyle and seriesOptions.strokeStyle is not 'none':
+                  context.stroke()
+
+                context.closePath()
+
+            context.restore()
+
+    def render_50(self, context, chartOptions, dimensions):
+        # Draw vertical bar to show tooltip position
+
+        if chartOptions.tooltip and self.mouseX >= 0:
+            context.save()
+
+            context.lineWidth = chartOptions.tooltipLine.lineWidth
+            context.strokeStyle = chartOptions.tooltipLine.strokeStyle
+            context.beginPath()
+            context.moveTo(self.mouseX, 0)
+            context.lineTo(self.mouseX, dimensions.height)
+            context.closePath()
+            context.stroke()
+            self.updateTooltip()
+
+            context.restore()
+
+    def render_60(self, context, chartOptions, dimensions):
+
+        # Draw the axis values on the chart.
+        if chartOptions.labels.disabled is False:
+            if self.valueRange.min is not NaN:
+                if self.valueRange.max is not NaN:
+
+                    context.save()
+
+                    maxValueString = chartOptions.yMaxFormatter(self.valueRange.max, chartOptions.labels.precision)
+                    minValueString = chartOptions.yMinFormatter(self.valueRange.min, chartOptions.labels.precision)
+                    if chartOptions.scrollBackwards is True:
+                        maxLabelPos = 0
+                        minLabelPos = 0
+                    else:
+                        maxLabelPos = dimensions.width - context.measureText(maxValueString).width - 2
+                        minLabelPos = dimensions.width - context.measureText(minValueString).width - 2
+
+                    context.fillStyle = chartOptions.labels.fillStyle
+                    context.fillText(maxValueString, maxLabelPos, chartOptions.labels.fontSize)
+                    context.fillText(minValueString, minLabelPos, dimensions.height - 2)
+
+                    context.restore()
+
+    def render_70(self, context, chartOptions, dimensions):
+        # Display intermediate y axis labels along y-axis to the left of the chart
+
+        if chartOptions.labels.showIntermediateLabels is True:
+
+
+            if self.valueRange.min is not NaN and self.valueRange.max is not NaN:
+                if chartOptions.grid.verticalSections > 0:
+                    # show a label above every vertical section divider
+
+                    context.save()
+
+                    step = (self.valueRange.max - self.valueRange.min) / chartOptions.grid.verticalSections
+                    stepPixels = dimensions.height / chartOptions.grid.verticalSections
+                    v = 1
+                    while v < chartOptions.grid.verticalSections:
+                        gy = dimensions.height - Math.round(v * stepPixels)
+                        if chartOptions.grid.sharpLines:
+                            gy -= 0.5
+                        yValue = chartOptions.yIntermediateFormatter(self.valueRange.min + (v * step),
+                                                                     chartOptions.labels.precision)
+
+                        # left of right axis?
+                        if chartOptions.labels.intermediateLabelSameAxis is True:
+                            if chartOptions.scrollBackwards is True:
+                                intermediateLabelPos = 0
+                            else:
+                                intermediateLabelPos = dimensions.width - context.measureText(yValue).width - 2
+                        else:
+                            if chartOptions.scrollBackwards is True:
+                                intermediateLabelPos = dimensions.width - context.measureText(yValue).width - 2
+                            else:
+                                intermediateLabelPos = 0
+
+                        context.fillText(yValue, intermediateLabelPos, gy - chartOptions.grid.lineWidth)
+
+                        v += 1
+
+                    context.restore()
+
+    def render_80(self, context, chartOptions, dimensions, time, oldestValidTime, timeToXPixel):
+        # Display timestamps along x-axis at the bottom of the chart.
+
+        if chartOptions.timestampFormatter? and chartOptions.grid.millisPerLine > 0:
+
+            context.save()
+
+            if self.valueRange.min is not NaN:
+                minValueString = chartOptions.yMinFormatter(self.valueRange.min, chartOptions.labels.precision)
+            else:
+                minValueString = ''
+
+            if chartOptions.scrollBackwards is True:
+                textUntilX = context.measureText(minValueString).width
+            else:
+                textUntilX = dimensions.width - context.measureText(minValueString).width + 4
+
+            t = time - (time % chartOptions.grid.millisPerLine)
+
+            while t >= oldestValidTime:
+
+                gx = timeToXPixel(t)
+                # Only draw the timestamp if it won't overlap with the previously drawn one.
+
+                if (chartOptions.scrollBackwards is False and gx < textUntilX) or (chartOptions.scrollBackwards is True and gx > textUntilX):
+                    # Formats the timestamp based on user specified formatting function
+                    # SmoothieChart.timeFormatter function above is one such formatting option
+
+                    tx = Date(t)
+                    tsf = chartOptions.timestampFormatter(tx)
+                    tsWidth = context.measureText(tsf).width
+
+                    textUntilX = (gx + tsWidth + 2) if chartOptions.scrollBackwards is True else (gx - tsWidth - 2)
+
+                    context.fillStyle = chartOptions.labels.fillStyle
+                    if chartOptions.scrollBackwards:
+                        context.fillText(tsf, gx, dimensions.height - 2)
+                    else:
+                        context.fillText(tsf, gx - tsWidth, dimensions.height - 2)
+
+                t -= chartOptions.grid.millisPerLine
+
+            context.restore()
+
+    # Sample timestamp formatting function
+    @staticmethod
+    def timeFormatter(date):
+        def pad2(number):
+            return ('0' if number < 10 else '') + number
+
+        return pad2(date.getHours()) + ':' + pad2(date.getMinutes()) + ':' + pad2(date.getSeconds())
+
+
+window.RapydSmoothie = RapydSmoothie

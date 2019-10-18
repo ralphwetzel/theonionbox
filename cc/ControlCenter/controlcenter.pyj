@@ -1,0 +1,260 @@
+from cards.node import Node as NodeCard
+
+from utils.make_id import make_id
+from utils.format_bytes import format_bytes
+
+from controls.smoothie import Smoothie, TimeSeries
+from dialogs.launcher import Launcher
+
+@external
+class XMLHttpRequest:
+    pass
+
+class ControlCenter():
+
+    def __init__(self, launcher = True):
+
+        if launcher:
+            Launcher().show()
+
+        self.session_id = "{{session.id}}"
+        self.base_path = "{{virtual_basepath}}"
+
+        self.cards = []
+
+        self.do_ping = True
+        self.ims = "Wed, 21 Oct 2015 07:28:00 GMT"      # dummy value in the past!
+
+        # self.buttonAdd = NavBarButton('Add Node')
+        # self.buttonAdd.append_to('#navbar_buttons')
+        # self.buttonAdd.on_click(_.bind(self.on_new_node, self))
+        #
+        # self.buttonEdit = NavBarButton('Edit Node')
+        # self.buttonEdit.append_to('#navbar_buttons')
+        # self.buttonEdit.on_click(def():
+        #     self.buttonDetails.disabled = (not self.buttonDetails.disabled)
+        # )
+        #
+        # self.buttonDetails = NavBarButton('Show Details')
+        # self.buttonDetails.append_to('#navbar_buttons')
+        # # self.buttonDetails.on_click(_.bind(self.on_new_node, self))
+        # self.buttonDetails.disabled = True
+
+        self.chart_options_1 = {
+            'millisPerPixel': 500,
+            'maxValueScale': 1.1,
+            'minValueScale': 1.1,
+            'maxDataSetLength': Math.max(screen.width, screen.height),
+            'interpolation': 'step',
+            'enableDpiScaling': True,
+            'timeLabelLeftAlign': True,
+            'timeLabelSeparation': 2,
+            'grid': {
+                'millisPerLine': 0, #300000,
+                'timeDividers': '',
+                'fillStyle': "rgba(255, 255, 255, 0.0)",
+                'strokeStyle': "rgba(255, 255, 255, 0.75)",
+                'verticalSections': 1,
+                'borderVisible': False
+            },
+            'labels': {
+                'fontFamily': 'LatoLatinWebLight',
+                'fillStyle': "rgba(255, 255, 255, 1)",
+                'disabled': False,
+                'fontSize': 10,
+                'precision': 2
+            },
+            'timestampFormatter': def(date):
+                def pad2(number):
+                    return ('0' + number) if number < 10 else number
+                return pad2(date.getHours()) + ':' + pad2(date.getMinutes())
+            , 'yMaxFormatter': def(data, precision = 2):
+                return format_bytes(data) + '/s'
+            , 'yMinFormatter': def(data, precision = 2):
+                return format_bytes(Math.abs(data)) + '/s'
+        }
+
+        self.chart = Smoothie(self.chart_options_1)
+
+        # ... create the TimeSeries
+        self.read_data = TimeSeries()
+        self.written_data = TimeSeries()
+
+        # ... and add them to the chart.
+        self.chart.addTimeSeries(self.read_data, { 'lineWidth': 1,
+                                                   'strokeStyle': 'rgb(255, 255, 255)',
+                                                   'fillStyle': 'rgba(255, 255, 255, 0.25)'
+        })
+
+        self.chart.addTimeSeries(self.written_data, { 'lineWidth': 1,
+                                                      'strokeStyle': 'rgb(255, 255, 255)',
+                                                      'fillStyle': 'rgba(255, 255, 255, 0.50)'
+        })
+
+        ts = int((new Date).getTime() / 1000) * 1000
+        self.read_data.append(ts, 0, True)
+        self.written_data.append(ts, 0, True)
+
+        c = $('#topchart')
+        self.chart.streamTo($(c)[0], 5000)  # This does NOT launch the streaming...
+
+        if (scrollMonitor?):
+            # if scrollMonitor.js is present - use this for optimization!
+            self.chart_monitor = scrollMonitor.create($(c)[0], 100)
+            self.chart_monitor.enterViewport(def():
+                self.chart.start()
+            )
+            self.chart_monitor.exitViewport(def():
+                self.chart.stop()
+            )
+        else:
+            self.chart.start()      # ... but this does!
+
+        self.stream_data_providers = {}
+        $(document).on('tobcc.bandwidth', def(event, id, rep, data):
+
+            # print(self.stream_data_providers)
+
+            sdp = {}
+
+            if len(data) > 0 and rep in self.stream_data_providers:
+                sdp = self.stream_data_providers[rep]
+                if sdp.id != id and sdp.tss > int(data[0].s / 1000) - 15:
+                    # if the registered sdp is different than the one just triggering
+                    # and the registered one recently ( < 15 s) triggered as well
+                    return
+
+            sdp.id = id
+
+            for datapoint in data:
+                # ts = Math.floor(datapoint.s / 1000)
+                # ts = datapoint.s
+                tss = int(datapoint.s / 1000)
+
+                if sdp.tss?:
+                    if tss == sdp.tss:
+                        # if two consecutive timestamps fall into the same second
+                        # take the second one and write it into a buffer
+                        sdp.r = datapoint.r
+                        sdp.w = datapoint.w
+                        continue
+
+                    if tss > sdp.tss + 1 and sdp.r?:
+                        # if there's a gap between two consecutive timestamps
+                        # and the buffer is filled, emit the buffer...
+                        self.read_data.append((sdp.tss + 1)*1000, sdp.r, True)
+                        self.written_data.append((sdp.tss + 1)*1000, sdp.w, True)
+
+                ts = tss * 1000
+                self.read_data.append(ts, datapoint.r, True)
+                self.written_data.append(ts, datapoint.w, True)
+
+                sdp.tss = tss
+
+                # Clear the buffer:
+                sdp.r = None
+                sdp.w = None
+
+            # to zeroise the chart after the last datapoint added
+            tss += 1
+            self.read_data.append(tss * 1000, 0, True)
+            self.written_data.append(tss * 1000, 0, True)
+
+            self.stream_data_providers[rep] = sdp
+
+        )
+
+        $(document).one('tobcc.bandwidth', def():
+            tc = $('#topchart')
+            if tc.is(':hidden'):
+                tc.fadeIn(2000)
+                tc.css('width', '450px')
+                tc.css('height', '50px')
+        )
+
+        # enable Drap&Drop
+        $('.pep').pep()
+
+        # delay-launch the app...
+        setTimeout(def():
+            self.ping()
+        , 250)
+
+    def on_new_node(self):
+
+        from dialogs.properties import Properties as NodeProperties
+        NodeProperties(self.session_id, base_path = self.base_path).show()
+
+    def ping(self):
+
+        if self.do_ping is not True:
+            return
+
+        $.post({
+            'url': self.base_path + "/" + self.session_id + "/cc/" + "ping",
+            'headers': {
+                'if-modified-since': self.ims,
+                'timeout': 5000
+            }
+        })
+        .done(def(data, textStatus, response):
+            if response.status == 200:
+                self.ims = response.getResponseHeader('last-modified')
+                d = JSON.parse(data)
+                if 'cards' in d:
+
+                    cards = d['cards']
+
+                    # run through existing cards and check if they are still valid
+                    new_cards = []
+                    for c in self.cards:
+                        if c.id in cards:
+                            new_cards.push(c)
+                        else:
+                            $.post({
+                                'url': self.base_path + "/" + c.id + "/cc/" + "ciao.html",
+                            })
+                            c.detatch()
+
+                    # run through received list of card.id's and establish sequence
+
+                    after_element = None
+                    for cid in cards:
+
+                        done = False
+
+                        # Move existing card to appropriate position
+                        for c in new_cards:
+                            if c.id == cid:
+                                c.moveTo(after_element)
+                                done = True
+                                break
+
+                        # if no card exists: Create a card
+                        if done == False:
+                            card = NodeCard(id=cid, base_path=self.base_path, position=0)
+                            new_cards.push(card)
+                            card.attach(parent_element='#cc-cards', after_element=after_element)
+
+                        after_element = make_id(cid)
+
+                    self.cards = new_cards
+
+        )
+        .always(def(data):
+            setTimeout(
+                def():
+                    self.ping();
+                , 2000
+            )
+        )
+
+    def license(self):
+        from dialogs.license import License
+        License(self.session_id, self.base_path).show()
+
+    def about(self):
+        from dialogs.about import About
+        About(self.session_id, self.base_path).show()
+
+window.ControlCenter = ControlCenter

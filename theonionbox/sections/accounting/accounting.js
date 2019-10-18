@@ -32,8 +32,10 @@ acc_handler.prototype.process = function(data) {
                          + ')');
 
         // ttr = time_to_reset
-        var ttr = data.stats.time_to_reset;
-        ttr = ttr.slice(0, -3); // no seconds
+        // var ttr = data.stats.time_to_reset;
+
+        var date_value = new Date(data.stats.time_until_reset * 1000);
+        var ttr = "%02d".$(date_value.getUTCHours()) + ":" + "%02d".$(date_value.getUTCMinutes());
         $("#acc_interval").text(format_date(data.stats.interval_end * 1000)+ ' | in ' + ttr + ' hours');
 
     }

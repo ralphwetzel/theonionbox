@@ -80,14 +80,28 @@ end
             <div class="{{box_value_grid}} box_value_margin">
                 <%
                 out = ''
+                # HCP detection!!
+                hcp = 0
                 for cmd in cmd_line:
                     if len(out):
                         out += ' '
+                    end
+                    if hcp == 1 and cmd[:3] == '16:':
+                        cmd = cmd[:12] + '...'  # no need to transmit this completely!
+                        hcp += 1
+                    end
+                    if cmd == "HashedControlPassword":
+                        hcp = 1
                     end
                     out += cmd
                 end
                 %>
                 {{out}}
+                % if hcp > 1:
+                    <div style="font-size: 70%; color: lightgray; display: block;">
+                        The HashedControlPassword was truncated for safety reasons.
+                    </div>
+                % end
             </div>
             <div class="{{box_right_grid}}"></div>
         </div>

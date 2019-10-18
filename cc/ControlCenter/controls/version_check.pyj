@@ -1,0 +1,59 @@
+from controls.base import Base as ControlBase
+
+class VersionCheck(ControlBase):
+
+    def update(self, version=None, latest=None, flag=None):
+
+        if version == self.version and latest == self.latest and flag == self.flag:
+            return True
+
+        red_flags = ['obsolete', 'old', 'unrecommended', 'unknown']
+
+        $me = $(self.make_id(self.tag))
+        if $me.length < 1:
+            return False
+
+        $me.tooltip('dispose')
+
+        # print(version, latest, flag)
+
+        if version == latest and flag not in red_flags:
+            if $me.is(':visible'):
+                $me.hide(500)
+            return True
+
+        html = """
+            <i class="fas fa-exclamation" style="color:{color};"></i>
+        """
+        color = 'black'
+        title = ''
+
+        if flag in red_flags:
+            color = 'tomato'
+            if len(title) > 0:
+                title += '<br>'
+            title += 'This Tor version is <b>' + flag + '</b>!'
+
+        if latest is not None:
+            # console.log(latest)
+            if len(title) > 0:
+                title += '<br>'
+            title += 'Latest stable Tor version is <b>' + latest + '</b>.'
+
+        html = str.format(html, color=color)
+        $me.html(html)
+
+        if $me.is(':hidden'):
+            $me.show(1000)
+
+        $me.tooltip({'container': 'body',
+                     'trigger': 'click hover',
+                     'html': True,
+                     'title': title
+                     })
+
+        self.version = version
+        self.latest = latest
+        self.flag = flag
+
+        return True

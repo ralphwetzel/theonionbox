@@ -1,0 +1,28 @@
+class TimestampedVariable():
+
+    def __init__(self, *args):
+
+        assert(len(args) == 1)
+
+        self.v = args[0]
+        self.type = $.type(self.v)
+        self.modified = (new Date).getTime()
+
+    @property
+    def value(self):
+        return self.v
+
+    @value.setter
+    def value(self, value):
+        assert($.type(value) == self.type)
+        self.v = value
+        self.modified = (new Date).getTime()
+
+    def if_modified_since(self, timestamp):
+        # msg = 'last_mod: ' + self.modified + '| ims: ' + timestamp
+        # msg += ( ' ==> Modified') if self.modified > timestamp else ''
+        # console.log(msg)
+        if self.modified > timestamp:
+            return self.v
+        else:
+            return None
