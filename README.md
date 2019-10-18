@@ -51,7 +51,7 @@ _The Onion Box_ supports whatever authentication method the Tor node provides.
 
 A single instance of _The Onion Box_ is able to provide monitoring functionality for as many nodes as you like.
 
-Above that, _The Onion Box_ is able to display Tor network status protocol data for any Tor node known by [Onionoo](http://onionoo.torproject.org).
+Above that, _The Onion Box_ is able to display Tor network status protocol data for any Tor node known by [Onionoo](https://metrics.torproject.org/onionoo.html).
 
 [TOC levels=3 markdown bullet formatted hierarchy]: # "## Table of Contents"
 
@@ -584,8 +584,8 @@ _The Onion Box_ as of version 4 only supports configuration file protocol `2`.
 ```
 [TheOnionBox]
 ## Address of your Onion Box:
-## This defaults to 0.0.0.0 to listen on all interfaces.
-# host = 0.0.0.0
+## This defaults to 127.0.0.1 to listen *only* on the local loopback interface.
+# host = 127.0.0.1
 ## If 'localhost', connections are limited to the local system.
 # host = localhost
 ## Of course you may define a dedicated IP4 address as well.
@@ -1141,29 +1141,28 @@ The next steps differ based on your operating system:
 
 
 ### ... on FreeBSD
-> This description is a bit outdated! Use with caution.
+Let's assume, you've created the virtual environment for your _Onion Box_ at `/usr/home/pi/theonionbox`.
 
-Let's assume, you've stored your OnionBox files in a directory called `/usr/home/pi/theonionbox`. Your intension is to run your box as user `pi` (which is by far better then operating it as `root`!).
-
-* Change to the directory where you stored the OnionBox files: `cd /usr/home/pi/theonionbox`
-* Ensure that `theonionbox.py` is executable: `sudo chmod 755 ./theonionbox.py`
-* Change to the `FreeBSD` directory within `/usr/home/pi/theonionbox`: `cd FreeBSD`
-* Within this directory you'll find the script [`theonionbox.sh`](FreeBSD/theonionbox.sh) prepared to launch your box as a background service.
+* Change to that directory: `cd /usr/home/pi/theonionbox`
+* Change to the `FreeBSD` directory within `service`: `cd service/FreeBSD`
+* Within this directory you'll find the script [`theonionbox.sh`](https://github.com/ralphwetzel/theonionbox/blob/master/FreeBSD/theonionbox.sh) prepared to launch your OnionBox as a background service.
 * Ensure that you set the path to the OnionBox files and the user to run the service as intended. Therefore open the file with an editor (here we use _nano_): `nano theonionbox.sh`
-* According to our assumptions above, set line 29 to `: ${theonionbox_dir="/usr/home/pi/theonionbox"}`.
-* Additionally set line 28 to `: ${theonionbox_user="pi"}`.
+* According to our assumptions above, set line 31 to `: ${theonionbox_dir="/usr/home/pi/theonionbox"}`.
+* If necessary, you may define commandline arguments via `${theonionbox_start_args}` (as shown in the examples around line 35)
 * Close _nano_ and save the changes to `theonionbox.sh`. (Press _Strg+X_ then follow the instructions given!)
 * Copy the altered init script to `/usr/local/etc/rc.d`: `sudo cp ./theonionbox.sh /usr/local/etc/rc.d/theonionbox`
 * Change to `/usr/local/etc/rc.d`: `cd /usr/local/etc/rc.d`
 * Make sure the script you've copied before to `/usr/local/etc/rc.d` is executable: `sudo chmod 755 ./theonionbox`
 * Register this service to the system: `sudo echo 'theonionbox_enable="YES"' >>/etc/rc.conf`
-* Check that everything works so far: Launch your box for the first time as a service `sudo service theonionbox start`. This should give you no error messages.
-* Check that your Onion Box is active: `sudo service theonionbox status` should tell you `theonionbox is running as pid xxx.` ... yet might complain about a `$command_interpreter` mismatch - which isn't polite but doesn't hurt.
-* That's it!
+* Alternatively - e.g. if the former command failed - you may alter `/etc/rc.conf` directly: `sudo nano /etc/rc.conf`, append `theonionbox_enable="YES"` at the end of the file and save the changes: Press _Strg+X_ then follow the instructions given!
+* Check that everything works so far: Launch your Onion Box for the first time as a service `sudo service theonionbox start`. This should give you no error messages.
+* Check that your Onion Box is active: `sudo service theonionbox status` should tell you `theonionbox is running as pid xxx.`
+* That's it! Next time you reboot your system, your _Onion Box_ will be relaunched as well.
 
 **Troubleshooting**
 * Please ensure that `/usr/sbin/daemon` is a valid path. If not either edit `/usr/local/etc/rc.d/theonionbox` line 49 or create a symbolic link to your installation's path to `daemon` as `/usr/sbin/daemon`.
-* `/usr/local/bin/python` should be defined as well being a symbolic link to the Python version you intend to operate with.
+* `command_interpreter` shall point to the python executable within your virtual environment.
+
 
 ### ... using init.d
 Change to the `init.d` directory within `service`:
@@ -1374,6 +1373,15 @@ base_path = /theonionbox
 ```
 Now everything should work as expected.
 
+## *The Onion Box* Docker support
+The [Docker](Docker) directory holds a [Dockerfile](https://docs.docker.com/engine/reference/builder/) and a dedicated configuration file (`theonionbox.cfg`) to support the operation of *The Onion Box* from a [Docker](http://www.docker.com) image. Please be aware, that this Docker image for *The Onion Box* only supports [password authentication](#password-authentication).
+
+To build the image, change to the Docker directory and run `sudo docker build -t theonionbox .`.
+> If you've run `pip` to perform the [installation](#installation) of your Onion Box, you'll find the Docker directory within the [`service`](#verification-of-the-installation) directory.
+
+To then launch *The Onion Box* within the created Docker image, run `sudo docker run --network host -p 8080:8080 theonionbox`.
+
+
 ## Usage Monitoring
 To create a small survey of its usage, _The Onion Box_ sends the following information to `t527moy64zwxsfhb.onion`, the hidden service acting as _The Onion Box Update Service_ when requesting the latest version information of Tor and _The Onion Box_:
 
@@ -1489,6 +1497,8 @@ The [JetBrains](http://www.jetbrains.com) team - for their support to _The Onion
 </table>
 
 Olaf - who provided great support and endless patience while testing the `pip` installation system and its dedicated documentation.
+
+[Rupert Edwards](https://github.com/ruped24) - who contributed the Docker support setup.
 
 > I apologize sincerely being convinced it is impossible to mention everyone who gave me the opportunity to participate from his or her experience.  
 Please raise your hand if you think someone should be added to this list!
