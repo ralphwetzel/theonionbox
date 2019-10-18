@@ -313,6 +313,7 @@ data_files = [
     ('service/FreeBSD', ['FreeBSD/theonionbox.sh']),
     ('service/init.d', ['init.d/theonionbox.sh']),
     ('service/systemd', ['systemd/theonionbox.service']),
+    ('service/Docker', ['Docker/Dockerfile', 'Docker/theonionbox.cfg']),
     ('support', []),
     ('support/osxtemp', []),
     ('support/osxtemp/libsmc', ['support/osxtemp/libsmc/LICENSE', 'support/osxtemp/libsmc/Makefile']),
