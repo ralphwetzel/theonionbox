@@ -330,7 +330,7 @@ class ControlCenter(BaseApp):
 
         status = session['status']
 
-        if status in ['ok', 'auto']:
+        if status in ['frame']:
             config = self.cc.add_node()     # This returns None if readonly!
             if config is None:
                 raise bottle.HTTPError(403)
