@@ -301,12 +301,14 @@ class Properties(DialogBase):
 
         $('div#connect-tab a').on('show.bs.tab', def(e):
             $('#vAddress').removeClass().addClass("btn btn-outline-secondary")
+            $('#vAddress').tooltip('dispose')
             $("#vAddress").prop("disabled", len($('#iAddress').val()) == 0)
         )
 
         $('#iAddress').val(self.config.address or None)
         $('#iAddress').on('input', def(e):
             $('#vAddress').removeClass().addClass("btn btn-outline-secondary")
+            $('#vAddress').tooltip('dispose')
             $("#vAddress").prop("disabled", len($('#iAddress').val()) == 0)
             $('#iPassword').val('')
             self.password_modified = True
@@ -330,6 +332,11 @@ class Properties(DialogBase):
                     $('#vAddress').removeClass().addClass("btn btn-success")
                 else:
                     $('#vAddress').removeClass().addClass("btn btn-danger")
+
+                    d = data.split('\n')
+                    if len(d) > 1 and d[0] == '500 NOK':
+                        $('#vAddress').tooltip({'title': d[1]})
+                        $('#vAddress').tooltip('show')
             )
             .fail(def(data):
                 $('#vAddress').removeClass().addClass("btn btn-danger")

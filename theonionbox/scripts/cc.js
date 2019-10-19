@@ -3868,24 +3868,7 @@ var str = ρσ_str, repr = ρσ_repr;;
     })();
 
     (function(){
-//####
-        //
-        //   Part of RapydSmoothie
-        //   A RapydScript-NG clone of SmoothieChart
-        //
-        //   SmoothieChart   Copyright (c)   2010-2013, Joe Walnes
-        //                                   2013-2018, Drew Noakes
-        //                   Details:        www.smoothiechart.org / https://github.com/joewalnes/smoothie
-        //                   License:        MIT @ https://github.com/joewalnes/smoothie/blob/master/LICENSE.txt
-        //
-        //   RapydSmoothie   Copyright (c)   2018, Ralph Wetzel
-        //                   License:        MIT
-        //                   Language:       RapydScript-NG Transpiler
-        //                                   https://github.com/kovidgoyal/rapydscript-ng
-        //                   Coverage:       SmoothieChart 1.36 ("Add title option, by @mesca")
-        //
-        //####
-                var __name__ = "RapydSmoothie.util";
+        var __name__ = "RapydSmoothie.util";
         function DefaultOptionsBase() {
             if (this.ρσ_object_id === undefined) Object.defineProperty(this, "ρσ_object_id", {"value":++ρσ_object_counter});
             DefaultOptionsBase.prototype.__init__.apply(this, arguments);
@@ -3896,7 +3879,6 @@ var str = ρσ_str, repr = ρσ_repr;;
             var self = this;
             var rv;
             rv = !ρσ_in(key, ρσ_list_decorate([ "constructor", "__init__", "__repr__", "__str__", "hasOwnProperty" ]));
-            // console.log('hOP: ' + key + " => " + rv)
             return rv;
         };
         if (!DefaultOptionsBase.prototype.hasOwnProperty.__argnames__) Object.defineProperties(DefaultOptionsBase.prototype.hasOwnProperty, {
@@ -3934,7 +3916,6 @@ var str = ρσ_str, repr = ρσ_repr;;
                 for (var ρσ_Index0 = 0; ρσ_Index0 < ρσ_Iter0.length; ρσ_Index0++) {
                     key = ρσ_Iter0[ρσ_Index0];
                     if (args[(typeof i === "number" && i < 0) ? args.length + i : i].hasOwnProperty(key)) {
-                        // second test necessary as typeof(null) == 'object'
                         if (typeof(args[i][key]) === 'object' && ρσ_exists.n((ρσ_expr_temp = args[(typeof i === "number" && i < 0) ? args.length + i : i])[(typeof key === "number" && key < 0) ? ρσ_expr_temp.length + key : key])) {
                             if (Array.isArray((ρσ_expr_temp = args[(typeof i === "number" && i < 0) ? args.length + i : i])[(typeof key === "number" && key < 0) ? ρσ_expr_temp.length + key : key]) === true) {
                                 (ρσ_expr_temp = args[0])[(typeof key === "number" && key < 0) ? ρσ_expr_temp.length + key : key] = (ρσ_expr_temp = args[(typeof i === "number" && i < 0) ? args.length + i : i])[(typeof key === "number" && key < 0) ? ρσ_expr_temp.length + key : key];
@@ -3978,22 +3959,7 @@ var str = ρσ_str, repr = ρσ_repr;;
     })();
 
     (function(){
-//
-        //   Part of RapydSmoothie
-        //   A RapydScript-NG clone of SmoothieChart
-        //
-        //   SmoothieChart   Copyright (c)   2010-2013, Joe Walnes
-        //                                   2013-2018, Drew Noakes
-        //                   Details:        www.smoothiechart.org / https://github.com/joewalnes/smoothie
-        //                   License:        MIT @ https://github.com/joewalnes/smoothie/blob/master/LICENSE.txt
-        //
-        //   RapydSmoothie   Copyright (c)   2018, Ralph Wetzel
-        //                   License:        MIT
-        //                   Language:       RapydScript-NG Transpiler
-        //                                   https://github.com/kovidgoyal/rapydscript-ng
-        //                   Coverage:       SmoothieChart 1.36 ("Add title option, by @mesca")
-        //
-                var __name__ = "RapydSmoothie.timeseries";
+        var __name__ = "RapydSmoothie.timeseries";
         var extend = ρσ_modules["RapydSmoothie.util"].extend;
 
         function TimeSeries() {
@@ -4032,9 +3998,9 @@ var str = ρσ_str, repr = ρσ_repr;;
             if (len(self.data) > 0) {
                 self.minValue = self.data[0][1];
                 self.maxValue = self.data[0][1];
-                var ρσ_Iter1 = ρσ_Iterable(self.data);
-                for (var ρσ_Index1 = 0; ρσ_Index1 < ρσ_Iter1.length; ρσ_Index1++) {
-                    p = ρσ_Iter1[ρσ_Index1];
+                var ρσ_Iter0 = ρσ_Iterable(self.data);
+                for (var ρσ_Index0 = 0; ρσ_Index0 < ρσ_Iter0.length; ρσ_Index0++) {
+                    p = ρσ_Iter0[ρσ_Index0];
                     pv = p[1];
                     if (pv < self.minValue) {
                         self.minValue = pv;
@@ -4063,22 +4029,16 @@ var str = ρσ_str, repr = ρσ_repr;;
                 i -= 1;
             }
             if ((i === -1 || typeof i === "object" && ρσ_equals(i, -1))) {
-                // This new item is the oldest data
                 self.data.insert(0, ρσ_list_decorate([ timestamp, value ]));
             } else if (len(self.data) > 0 && ((ρσ_expr_temp = self.data)[(typeof i === "number" && i < 0) ? ρσ_expr_temp.length + i : i][0] === timestamp || typeof (ρσ_expr_temp = self.data)[(typeof i === "number" && i < 0) ? ρσ_expr_temp.length + i : i][0] === "object" && ρσ_equals((ρσ_expr_temp = self.data)[(typeof i === "number" && i < 0) ? ρσ_expr_temp.length + i : i][0], timestamp))) {
-                // Update existing values in the array
                 if (sumRepeatedTimeStampValues === true) {
-                    // Sum this value into the existing 'bucket'
                     (ρσ_expr_temp = self.data)[(typeof i === "number" && i < 0) ? ρσ_expr_temp.length + i : i][1] += value;
                 } else {
-                    // Replace the previous value
                     (ρσ_expr_temp = self.data)[(typeof i === "number" && i < 0) ? ρσ_expr_temp.length + i : i][1] = value;
                 }
             } else if (i < len(self.data) - 1) {
-                // Splice into the correct position to keep timestamps in order
                 self.data.insert(i + 1, ρσ_list_decorate([ timestamp, value ]));
             } else {
-                // Add to the end of the array
                 self.data.push(ρσ_list_decorate([ timestamp, value ]));
             }
             self.maxValue = (self.maxValue === null) ? value : max(self.maxValue, value);
@@ -4092,8 +4052,6 @@ var str = ρσ_str, repr = ρσ_repr;;
         TimeSeries.prototype.dropOldData = function dropOldData(oldestValidTime, maxDataSetLength) {
             var self = this;
             var removeCount, lsd;
-            // We must always keep one expired data point as we need this to draw the
-            // line that comes into the chart from the left, but any points prior to that can be removed.
             removeCount = 0;
             lsd = len(self.data);
             while (lsd - removeCount >= maxDataSetLength && (ρσ_expr_temp = self.data)[ρσ_bound_index(removeCount + 1, ρσ_expr_temp)][0] < oldestValidTime) {
@@ -4125,28 +4083,12 @@ var str = ρσ_str, repr = ρσ_repr;;
     })();
 
     (function(){
-//
-        //   RapydSmoothie
-        //   A RapydScript-NG clone of SmoothieChart
-        //
-        //   SmoothieChart   Copyright (c)   2010-2013, Joe Walnes
-        //                                   2013-2018, Drew Noakes
-        //                   Details:        www.smoothiechart.org / https://github.com/joewalnes/smoothie
-        //                   License:        MIT @ https://github.com/joewalnes/smoothie/blob/master/LICENSE.txt
-        //
-        //   RapydSmoothie   Copyright (c)   2018, Ralph Wetzel
-        //                   License:        MIT
-        //                   Language:       RapydScript-NG Python to Javascript Transpiler
-        //                                   https://github.com/kovidgoyal/rapydscript-ng
-        //                   Coverage:       SmoothieChart 1.36 ("Add title option, by @mesca")
-        //
-                var __name__ = "RapydSmoothie.smoothie";
+        var __name__ = "RapydSmoothie.smoothie";
         var TimeSeries = ρσ_modules["RapydSmoothie.timeseries"].TimeSeries;
 
         var extend = ρσ_modules["RapydSmoothie.util"].extend;
         var DefaultOptionsBase = ρσ_modules["RapydSmoothie.util"].DefaultOptionsBase;
 
-        // Date.now polyfill
         Date.now = Date.now || function () {
             return (new Date).getTime();
         };
@@ -4205,7 +4147,6 @@ return this.__repr__();
         DefaultChartOptions.prototype.maxDataSetLength = 2;
         DefaultChartOptions.prototype.interpolation = "bezier";
         DefaultChartOptions.prototype.timestampFormatter = null;
-        // will become RapydSmoothie.timeFormatter at __init__
         DefaultChartOptions.prototype.scrollBackwards = false;
         DefaultChartOptions.prototype.horizontalLines = ρσ_list_decorate([]);
         DefaultChartOptions.prototype.grid = (function(){
@@ -4317,12 +4258,11 @@ return this.__repr__();
         RapydSmoothie.__handles_kwarg_interpolation__ = RapydSmoothie.prototype.__init__.__handles_kwarg_interpolation__;
         RapydSmoothie.tooltipFormatter = function tooltipFormatter(timestamp, data) {
             var timestampFormatter, lines, item;
-            // tooltipFormatter = def(timestamp, data):
             timestampFormatter = this.options.timestampFormatter || RapydSmoothie.timeFormatter;
             lines = ρσ_list_decorate([ timestampFormatter(new Date(timestamp)) ]);
-            var ρσ_Iter2 = ρσ_Iterable(data);
-            for (var ρσ_Index2 = 0; ρσ_Index2 < ρσ_Iter2.length; ρσ_Index2++) {
-                item = ρσ_Iter2[ρσ_Index2];
+            var ρσ_Iter0 = ρσ_Iterable(data);
+            for (var ρσ_Index0 = 0; ρσ_Index0 < ρσ_Iter0.length; ρσ_Index0++) {
+                item = ρσ_Iter0[ρσ_Index0];
                 lines.push("<span style=\"color:" + item.series.options.strokeStyle + "\">" + this.options.yMaxFormatter(item.value, this.options.labels.precision) + "</span>");
             }
             return lines.join("<br>");
@@ -4362,9 +4302,9 @@ return this.__repr__();
         RapydSmoothie.prototype.removeTimeSeries = function removeTimeSeries(ts) {
             var self = this;
             var ρσ_unpack, index, serie;
-            var ρσ_Iter3 = ρσ_Iterable(enumerate(self.seriesSet));
-            for (var ρσ_Index3 = 0; ρσ_Index3 < ρσ_Iter3.length; ρσ_Index3++) {
-                ρσ_unpack = ρσ_Iter3[ρσ_Index3];
+            var ρσ_Iter1 = ρσ_Iterable(enumerate(self.seriesSet));
+            for (var ρσ_Index1 = 0; ρσ_Index1 < ρσ_Iter1.length; ρσ_Index1++) {
+                ρσ_unpack = ρσ_Iter1[ρσ_Index1];
                 index = ρσ_unpack[0];
                 serie = ρσ_unpack[1];
                 if (serie.timeSeries === ts) {
@@ -4383,9 +4323,9 @@ return this.__repr__();
         RapydSmoothie.prototype.getTimeSeriesOptions = function getTimeSeriesOptions(ts) {
             var self = this;
             var serie;
-            var ρσ_Iter4 = ρσ_Iterable(self.seriesSet);
-            for (var ρσ_Index4 = 0; ρσ_Index4 < ρσ_Iter4.length; ρσ_Index4++) {
-                serie = ρσ_Iter4[ρσ_Index4];
+            var ρσ_Iter2 = ρσ_Iterable(self.seriesSet);
+            for (var ρσ_Index2 = 0; ρσ_Index2 < ρσ_Iter2.length; ρσ_Index2++) {
+                serie = ρσ_Iter2[ρσ_Index2];
                 if (serie.timeSeries === ts) {
                     return serie.options;
                 }
@@ -4398,9 +4338,9 @@ return this.__repr__();
         RapydSmoothie.prototype.bringToFront = function bringToFront(ts) {
             var self = this;
             var ρσ_unpack, index, serie;
-            var ρσ_Iter5 = ρσ_Iterable(enumerate(self.seriesSet));
-            for (var ρσ_Index5 = 0; ρσ_Index5 < ρσ_Iter5.length; ρσ_Index5++) {
-                ρσ_unpack = ρσ_Iter5[ρσ_Index5];
+            var ρσ_Iter3 = ρσ_Iterable(enumerate(self.seriesSet));
+            for (var ρσ_Index3 = 0; ρσ_Index3 < ρσ_Iter3.length; ρσ_Index3++) {
+                ρσ_unpack = ρσ_Iter3[ρσ_Index3];
                 index = ρσ_unpack[0];
                 serie = ρσ_unpack[1];
                 if (serie.timeSeries === ts) {
@@ -4451,9 +4391,9 @@ return this.__repr__();
                 t = time - (self.canvas.offsetWidth - self.mouseX) * self.options.millisPerPixel;
             }
             data = ρσ_list_decorate([]);
-            var ρσ_Iter6 = ρσ_Iterable(self.seriesSet);
-            for (var ρσ_Index6 = 0; ρσ_Index6 < ρσ_Iter6.length; ρσ_Index6++) {
-                serie = ρσ_Iter6[ρσ_Index6];
+            var ρσ_Iter4 = ρσ_Iterable(self.seriesSet);
+            for (var ρσ_Index4 = 0; ρσ_Index4 < ρσ_Iter4.length; ρσ_Index4++) {
+                serie = ρσ_Iter4[ρσ_Index4];
                 ts = serie.timeSeries;
                 if ((ts.disabled === true || typeof ts.disabled === "object" && ρσ_equals(ts.disabled, true))) {
                     continue;
@@ -4549,18 +4489,6 @@ return this.__repr__();
             animate = function () {
                 this.frame = this.AnimateCompatibility.requestAnimationFrame(function () {
                     var dateZero, maxTimeStamp;
-                    // reducer = def(max, series):
-                    //     dataSet = series.timeSeries.data
-                    //     lds = len(dataSet)
-                    //     indexToCheck = Math.round(self.options.displayDataFromPercentile * lds) - 1
-                    //     indexToCheck = max(indexToCheck, 0)
-                    //     indexToCheck = min(indexToCheck, lds - 1)
-                    //     if dataSet is not None and lds > 0:
-                    //         lastDataTimeStamp = dataSet[indexToCheck][0]
-                    //         max = max(max, lastDataTimeStamp)
-                    //     return max
-                    // .bind(this)
-                    // reducer = reduce_f.bind(this)
                     if (this.options.nonRealtimeData) {
                         dateZero = new Date(0);
                         maxTimeStamp = this.seriesSet.reduce((function() {
@@ -4606,9 +4534,9 @@ return this.__repr__();
             chartOptions = self.options;
             chartMaxValue = Number.NaN;
             chartMinValue = Number.NaN;
-            var ρσ_Iter7 = ρσ_Iterable(self.seriesSet);
-            for (var ρσ_Index7 = 0; ρσ_Index7 < ρσ_Iter7.length; ρσ_Index7++) {
-                serie = ρσ_Iter7[ρσ_Index7];
+            var ρσ_Iter5 = ρσ_Iterable(self.seriesSet);
+            for (var ρσ_Index5 = 0; ρσ_Index5 < ρσ_Iter5.length; ρσ_Index5++) {
+                serie = ρσ_Iter5[ρσ_Index5];
                 ts = serie.timeSeries;
                 if (ts.disabled === true) {
                     continue;
@@ -4675,7 +4603,6 @@ return this.__repr__();
             self.lastRenderTimeMillis = nowMillis;
             canvas = canvas || self.canvas;
             time = time || nowMillis - (self.delay || 0);
-            // Round time down to pixel granularity, so motion appears smoother.
             time -= time % self.options.millisPerPixel;
             self.lastChartTimestamp = time;
             context = canvas.getContext("2d");
@@ -4688,7 +4615,6 @@ return this.__repr__();
                 ρσ_d["height"] = canvas.clientHeight;
                 return ρσ_d;
             }).call(this);
-            // Calculate the threshold time for the oldest data points.
             oldestValidTime = time - dimensions.width * chartOptions.millisPerPixel;
             valueToYPixel = (function() {
                 var ρσ_anonfunc = function (value) {
@@ -4716,21 +4642,13 @@ return this.__repr__();
 
             self.updateValueRange();
             context.font = chartOptions.labels.fontSize + "px " + chartOptions.labels.fontFamily;
-            // Move origin, create clipping rectangle, clear area
             self.render_10(context, chartOptions, dimensions);
-            // Grid lines Vertical & Horizontal, Bounding Rect
             self.render_20(context, chartOptions, dimensions, time, oldestValidTime, timeToXPixel);
-            // Draw any horizontal lines...
             self.render_30(context, chartOptions, dimensions, valueToYPixel);
-            // Draw the TimeSeries
             self.render_40(context, chartOptions, dimensions, oldestValidTime, timeToXPixel, valueToYPixel);
-            // Draw vertical bar to show tooltip position
             self.render_50(context, chartOptions, dimensions);
-            // Draw the axis values on the chart.
             self.render_60(context, chartOptions, dimensions);
-            // Display intermediate y axis labels along y-axis to the left of the chart
             self.render_70(context, chartOptions, dimensions);
-            // Display timestamps along x-axis at the bottom of the chart.
             self.render_80(context, chartOptions, dimensions, time, oldestValidTime, timeToXPixel);
         };
         if (!RapydSmoothie.prototype.render.__argnames__) Object.defineProperties(RapydSmoothie.prototype.render, {
@@ -4738,18 +4656,11 @@ return this.__repr__();
         });
         RapydSmoothie.prototype.render_10 = function render_10(context, chartOptions, dimensions) {
             var self = this;
-            // Save the state of the canvas context, any transformations applied in this method
-            // will get removed from the stack at the end of this method when .restore() is called.
             context.save();
-            // Move the origin.
             context.translate(dimensions.left, dimensions.top);
-            // Create a clipped rectangle - anything we draw will be constrained to this rectangle.
-            // This prevents the occasional pixels from curves near the edges overrunning and creating
-            // screen cheese (that phrase should need no explanation).
             context.beginPath();
             context.rect(0, 0, dimensions.width, dimensions.height);
             context.clip();
-            // Clear the working area.
             context.save();
             context.fillStyle = chartOptions.grid.fillStyle;
             context.clearRect(0, 0, dimensions.width, dimensions.height);
@@ -4762,12 +4673,9 @@ return this.__repr__();
         RapydSmoothie.prototype.render_20 = function render_20(context, chartOptions, dimensions, time, oldestValidTime, timeToXPixel) {
             var self = this;
             var t, gx, v, gy;
-            // Grid lines...
             context.save();
             context.lineWidth = chartOptions.grid.lineWidth;
             context.strokeStyle = chartOptions.grid.strokeStyle;
-            // print(chartOptions.grid.strokeStyle)
-            // Vertical (time) dividers.
             if (chartOptions.grid.millisPerLine > 0) {
                 context.beginPath();
                 t = time - time % chartOptions.grid.millisPerLine;
@@ -4809,11 +4717,10 @@ return this.__repr__();
         RapydSmoothie.prototype.render_30 = function render_30(context, chartOptions, dimensions, valueToYPixel) {
             var self = this;
             var hly, line;
-            // Draw any horizontal lines...
             context.save();
-            var ρσ_Iter8 = ρσ_Iterable(chartOptions.horizontalLines);
-            for (var ρσ_Index8 = 0; ρσ_Index8 < ρσ_Iter8.length; ρσ_Index8++) {
-                line = ρσ_Iter8[ρσ_Index8];
+            var ρσ_Iter6 = ρσ_Iterable(chartOptions.horizontalLines);
+            for (var ρσ_Index6 = 0; ρσ_Index6 < ρσ_Iter6.length; ρσ_Index6++) {
+                line = ρσ_Iter6[ρσ_Index6];
                 hly = Math.round(valueToYPixel(line.value)) - .5;
                 context.strokeStyle = line.color || "#ffffff";
                 context.lineWidth = line.lineWidth || 1;
@@ -4831,10 +4738,9 @@ return this.__repr__();
         RapydSmoothie.prototype.render_40 = function render_40(context, chartOptions, dimensions, oldestValidTime, timeToXPixel, valueToYPixel) {
             var self = this;
             var ts, dataSet, seriesOptions, firstX, lastX, lastY, x, y, ρσ_unpack, index, set, serie;
-            // For each data set...
-            var ρσ_Iter9 = ρσ_Iterable(self.seriesSet);
-            for (var ρσ_Index9 = 0; ρσ_Index9 < ρσ_Iter9.length; ρσ_Index9++) {
-                serie = ρσ_Iter9[ρσ_Index9];
+            var ρσ_Iter7 = ρσ_Iterable(self.seriesSet);
+            for (var ρσ_Index7 = 0; ρσ_Index7 < ρσ_Iter7.length; ρσ_Index7++) {
+                serie = ρσ_Iter7[ρσ_Index7];
                 context.save();
                 ts = serie.timeSeries;
                 if (ts.disabled === true) {
@@ -4842,21 +4748,17 @@ return this.__repr__();
                 }
                 dataSet = ts.data;
                 seriesOptions = serie.options;
-                // Delete old data that's moved off the left of the chart.
                 ts.dropOldData(oldestValidTime, chartOptions.maxDataSetLength);
-                // Set style for this dataSet.
                 context.lineWidth = seriesOptions.lineWidth;
                 context.strokeStyle = seriesOptions.strokeStyle;
-                // Draw the line...
                 context.beginPath();
-                // Retain lastX, lastY for calculating the control points of bezier curves.
                 firstX = 0;
                 lastX = 0;
                 lastY = 0;
                 if (len(dataSet) > 1) {
-                    var ρσ_Iter10 = ρσ_Iterable(enumerate(dataSet));
-                    for (var ρσ_Index10 = 0; ρσ_Index10 < ρσ_Iter10.length; ρσ_Index10++) {
-                        ρσ_unpack = ρσ_Iter10[ρσ_Index10];
+                    var ρσ_Iter8 = ρσ_Iterable(enumerate(dataSet));
+                    for (var ρσ_Index8 = 0; ρσ_Index8 < ρσ_Iter8.length; ρσ_Index8++) {
+                        ρσ_unpack = ρσ_Iter8[ρσ_Index8];
                         index = ρσ_unpack[0];
                         set = ρσ_unpack[1];
                         x = timeToXPixel(set[0]);
@@ -4871,24 +4773,7 @@ return this.__repr__();
                                 context.lineTo(x, lastY);
                                 context.lineTo(x, y);
                             } else {
-                                // Great explanation of Bezier curves: http://en.wikipedia.org/wiki/Bezier_curve#Quadratic_curves
-                                //
-                                // Assuming A was the last point in the line plotted and B is the new point,
-                                // we draw a curve with control points P and Q as below.
-                                //
-                                // A---P
-                                //      |
-                                //      |
-                                //      |
-                                //      Q---B
-                                //
-                                // Importantly, A and P are at the same y coordinate, as are B and Q. This is
-                                // so adjacent curves appear to flow as one.
-                                //
-                                context.bezierCurveTo(// startPoint (A) is implicit from last iteration of loop
-                                Math.round((lastX + x) / 2), lastY, // controlPoint1 (P)
-                                Math.round(lastX + x) / 2, y, // controlPoint2 (Q)
-                                x, y);
+                                context.bezierCurveTo(Math.round((lastX + x) / 2), lastY, Math.round(lastX + x) / 2, y, x, y);
                             }
                         }
                         lastX = x;
@@ -4897,7 +4782,6 @@ return this.__repr__();
                 }
                 if (len(dataSet) > 1) {
                     if (seriesOptions.fillStyle) {
-                        // Close up the fill region.
                         context.lineTo(dimensions.width + seriesOptions.lineWidth + 1, lastY);
                         context.lineTo(dimensions.width + seriesOptions.lineWidth + 1, dimensions.height + seriesOptions.lineWidth + 1);
                         context.lineTo(firstX, dimensions.height + seriesOptions.lineWidth);
@@ -4917,7 +4801,6 @@ return this.__repr__();
         });
         RapydSmoothie.prototype.render_50 = function render_50(context, chartOptions, dimensions) {
             var self = this;
-            // Draw vertical bar to show tooltip position
             if (chartOptions.tooltip && self.mouseX >= 0) {
                 context.save();
                 context.lineWidth = chartOptions.tooltipLine.lineWidth;
@@ -4937,7 +4820,6 @@ return this.__repr__();
         RapydSmoothie.prototype.render_60 = function render_60(context, chartOptions, dimensions) {
             var self = this;
             var maxValueString, minValueString, maxLabelPos, minLabelPos;
-            // Draw the axis values on the chart.
             if (chartOptions.labels.disabled === false) {
                 if (self.valueRange.min === self.valueRange.min) {
                     if (self.valueRange.max === self.valueRange.max) {
@@ -4965,11 +4847,9 @@ return this.__repr__();
         RapydSmoothie.prototype.render_70 = function render_70(context, chartOptions, dimensions) {
             var self = this;
             var step, stepPixels, v, gy, yValue, intermediateLabelPos;
-            // Display intermediate y axis labels along y-axis to the left of the chart
             if (chartOptions.labels.showIntermediateLabels === true) {
                 if (self.valueRange.min === self.valueRange.min && self.valueRange.max === self.valueRange.max) {
                     if (chartOptions.grid.verticalSections > 0) {
-                        // show a label above every vertical section divider
                         context.save();
                         step = (self.valueRange.max - self.valueRange.min) / chartOptions.grid.verticalSections;
                         stepPixels = dimensions.height / chartOptions.grid.verticalSections;
@@ -4980,7 +4860,6 @@ return this.__repr__();
                                 gy -= .5;
                             }
                             yValue = chartOptions.yIntermediateFormatter(self.valueRange.min + v * step, chartOptions.labels.precision);
-                            // left of right axis?
                             if (chartOptions.labels.intermediateLabelSameAxis === true) {
                                 if (chartOptions.scrollBackwards === true) {
                                     intermediateLabelPos = 0;
@@ -5008,7 +4887,6 @@ return this.__repr__();
         RapydSmoothie.prototype.render_80 = function render_80(context, chartOptions, dimensions, time, oldestValidTime, timeToXPixel) {
             var self = this;
             var minValueString, textUntilX, t, gx, tx, tsf, tsWidth;
-            // Display timestamps along x-axis at the bottom of the chart.
             if (ρσ_exists.n(chartOptions.timestampFormatter) && chartOptions.grid.millisPerLine > 0) {
                 context.save();
                 if (self.valueRange.min === self.valueRange.min) {
@@ -5024,10 +4902,7 @@ return this.__repr__();
                 t = time - time % chartOptions.grid.millisPerLine;
                 while (t >= oldestValidTime) {
                     gx = timeToXPixel(t);
-                    // Only draw the timestamp if it won't overlap with the previously drawn one.
                     if (chartOptions.scrollBackwards === false && gx < textUntilX || chartOptions.scrollBackwards === true && gx > textUntilX) {
-                        // Formats the timestamp based on user specified formatting function
-                        // SmoothieChart.timeFormatter function above is one such formatting option
                         tx = new Date(t);
                         tsf = chartOptions.timestampFormatter(tx);
                         tsWidth = context.measureText(tsf).width;
@@ -7155,6 +7030,7 @@ return this.__repr__();
             $("div#connect-tab a").on("show.bs.tab", (function() {
                 var ρσ_anonfunc = function (e) {
                     $("#vAddress").removeClass().addClass("btn btn-outline-secondary");
+                    $("#vAddress").tooltip("dispose");
                     $("#vAddress").prop("disabled", ρσ_equals(len($("#iAddress").val()), 0));
                 };
                 if (!ρσ_anonfunc.__argnames__) Object.defineProperties(ρσ_anonfunc, {
@@ -7166,6 +7042,7 @@ return this.__repr__();
             $("#iAddress").on("input", (function() {
                 var ρσ_anonfunc = function (e) {
                     $("#vAddress").removeClass().addClass("btn btn-outline-secondary");
+                    $("#vAddress").tooltip("dispose");
                     $("#vAddress").prop("disabled", ρσ_equals(len($("#iAddress").val()), 0));
                     $("#iPassword").val("");
                     self.password_modified = true;
@@ -7191,10 +7068,20 @@ return this.__repr__();
                     }).call(this);
                     $.post(self.base_path + "/" + self.session_id + "/cc/" + "check", query).done((function() {
                         var ρσ_anonfunc = function (data) {
+                            var d;
                             if ((data === "250 OK" || typeof data === "object" && ρσ_equals(data, "250 OK"))) {
                                 $("#vAddress").removeClass().addClass("btn btn-success");
                             } else {
                                 $("#vAddress").removeClass().addClass("btn btn-danger");
+                                d = data.split("\n");
+                                if (len(d) > 1 && (d[0] === "500 NOK" || typeof d[0] === "object" && ρσ_equals(d[0], "500 NOK"))) {
+                                    $("#vAddress").tooltip((function(){
+                                        var ρσ_d = {};
+                                        ρσ_d["title"] = d[1];
+                                        return ρσ_d;
+                                    }).call(this));
+                                    $("#vAddress").tooltip("show");
+                                }
                             }
                         };
                         if (!ρσ_anonfunc.__argnames__) Object.defineProperties(ρσ_anonfunc, {

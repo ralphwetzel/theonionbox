@@ -242,12 +242,24 @@ class ControlCenter(BaseApp):
 
         def verify_tor_control_port(protocol_info):
             pi = protocol_info.splitlines()
-            print(pi)
+            # print(pi)
             if len(pi) == 4:
                 if len(pi[0]) > 16 and pi[0][:16] == '250-PROTOCOLINFO':
                     if len(pi[3]) == 6 and pi[3] == '250 OK':
                         return True
             return False
+
+        def verify_port(port):
+
+            try:
+                p = int(port)
+            except ValueError:
+                raise ValueError('Wrong value for Port.')
+
+            if p < 0 or p > 65535:
+                raise ValueError('Wrong value for Port.')
+
+            return p
 
         # def verify_tor_password(response: str) -> bool:
         #     if len(response) < 3:
@@ -273,12 +285,12 @@ class ControlCenter(BaseApp):
         auth = False
 
         # We're NOT going to test the password, as this could expose it to a hostile party.
-
-        with contextlib.suppress():
+        try:
 
             if connect == 'port':
                 from tob.simplecontroller import SimplePort
-                sc = SimplePort(host, int(port))
+                p = verify_port(port)
+                sc = SimplePort(host, p)
 
             elif connect == 'socket':
                 from tob.simplecontroller import SimpleSocket
@@ -286,9 +298,10 @@ class ControlCenter(BaseApp):
 
             elif connect == 'proxy':
                 from tob.simplecontroller import SimpleProxy
+                p = verify_port(port)
                 if cookie and len(cookie) > 0:
                     self.proxy.assure_cookie(host, cookie)
-                sc = SimpleProxy(host, int(port), self.proxy.host, self.proxy.port)
+                sc = SimpleProxy(host, p, self.proxy.host, self.proxy.port)
 
             if sc is not None:
                 piok = verify_tor_control_port(sc.msg('PROTOCOLINFO 1'))
@@ -300,10 +313,13 @@ class ControlCenter(BaseApp):
                 sc.shutdown()
                 del sc
 
+        except Exception as exc:
+            return f'500 NOK\n{exc}'
+
         # if len(pwd) > 0:
         #     return '1' if auth is True else '0'
 
-        return '250 OK' if piok is True else '500 NOK'
+        return '250 OK' if piok is True else '500 NOK\nNot a Tor ControlPort or ControlSocket.'
 
     def post_save_node(self, session):
 

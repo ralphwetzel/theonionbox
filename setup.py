@@ -402,7 +402,7 @@ setup(
         'click>=7.0'
     ],
     long_description_content_type='text/x-rst; charset=UTF-8',
-    python_requires='>=3.5',
+    python_requires='>=3.6',
     classifiers=[
         # https://pypi.python.org/pypi?%3Aaction=list_classifiers
         'Development Status :: 4 - Beta',
