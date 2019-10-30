@@ -38,24 +38,12 @@ class Properties(DialogBase):
                                 <div class='col-sm-10' id='Label'>
                                     <div class='input-group '>                    
                                         <input id="iLabel" class="form-control"
-                                            aria-describedby="labelHelp"
-                                            value='$nickname$'>
-                                        <div class="input-group-append">
-                                            <button class="btn btn-outline-secondary dropdown-toggle" type="button"
-                                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                                Add Makro
-                                            </button>
-                                            <div class="dropdown-menu">
-                                                <button class="dropdown-item label-makro" type="button"
-                                                    data-makro="$nickname$">
-                                                    Nickname
-                                                </button>
-                                            </div>
-                                        </div>
+                                            aria-describedby="labelHelp">
                                     </div>
                                     <small id="labelHelp" class="form-text text-muted">
-                                        The label of this Tor node for display in the ControlCenter. You can use 
-                                        <code>$nickname$</code> as makro value to be automatically filled in.
+                                        The label of this Tor node for display in the ControlCenter <b>as long as there 
+                                        is no connection established!</b> This label will be replaced by the nickname 
+                                        of the node - after connection.
                                     </small>
                                 </div>
                             </div>
@@ -277,27 +265,6 @@ class Properties(DialogBase):
 
         if self.config.label?:
             $('#iLabel').val(self.config.label)
-
-        $('.label-makro').click(def(e):
-            makro = $(this).data('makro')
-
-            console.log(makro)
-
-            # based on:
-            # AlfaTeK @ https://stackoverflow.com/questions/1064089/inserting-a-text-where-cursor-is-using-javascript-jquery/1064139
-            # JSFiddle: http://jsfiddle.net/NaHTw/1028/
-
-            label = $('#iLabel')
-
-            txt = label.val()
-            caretPos = label.prop('selectionStart') ? len(txt)
-            caretEnd = label.prop('selectionEnd') ? len(txt)
-
-            label.val(txt.substring(0, caretPos) + makro + txt.substring(caretEnd))
-            label.focus()
-            label.selectionStart = caretPos + len(makro)
-            label.selectionEnd = caretPos + len(makro)
-        )
 
         $('div#connect-tab a').on('show.bs.tab', def(e):
             $('#vAddress').removeClass().addClass("btn btn-outline-secondary")

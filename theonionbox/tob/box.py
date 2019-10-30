@@ -1,3 +1,9 @@
+#####
+# There's a nasty DeprecationWarning in bottle & stem.control regarding inspect.getargspec
+# We patch this away ... slightly brute.
+import inspect
+inspect.getargspec = inspect.getfullargspec
+
 import os
 import sys
 
@@ -22,17 +28,12 @@ class Box:
         self.config['stamped_version'] = stamped_version
 
         #####
-        # TOR manpage Index Information
-        # from tob.manpage import ManPage
-        # self.manpage = ManPage('tor/tor.1.ndx')
-
-        #####
         # Host System data
         from tob.system import get_system_manager
         self.system = get_system_manager()
 
         #####
-        # Logging System
+        # Logging System: Part 1
         import logging
         import tob.log
         self.log = logging.getLogger('theonionbox')
@@ -58,20 +59,37 @@ class Box:
 
         self.log.addHandler(boxLogHandler)
 
-        # provisional only
-        boxLogGF.setLevel('DEBUG')
-        self.log.notice('Debug Mode activated from command line.')
+        # We need to buffer some warnings here...
+        warn = []
 
-        # TODO 20190814: Extend logging mechanism to full functionality
+        # Optional LogFile handler; can be invoked (only) from command line
+        if self.config.log is not None:
+
+            from logging.handlers import TimedRotatingFileHandler
+            from tob.log import FileFormatter
+
+            boxLogPath = self.config.log
+
+            if os.access(boxLogPath, os.F_OK | os.W_OK | os.X_OK) is True:
+                try:
+                    boxLogPath = os.path.join(boxLogPath, 'theonionbox.log')
+                    boxLogFileHandler = TimedRotatingFileHandler(boxLogPath, when='midnight', backupCount=5)
+                except Exception as exc:
+                    warn.append(f'Failed to create LogFile handler: {exc}')
+                else:
+                    boxLogFileHandler.setFormatter(FileFormatter())
+                    self.log.addHandler(boxLogFileHandler)
+            else:
+                warn.append(f"Failed to establish LogFile handler for directory '{self.config['log']}'.")
 
         #####
         # Say Hello to the World!
 
         self.log.notice(f'{stamp.__title__}: {stamp.__description__}')
-        self.log.notice('Version {}'.format(stamped_version))
-        self.log.notice('Running on a {} host.'.format(self.system.system))
+        self.log.notice(f'Version {stamped_version}')
+        self.log.notice(f'Running on a {self.system.system} host.')
         if self.system.user is not None:
-            self.log.notice("Running with permissions of user '{}'.".format(self.system.user))
+            self.log.notice(f"Running with permissions of user '{self.system.user}'.")
         if self.system.venv is not None:
             self.log.notice('This seems to be a Python VirtualEnv.')
         if sys.executable:
@@ -84,10 +102,53 @@ class Box:
                                                                  sys.version_info.minor,
                                                                  sys.version_info.micro))
 
+        for w in warn:
+            self.log.warning(w)
+
         if py36 is False:
             self.log.error("The Onion Box demands Python version 3.6 or higher to run. Please upgrade.")
             self.log.notice("If you're unable to upgrade your Python version, please use version 4.x of The Onion Box.")
             sys.exit()
+
+        #####
+        # Logging System: Part 2 -> Trace or Debug
+
+        # This is the Handler to connect stem with boxLog
+        from stem.util.log import get_logger as get_stem_logger, logging_level, Runlevel
+        stemLog = get_stem_logger()
+        stemLog.setLevel(logging_level(Runlevel.DEBUG))  # we log DEBUG...
+
+        # Bottle logging
+        bottle._stderr = self.log.debug
+        bottle._stdout = self.log.trace
+
+        if self.config.trace:
+            boxLogGF.setLevel('TRACE')
+            self.log.notice('Trace Mode activated from command line.')
+
+            bottle.debug(True)
+            # Part 3 -> add_hook for PATH_INFO (around line 320)
+
+            # stem: Forward DEBUG
+            stemFwrd = tob.log.ForwardHandler(level=logging_level(Runlevel.DEBUG), tag='stem')
+
+        elif self.config.debug:
+            boxLogGF.setLevel('DEBUG')
+            self.log.notice('Debug Mode activated from command line.')
+
+            bottle.debug(True)
+
+            # stem: Forward NOTICE
+            stemFwrd = tob.log.ForwardHandler(level=logging_level(Runlevel.NOTICE), tag='stem')
+
+        else:
+            bottle.debug(False)
+
+            # stem: Forward WARNING
+            stemFwrd = tob.log.ForwardHandler(level=logging_level(Runlevel.WARN), tag='stem')
+
+        stemLog.addHandler(stemFwrd)
+        stemFwrd.setTarget(self.log)
 
         #####
         # Data persistance management
@@ -263,6 +324,17 @@ class Box:
 
                 # Change default page
                 theonionbox.default_page = 'cc.html'
+
+        #####
+        # Logging System: Part 3
+
+        def debug_request():
+            self.log.debug(bottle.request.environ['PATH_INFO'])
+
+        if self.config.trace:
+            # Log connection requests...
+            theonionbox.app.add_hook('before_request', debug_request)
+
 
         # Static files - which are many meanwhile
         from tob.static import SessionFileProvider

@@ -98,6 +98,7 @@ class BaseApp:
 
         # Done!
         self.log.debug(f'Session {make_short_id(session.id)} o-+-o {node.id} Node')
+        node.logs.add_client(session.id)
 
     def merge(self, routes):
         self.app.merge(routes)

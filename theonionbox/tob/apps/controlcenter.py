@@ -16,6 +16,7 @@ from tob.utils import AttributedDict
 from tob.version import VersionManager
 import stamp
 
+
 class CCError(bottle.HTTPError):
 
     def __init__(self, status=None, origin=None, body=None, exception=None, traceback=None,
@@ -173,11 +174,11 @@ class ControlCenter(BaseApp):
                        apply=SessionPlugin(sessions),
                        **config)
 
-        def debug_request():
-            self.log.debug(bottle.request.environ['PATH_INFO'])
-
-        # Log connection requests...
-        self.app.add_hook('before_request', debug_request)
+        # def debug_request():
+        #     self.log.debug(bottle.request.environ['PATH_INFO'])
+        #
+        # # Log connection requests...
+        # self.app.add_hook('before_request', debug_request)
 
     # The CC frame
     def get_cc(self, session):
@@ -188,7 +189,6 @@ class ControlCenter(BaseApp):
             raise bottle.HTTPError(404)
 
         status = session['status']
-        print(f'@get_cc: {status}')
 
         # check only at first run, not when re-loaded...
         if self.show_logout is None:
@@ -587,12 +587,11 @@ class ControlCenter(BaseApp):
             # Being here there's a valid connection!
             session['status'] = 'cc_ok'
 
-        if not node.controller.is_alive():
-            # Try to reconnect once!
-            node.disconnect()
-            with contextlib.suppress(Exception):
-                node.connect()
-            
+        if node.controller and not node.controller.is_alive():
+            # Try to reconnect - once!
+            node.controller.reconnect()
+
+        # This is an issue...
         if not node.controller or not node.controller.is_alive():
             raise bottle.HTTPError(404)
 
@@ -614,7 +613,7 @@ class ControlCenter(BaseApp):
         # ret['style'] = 'readonly'
         ret['dd'] = ''
 
-        ret['label'] = node.label
+        ret['label'] = node.nickname
         ret['version'] = node.controller.version_short
 
         # if ims and ims < self.vm.Tor.last_modified:
@@ -727,7 +726,6 @@ class ControlCenter(BaseApp):
         except bottle.HTTPError:
             raise
         except Exception as exc:
-            print(exc)
             raise bottle.HTTPError(404)
 
     def post_cc_connect(self, session):
@@ -827,7 +825,7 @@ class ControlCenter(BaseApp):
         # When the operator changes the position of a card via D & D,
         # it sends the session id of the card located before itself in the DOM tree.
 
-        from ccfile import CCNode
+        from tob.ccfile import CCNode
 
         before = bottle.request.forms.get('position', None)
         if before is None:
@@ -843,6 +841,7 @@ class ControlCenter(BaseApp):
         if before_node is not None and session_node is not None:
 
             bnc = before_node.config
+
             if not isinstance(bnc, CCNode):
                 bnc = None
 

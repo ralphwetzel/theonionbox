@@ -74,6 +74,15 @@ class Node:
 
     def attach(self, parent_element, after_element=None):
 
+        if not v'(parent_element instanceof jQuery)':
+            parent_element = $(parent_element)
+            assert(parent_element.length > 0)
+
+        if not v'(after_element instanceof jQuery)' and after_element is not None:
+            after_element = $(after_element)
+            if not after_element.length:
+                after_element = None
+
         self.parent = parent_element
         self.after = after_element
 
@@ -244,6 +253,11 @@ class Node:
         )
 
     def moveTo(self, after_element=None):
+        if not v'(after_element instanceof jQuery)' and after_element is not None:
+            after_element = $(after_element)
+            if not after_element.length:
+                after_element = None
+
         self.after = after_element
         self.position(self.card)
 
@@ -683,9 +697,10 @@ class Node:
     def position(self, el):
         # print(self.after)
         if self.after is None:
-            $(self.parent).prepend(el)
+            self.parent.prepend(el)
         else:
-            $(self.after).after(el)
+            # print(self.after)
+            self.after.after(el)
 
     # Drag & Drop functionality
     def init_pep(self):
@@ -830,7 +845,12 @@ class Node:
 
                 if self.clone?:
 
+                    assert(v'typeof(self.after)' == 'object')
+
                     # Remember the id of the current position reference
+                    # if self.after? and not self.after.attr?:
+                    #    console.log(self.after)
+
                     current_pos = self.after.attr('id') if self.after? else None
 
                     # Then: Get the (possibly altered) position of the Clone

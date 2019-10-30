@@ -48,7 +48,7 @@ class Node(object):
         self._config = config
 
         self._tor = None
-        self._log = None
+        self._log = LoggingManager(notice=True, warn=True, err=True)
         self._clients = []
         self._bandwidth = None
         self._database = database
@@ -84,44 +84,47 @@ class Node(object):
             raise ConnectionError("{}: Tor controller not created.".format(self.config.label))
         return self._tor
 
-    def client_register(self, id):
-
-        if self._tor is None:
-            raise NotConnectedError("Cannot register ID {}. Node is not connected.".format(id))
-
-        if id in self._clients:
-            raise AlreadyRegisteredError("ID {} already registered.".format(id))
-
-        self._clients.append(id)
-        if self._log is not None:
-            self._log.add_client(id)
-
-    def client_remove(self, id):
-
-        try:
-            self._clients.remove(id)
-        except ValueError:
-            raise IndexError("ID {} not registered.", format(id))
-
-        if self._log is not None:
-            self._log.remove_client(id)
+    # def client_register(self, id):
+    #
+    #     if self._tor is None:
+    #         raise NotConnectedError("Cannot register ID {}. Node is not connected.".format(id))
+    #
+    #     if id in self._clients:
+    #         raise AlreadyRegisteredError("ID {} already registered.".format(id))
+    #
+    #     self._clients.append(id)
+    #     if self._log is not None:
+    #         self._log.add_client(id)
+    #
+    # def client_remove(self, id):
+    #
+    #     try:
+    #         self._clients.remove(id)
+    #     except ValueError:
+    #         raise IndexError("ID {} not registered.", format(id))
+    #
+    #     if self._log is not None:
+    #         self._log.remove_client(id)
 
     def connect(self, proxy: Optional[TorProxy] = None):
 
+        # print(f'{self._id}: #1 -> {time()}')
         if proxy is not None:
             self.proxy = proxy
 
         if self._tor is None:
             self._tor = Controller.from_config(self._config, proxy=proxy, timeout=30)
 
+            # print(f'{self._id}: #2 -> {time()}')
+
             # As soon as the controller is authenticated, we collect the latest BW data and initialize the LiveData
             self._tor.register_post_auth_callback(self.post_auth)
 
-            # self._log = LoggingManager(self._tor, notice=True, warn=True, err=True)
-            # for cid in self._clients:
-            #     self._log.add_client(cid)
+            # print(f'{self._id}: #3 -> {time()}')
 
         self.refresh_bandwidth()
+
+        # print(f'{self._id}: #4 -> {time()}')
 
     def disconnect(self):
         if self._tor is not None:
@@ -129,6 +132,8 @@ class Node(object):
             self._tor = None
 
     def post_auth(self):
+
+        self._log.connect(self._tor)
 
         self._init_bandwidth_transmission()
         self._init_transportation_monitoring()
@@ -160,15 +165,15 @@ class Node(object):
             self._cron = None
 
         # to prevent in situ mod of the list
-        l = len(self._clients)
-        while l > 0:
-            try:
-                self.client_remove(self._clients[0])
-            except:
-                del self._clients[0]
-            l -= 1
-
-        self._clients = None
+        # l = len(self._clients)
+        # while l > 0:
+        #     try:
+        #         self.client_remove(self._clients[0])
+        #     except:
+        #         del self._clients[0]
+        #     l -= 1
+        #
+        # self._clients = None
 
     @property
     def logs(self) -> LoggingManager:
@@ -293,14 +298,6 @@ class Node(object):
 
         return
 
-    @property
-    def nickname(self) -> Optional[str]:
-
-        with contextlib.suppress(Exception):
-            return self._tor.nickname()
-
-        return None
-
     def _init_transportation_monitoring(self):
         self._rebase_transportation_status()
         # self.print_transportation_status()
@@ -341,31 +338,37 @@ class Node(object):
     @property
     def label(self):
 
+        lbl = None
+        # try to get the label from the config file
         with contextlib.suppress(KeyError):
             lbl = self.config.label
 
-        # if None, we take the nickname as default
-        if lbl is None:
-            lbl = '$nickname$'
+        # ... and if there's no label, we try to guess if it's a client running...
+        # Attention: This checks - by reason - only local connections.
+        # Remote connections have to be established for checking - and if connected, the nickname should be retrievable!
+        if lbl in [None, ""]:
+            with contextlib.suppress(Exception):
+                p = self.controller.get_ports('CONTROL')
+                if 9151 in p:
+                    lbl = 'TorBrowser'
+                elif 9051 in p:
+                    lbl = 'Tor'
 
-        # try to get the nickname
+        if lbl is None:
+            lbl = 'Remote TorNode' # *sigh*
+
+        return lbl
+
+    @property
+    def nickname(self) -> Optional[str]:
+
         nick = None
         with contextlib.suppress(ConnectionError):
             if self.controller.is_authenticated():
                 nick = self.controller.nickname
 
-        # ... and if there's no nickname, we try to guess if it's a client running...
-        # Attention: This checks - by reason - only local connections.
-        # Remote connections have to be established for checking - and if connected, the nickname should be retrievable!
-        if nick in [None, ""]:
-            with contextlib.suppress(Exception):
-                p = self.controller.get_ports('CONTROL')
-                if 9151 in p:
-                    nick = 'TorBrowser'
-                elif 9051 in p:
-                    nick = 'Tor'
+        # if there's no nickname, try to get at least the label
+        if nick in [None, '']:
+            nick = self.label
 
-        if nick is None:
-            nick = 'Remote TorNode' # *sigh*
-
-        return lbl.replace('$nickname$', nick)
+        return nick

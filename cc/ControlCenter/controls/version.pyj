@@ -6,7 +6,7 @@ class Version(ControlBase):
 
         ControlBase.__init__(self, id, tag)
 
-        print(self.tag, self.make_id(self.tag))
+        # print(self.tag, self.make_id(self.tag))
 
         $me = $(self.make_id(self.tag))
         # assert($me.length > 0)

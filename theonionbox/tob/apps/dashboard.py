@@ -2,6 +2,7 @@ import contextlib
 import uuid
 import json
 
+from threading import Timer
 from typing import Optional
 
 from bottle import Bottle, HTTPError, request, template, static_file
@@ -16,7 +17,7 @@ from tob.session import SessionManager, Session, make_short_id
 from tob.system import BaseSystem
 from tob.utils import AttributedDict
 from tob.version import VersionManager
-
+# from tob.scheduler import Scheduler
 
 class Dashboard(BaseApp):
 
@@ -54,7 +55,9 @@ class Dashboard(BaseApp):
 
         # The sections of the index page
         self.sections = ['!header', 'header',
-                         '!content', 'host', 'config', 'hiddenservice', 'local',
+                         '!content', 'host',
+                         'config',
+                         'hiddenservice', 'local',
                          'network', 'network_bandwidth', 'network_weights', '-',
                          'accounting', 'monitor',
                          # 'family',
@@ -124,11 +127,11 @@ class Dashboard(BaseApp):
         #                callback=self.get_details,
         #                **config)
 
-        def debug_request():
-            self.log.debug(request.environ['PATH_INFO'])
-
-        # Log connection requests...
-        self.app.add_hook('before_request', debug_request)
+        # def debug_request():
+        #     self.log.debug(request.environ['PATH_INFO'])
+        #
+        # # Log connection requests...
+        # self.app.add_hook('before_request', debug_request)
 
         # Plugin for session management
         self.app.install(SessionPlugin(self.sessions))
@@ -200,7 +203,7 @@ class Dashboard(BaseApp):
         session['box.css'] = template('css/box.css', **params)
         # session['fonts.css'] = template('css/latolatinfonts.css', **params)
 
-        # deliver the login page
+        # deliver the error page
         return template("pages/index.html", **params)
 
     def create_login_page(self, session: Session, node: Node, proceed_to_page: str):
@@ -258,7 +261,7 @@ class Dashboard(BaseApp):
                 session['scripts'].append('md5.js')
 
         # deliver the login page
-        return template("pages/index.html", **params)
+        index = template("pages/index.html", **params)
 
     def get_restart(self, session_id):
 
@@ -318,7 +321,7 @@ class Dashboard(BaseApp):
         if session is None:
             self.redirect('/')
 
-        print(session['status'])
+        # print(session['status'])
 
         if session['status'] != 'login':
             self.sessions.delete_session(session)
@@ -377,8 +380,6 @@ class Dashboard(BaseApp):
 
     # This is the standard page!
     def get_index(self, session):
-
-        print(f"{self.time()}: at page construction!")
 
         status = session['status']
 
@@ -467,7 +468,9 @@ class Dashboard(BaseApp):
         if tor.is_localhost():
             sections += ['host']
 
-        sections += ['config', 'hiddenservice', 'local']
+        sections += [
+            'config',
+            'hiddenservice', 'local']
 
         params = {}
 
@@ -589,23 +592,28 @@ class Dashboard(BaseApp):
 
         })
 
-        print(f"{self.time()}: prior template!")
-
         # Test
         #    from bottle import SimpleTemplate
         #    tpl = SimpleTemplate(name='scripts/box.js')
         #    tpl.prepare(syntax='/* */ // {{ }}')
         #    bjs = tpl.render(**params)
 
+        # re-ping the session - to prevent accidential timeout
+        self.sessions.get_session(session.id, request)
+
         # prepare the includes
         session['box.js'] = template('scripts/box.js', **params)
         session['box.css'] = template('css/box.css', **params)
         # session['fonts.css'] = template('css/latolatinfonts.css', **params)
 
-        print(f"{self.time()}: delivering!")
+        # create the dashboard
+        index = template("pages/index.html", **params)
 
-        # deliver the main page
-        return template("pages/index.html", **params)
+        # re-ping the session - to prevent accidential timeout
+        self.sessions.get_session(session.id, request)
+
+        # deliver the dashboard
+        return index
 
     def post_data(self, session):
 
@@ -683,7 +691,7 @@ class Dashboard(BaseApp):
             return_data_dict['acc'] = acc
 
         # messages
-        if 'messages_xx' in box_sections:
+        if 'messages' in box_sections:
             runlevel = request.forms.get('runlevel', None)
 
             if runlevel:
@@ -693,13 +701,25 @@ class Dashboard(BaseApp):
                 # boxLog.debug('Levels from the client @ {}: {}'.format(session_id, rl_dict))
 
                 for key in rl_dict:
-                    node.logs.switch(session_id, key, rl_dict[key])
+                    changed = node.logs.switch(session_id, key, rl_dict[key])
+
+                    # auto cancel 'DEBUG' mode after 30 seconds
+                    if key == 'DEBUG' and rl_dict[key] and changed:
+                        Timer(30,
+                              node.logs.switch,
+                              kwargs={'session_id': session_id,
+                                      'level': key,
+                                      'status': False}).start()
 
             from tob.log import sanitize_for_html
             log_list = node.logs.get_events(session_id, encode=sanitize_for_html)
 
             if len(log_list) > 0:
                 return_data_dict['msg'] = log_list
+
+            log_status = node.logs.get_status(session_id)
+            if log_status is not None:
+                return_data_dict['msg_status'] = log_status
 
         # get the onionoo data
         # onionoo_details = onionoo.details(fp)

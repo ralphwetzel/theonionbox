@@ -69,22 +69,26 @@ def configfile(*param_decls, **attrs):
 
 
 @click.group(chain=True, invoke_without_command=True)
-@click.option('-d', '--debug', is_flag=True, default='False', show_default=True,
+@click.option('-d', '--debug', is_flag=True, flag_value=True,
               help='Switch on DEBUG mode.')
-@click.option('-t', '--trace', is_flag=True, default='False', show_default=True,
+@click.option('-t', '--trace', is_flag=True, flag_value=True,
               help='Switch on TRACE mode (which is more verbose than DEBUG mode).')
+@click.option('-l', '--log', default=None, show_default=True,
+              type=click.Path(exists=True, file_okay=False, dir_okay=True, writable=True,
+                              resolve_path=True, allow_dash=False),
+              help='DIRECTORY to additionally emit log messages to. Please assure write privileges.')
 @configfile('-c', '--config', default=None, show_default=True,
             type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True,
                             resolve_path=True, allow_dash=False),
             help='Read configuration from FILE.')
 @click.option('-x', '--controlcenter', 'cc', default=None, show_default=True,
-            type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True,
-                            resolve_path=True, allow_dash=False),
-            help='Enable control center mode; controlled host data will be read from and stored in FILE.')
+              type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True,
+                              resolve_path=True, allow_dash=False),
+              help='Enable control center mode; controlled host data will be read from and stored in FILE.')
 @click.version_option(prog_name=f'{stamp.__title__}: {stamp.__description__}',
                       version=stamped_version, message='%(prog)s\nVersion %(version)s')
 @click.pass_context
-def main(ctx, debug, trace, config, cc):
+def main(ctx, debug, trace, config, cc, log):
 
     # We do all the stuff here to prepare the environment to run a Box
 
@@ -124,7 +128,7 @@ def main(ctx, debug, trace, config, cc):
 
 
 @main.resultcallback()
-def launcher(results, debug, trace, config, cc):
+def launcher(results, debug, trace, config, cc, log):
 
     # This raises (by intension) if no context.
     ctx = click.get_current_context()
@@ -153,6 +157,7 @@ def launcher(results, debug, trace, config, cc):
     params['trace'] = trace
     params['config'] = config
     params['cc'] = cc
+    params['log'] = log
 
     from tob.box import Box
     theonionbox = Box(params)
