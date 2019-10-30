@@ -89,7 +89,8 @@ class Linux(BaseSystem):
             for interface in interfaces:
 
                 try:
-                    lease = subprocess.check_output(['dhcpcd', '--dumplease', interface, '-4'])
+                    lease = subprocess.check_output(['dhcpcd', '--dumplease', interface, '-4'],
+                                                    stderr=subprocess.STDOUT)
                     lease = lease.decode("utf-8")
 
                     # broadcast_address='192.168.178.255'
