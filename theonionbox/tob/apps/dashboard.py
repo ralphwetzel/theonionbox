@@ -261,7 +261,7 @@ class Dashboard(BaseApp):
                 session['scripts'].append('md5.js')
 
         # deliver the login page
-        index = template("pages/index.html", **params)
+        return template("pages/index.html", **params)
 
     def get_restart(self, session_id):
 
