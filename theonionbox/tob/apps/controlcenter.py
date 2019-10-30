@@ -209,12 +209,12 @@ class ControlCenter(BaseApp):
                                                                 self.sessions.get_remote_address(session.id)))
 
         if session['status'] not in ['ok', 'auto', 'frame']:
-            self.sessions.delete(session.id)
+            self.sessions.delete_session(session)
             self.redirect('/')
 
         node = session['node']
         if node is None:
-            self.sessions.delete(session.id)
+            self.sessions.delete_session(session)
             self.redirect('/')
 
         # This indicates the session is now the CC frame
