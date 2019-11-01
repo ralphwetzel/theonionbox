@@ -654,6 +654,24 @@ var oobw_style = {
         yMinFormatter: function() { return ""; }
     };
 
+    chart_style.m6 = {
+        millisPerPixel: 1000 * 86400 / 4,
+        grid: {
+            millisPerLine: 0,
+            timeDividers: 'monthly'
+        },
+        timestampFormatter: function(date) {
+            return pad2(date.getDate()) + "." + pad2(date.getMonth() + 1) + "." ;
+        },
+        yMaxFormatter: function(data, precision) {
+            if (!precision) {
+                precision = 2;
+            }
+            return (prettyNumber(data, '', 'si') + '/s');
+        },
+        yMinFormatter: function() { return ""; }
+    };
+
     // y1: This one is untested! Please provide feedback if it is ugly!!
     chart_style.y1 = {
         millisPerPixel: 1000 * 172800 / 4,
