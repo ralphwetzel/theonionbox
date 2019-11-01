@@ -1,7 +1,7 @@
 % from tob.livedata import intervals
 var monitor_intervals = {{!intervals}};
 
-var monitor_keys = ['1s', '1m', '5m', '1h', '4h', 'Ch', 'y1', 'y5'];
+var monitor_keys = ['1s', '1m', '5m', '1h', '4h', 'Ch', 'm6', 'y1', 'y5'];
 var monitor_read_data = {};
 var monitor_written_data = {};
 var monitor_bandwidth = {};
@@ -15,6 +15,7 @@ var monitor_history_written_data = {};
 var translate_history_to_monitor = {
     'y5': 'y5',
     'y1': 'y1',
+    'm6': 'm6',
     'm3': 'Ch',
     'm1': '4h',
     'w1': '1h',
@@ -282,6 +283,7 @@ function monitor_interval_style(key) {
         '1h': 0.25,
         '4h': 0.25,
         'Ch': 0.25,
+        'm6': 0.25,
         'y1': 0.25,
         'y5': 0.25
     };
@@ -293,6 +295,7 @@ function monitor_interval_style(key) {
         '1h': monitor_intervals['1h'] * 1000 * mppf['1h'],
         '4h': monitor_intervals['4h'] * 1000 * mppf['4h'],
         'Ch': monitor_intervals['Ch'] * 1000 * mppf['Ch'],
+        'm6': 1000 * 86400 * mppf['m6'],
         'y1': 1000 * 172800 * mppf['y1'],
         'y5': 1000 * 864000 * mppf['y5']
     };
@@ -304,6 +307,7 @@ function monitor_interval_style(key) {
         '1h': 60 * 60 * 24 * 1000, // daily,
         '4h': 0,
         'Ch': 0,
+        'm6': 0,
         'y1': 0,
         'y5': 0
     };
@@ -315,6 +319,7 @@ function monitor_interval_style(key) {
         '1h': '',
         '4h': 'weekly',
         'Ch': 'monthly',
+        'm6': 'monthly',
         'y1': 'monthly',
         'y5': 'yearly'
     };
@@ -465,6 +470,7 @@ var md = {
     '1h': ['1 hour', 'Local recording'],
     '4h': ['4 hours', 'Local recording'],
     'Ch': ['12 hours', 'Tor network protocol data'],
+    'm6': ['24 hours', 'Tor network protocol data'],
     'y1': ['2 days', 'Tor network protocol data'],
     'y5': ['10 days', 'Tor network protocol data']
 };
@@ -568,6 +574,7 @@ var monitor_buttons = {
     '1h': '1 Week',
     '4h': '1 Month',
     'Ch': '3 Months',
+    'm6': '6 Months',
     'y1': 'unexpected',
     'y5': 'unexpected'
 };

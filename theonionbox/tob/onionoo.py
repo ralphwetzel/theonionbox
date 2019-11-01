@@ -122,7 +122,7 @@ class Document(object):
     # result_object_keys = ['y5', 'y1', 'm3', 'm1', 'w1', 'd3']
 
     result_object_keys = {'5_years': 'y5',
-                          '1_year':'y1',
+                          '1_year': 'y1',
                           '6_months': 'm6',
                           '3_months': 'm3',
                           '1_month': 'm1',
