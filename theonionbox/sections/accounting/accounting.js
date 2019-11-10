@@ -50,6 +50,10 @@ acc_handler.prototype.prepare = function() {
     return;
 };
 
+acc_handler.prototype.nav = function() {
+    return 'Accounting';
+};
+
 $(document).ready(function() {
     addNavBarButton('Accounting', 'accounting');
     boxData.addHandler('acc', new acc_handler());

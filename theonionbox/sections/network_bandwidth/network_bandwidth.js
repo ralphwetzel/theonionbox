@@ -202,7 +202,7 @@ history_handler.prototype.nav = function() {
 };
 
 $(document).ready(function() {
-    addNavBarButton('Onionoo Network Data', 'history');
+    // addNavBarButton('Onionoo Network Data', 'history');
     boxData.addHandler('oo_bw', new history_handler());
 
     for (var len = history_keys.length, i = 0; i < len; i++) {
