@@ -138,6 +138,8 @@ class BaseSystem(object):
 
         return ret
 
+    def run(self, launch, stop):
+        return launch()
 
 def get_system_manager(system: str = platform.system()) -> BaseSystem:
 

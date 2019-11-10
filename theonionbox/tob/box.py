@@ -363,6 +363,8 @@ class Box:
         # libs.add(Path(boxLibsPath) / 'toggle-3.5.0' / 'js' / 'bootstrap4-toggle.min.js', '/toggle.js')
         # libs.add(Path(boxLibsPath) / 'toggle-3.5.0' / 'css' / 'bootstrap4-toggle.min.css', '/toggle.css')
 
+        # libs.add(Path(boxLibsPath) / 'HackTimer-20181012' / 'HackTimer.js', '/hacktimer.js')
+
         # This is not really a library ... but the scheme works here as well.
         libs.add(Path('scripts') / 'chart.js', 'chart.js')
 
@@ -478,9 +480,18 @@ class Box:
         self.log.debug("List of threads still running (should only be 'MainThread'): {}".format(lort))
 
     def run(self):
+        self.system.run(self._run, self.server.shutdown)
+        self.shutdown()
+        sys.exit(0)
+
+    def _run(self, icon=None):
+
+        if icon is not None:
+            icon.visible = True
 
         http_or_https = 'http' if self.config.box.ssl_key is None else 'https'
-        self.log.notice('Ready to listen on {}://{}:{}/'.format(http_or_https, self.config.box.host, self.config.box.port))
+        self.url = f'{http_or_https}://{self.config.box.host}:{self.config.box.port}/'
+        self.log.notice(f'Ready to listen on {self.url}')
         if sys.stdout.isatty():
             self.log.notice('Press Ctrl-C to quit!')
 
@@ -492,8 +503,3 @@ class Box:
             self.log.notice("Received SIGINT signal.")
         except Exception as exc:
             self.log.error(exc)
-        finally:
-            self.shutdown()
-            sys.exit(0)
-
-        # print('Running...')

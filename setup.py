@@ -399,7 +399,8 @@ setup(
         'urllib3>=1.22',
         'configupdater>=1.0',
         'cheroot>=6.5.5',
-        'click>=7.0'
+        'click>=7.0',
+        'pystray; platform_system == "Darwin"'
     ],
     long_description_content_type='text/x-rst; charset=UTF-8',
     python_requires='>=3.6',

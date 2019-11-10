@@ -139,7 +139,7 @@ class Controller(stem.control.Controller):
             contrlr = Controller.from_port(address=config.host, port=config.port, timeout=timeout)
 
         else:
-            print(config.control)
+            # print(config.control)
             raise ValueError("mode == {} is an invalid parameter.".format(config.control))
 
         return contrlr

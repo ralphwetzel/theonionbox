@@ -8,6 +8,7 @@ import time
 
 
 from .. import BaseSystem
+from .systray import Icon
 
 
 class Darwin(BaseSystem):
@@ -184,3 +185,54 @@ class Darwin(BaseSystem):
                     continue
 
         return self.__ntp
+
+    def run_with_icon(self, launch, shutdown):
+
+        from . import Icon
+        import pystray
+        from functools import partial
+        import os
+
+        def on_openBox(icon, item, self):
+            os.system(f"open /Applications/Safari.app {self.url}")
+
+        menu = pystray.Menu(
+            pystray.MenuItem('Show TheOnionBox...', partial(on_openBox, self=self))
+        )
+
+        icon = Icon('The Onion Box', menu=menu)
+        from PIL import Image, ImageDraw
+
+        def create_image():
+            # Generate an image and draw a pattern
+            width = 41
+            height = 41
+            color1 = 0x000000
+            color2 = 0xffffff
+
+            image = Image.new('RGB', (width, height), color1)
+            dc = ImageDraw.Draw(image)
+            dc.rectangle(
+                (width // 2, 0, width, height // 2),
+                fill=color2)
+            dc.rectangle(
+                (0, height // 2, width // 2, height),
+                fill=color2)
+
+            return image
+
+        icon.icon = create_image()
+
+        # Prevent app from showing up in the dock
+        # https://stackoverflow.com/questions/4345102/how-to-hide-application-icon-from-mac-os-x-dock
+        from AppKit import NSBundle
+        bundle = NSBundle.mainBundle()
+        info = bundle.localizedInfoDictionary() or bundle.infoDictionary()
+        info['LSUIElement'] = '1'
+
+        def run_call(icon):
+            if icon is not None:
+                icon.visible = True
+            launch()
+
+        icon.run(run_call, shutdown)

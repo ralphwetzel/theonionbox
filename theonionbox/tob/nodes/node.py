@@ -207,7 +207,7 @@ class Node(object):
             except Exception as exc:
                 log = logging.getLogger('theonionbox')
                 log.debug(exc)
-                print(bw)
+                # print(bw)
             else:
                 if tr is not None and tw is not None:
                     self._bandwidth.set_traffic(int(tr), int(tw))

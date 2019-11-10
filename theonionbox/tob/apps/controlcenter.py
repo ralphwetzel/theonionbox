@@ -221,8 +221,8 @@ class ControlCenter(BaseApp):
         session['status'] = 'frame'
 
         session['stylesheets'] = ['bootstrap.css', 'latolatin/latolatinfonts.css', 'fontawesome/css/all.css', 'cc.css']
-        session['scripts'] = ['jquery.js', 'bootstrap.js', 'smoothie.js', 'scrollMonitor.js', 'chart.js', 'cc.js',
-                              'md5.js', 'pep.js']
+        session['scripts'] = ['jquery.js', 'bootstrap.js', 'smoothie.js', 'scrollMonitor.js',
+                              'chart.js', 'cc.js', 'md5.js', 'pep.js']
 
         params = {
             'session': session,

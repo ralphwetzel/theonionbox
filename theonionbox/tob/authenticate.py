@@ -53,8 +53,8 @@ def authenticate(session: Session, node: Node, header: str, method: str = "GET")
                     resp_prep = (ha1 + ":{}:".format(session['nonce']) + ha2).encode('utf-8')
                     response = md5(resp_prep).hexdigest()
 
-                    print(response)
-                    print(request_data['response'])
+                    # print(response)
+                    # print(request_data['response'])
 
                     if response == request_data['response']:
                         node.controller.authenticate(password=node.controller.password)
