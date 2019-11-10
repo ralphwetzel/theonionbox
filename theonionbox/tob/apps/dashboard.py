@@ -718,7 +718,7 @@ class Dashboard(BaseApp):
             from tob.log import sanitize_for_html
             log_list = node.logs.get_events(session_id, encode=sanitize_for_html)
 
-            if len(log_list) > 0:
+            if log_list and len(log_list) > 0:
                 return_data_dict['msg'] = log_list
 
             log_status = node.logs.get_status(session_id)
