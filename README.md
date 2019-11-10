@@ -11,7 +11,7 @@
 ### The Onion Box v19: Preliminary documentation
 ## The ControlCenter
 
-This latest version of The Onion Box introduces tree changes of relevance:
+This latest version of The Onion Box introduces three changes of relevance:
 * The current versioning scheme was dropped in preference for [Calendar Versioning](www.calver.org). Thus v19.2 will become the successor of v4.3.1.
 * The Onion Box v19.2 and later requires Python 3.6 or Python 3.7. If you need to operate with Python2, you have to stay with The Onion Box v4.3.1.
 * In addition to the well known (legacy) dashboard, suitable to monitor just a single Tor instance, The Onion Box now provides a ControlCenter mode to monitor a(ny) number of Tor nodes in parallel. That's how it looks like:
