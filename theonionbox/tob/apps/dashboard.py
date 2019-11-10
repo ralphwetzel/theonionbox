@@ -468,9 +468,13 @@ class Dashboard(BaseApp):
         if tor.is_localhost():
             sections += ['host']
 
-        sections += [
-            'config',
-            'hiddenservice', 'local']
+        sections += ['config']
+
+        hsc = tor.get_hidden_service_conf(None)
+        if hsc is not None and len(hsc) > 0:
+            sections += ['hiddenservice']
+
+        sections += ['local']
 
         params = {}
 

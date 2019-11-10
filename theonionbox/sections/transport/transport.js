@@ -1,19 +1,23 @@
-function stats_handler() {}
-stats_handler.prototype = new DataHandler();
-stats_handler.prototype.process = function(data, timedelta) {
+function transport_handler() {}
+transport_handler.prototype = new DataHandler();
+transport_handler.prototype.process = function(data, timedelta) {
+
+    $('#transport-or').text(data['or']);
+    $('#transport-circ').text(data['circ']);
+    $('#transport-stream').text(data['stream']);
 
 };
 
-stats_handler.prototype.prepare = function() {
+transport_handler.prototype.prepare = function() {
     // console.log("section_general: prepare");
 };
 
-stats_handler.prototype.nav = function() {
-    return 'Statistics';
+transport_handler.prototype.nav = function() {
+    return 'Transportation Status';
 };
 
 $(document).ready(function() {
-    addNavBarButton('Local Status', 'stats');
-    boxData.addHandler('stats', new stats_handler());
+    addNavBarButton('Transportation Status', 'transport');
+    boxData.addHandler('transport', new transport_handler());
 });
 

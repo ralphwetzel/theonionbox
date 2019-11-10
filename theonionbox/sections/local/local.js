@@ -1,23 +1,19 @@
-function transport_handler() {}
-transport_handler.prototype = new DataHandler();
-transport_handler.prototype.process = function(data, timedelta) {
-
-    $('#transport-or').text(data['or']);
-    $('#transport-circ').text(data['circ']);
-    $('#transport-stream').text(data['stream']);
+function stats_handler() {}
+stats_handler.prototype = new DataHandler();
+stats_handler.prototype.process = function(data, timedelta) {
 
 };
 
-transport_handler.prototype.prepare = function() {
+stats_handler.prototype.prepare = function() {
     // console.log("section_general: prepare");
 };
 
-transport_handler.prototype.nav = function() {
-    return 'Statistics';
+stats_handler.prototype.nav = function() {
+    return 'Local Status';
 };
 
 $(document).ready(function() {
-    // addNavBarButton('Local Status', 'stats');
-    boxData.addHandler('transport', new transport_handler());
+    addNavBarButton('Local Status', 'stats');
+    boxData.addHandler('stats', new stats_handler());
 });
 

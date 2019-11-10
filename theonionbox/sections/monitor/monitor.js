@@ -395,7 +395,7 @@ function monitor_interval_style(key) {
                 precision: 2
             },
 
-            tooltip: true,
+            tooltip: false,
             tooltipLine: {
                 lineWidth: 1,
                 strokeStyle: '#FF0000'

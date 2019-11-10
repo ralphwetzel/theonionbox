@@ -28,6 +28,7 @@ body {
     %# to compensate for the fixed NavBar
     /* padding-top: 50px; */
     font-family: "LatoLatinWeb";
+    position: relative;
 }
 
 /*p {

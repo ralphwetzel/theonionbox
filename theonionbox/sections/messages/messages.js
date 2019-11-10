@@ -5,6 +5,8 @@
 var msgStatus;
 var messages_player;
 
+var last_message;
+
 function msg_handler() {}
 msg_handler.prototype = new DataHandler();
 msg_handler.prototype.process = function(data, timedelta) {
@@ -188,6 +190,13 @@ $('#msg').on('msg:log', function (event, message, timestamp, runlevel, tag, time
 
     var runlevel_display = runlevel;
 
+    if (last_message) {
+        if (last_message.rl === runlevel && last_message.message === message) {
+            $('#log_data').find('tr:first').remove();
+            times += last_message.times
+        }
+    }
+
     var log_msg = "<tr class='%s'><td class='box_Log_runlevel'>[%s]</td>".$(runlevel, runlevel_display);
     log_msg += "<td nowrap class='box_Log_stamp'>" + format_time(timestamp) + "</td>";
     log_msg += '<td>' + message;
@@ -197,6 +206,12 @@ $('#msg').on('msg:log', function (event, message, timestamp, runlevel, tag, time
     log_msg += '</td></tr>';
 
     $('#log_data').prepend(log_msg);
+
+    last_message = {
+        rl: runlevel,
+        message: message,
+        times: times
+    }
 
 });
 

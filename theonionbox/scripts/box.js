@@ -56,7 +56,12 @@
         var process_data = function(json_text) {
 
             pull_error_counter = 0;
-            var data = JSON.parse(json_text);
+            try {
+                var data = JSON.parse(json_text);
+            }
+            catch(err) {
+                console.log(json_text);
+            }
 
             var timedelta = 0;
             if (data && data.tick)
@@ -416,11 +421,11 @@
     var navBarButtonCount = 0;
     var navBarButtonTargets = ['top'];
     function addNavBarButton(text, target) {
-        var btn = '<li style="font-size: 25px;"';
+        var btn = '<li style="font-size: 25px;" class="nav-item"';
         if (navBarButtonCount < 1) {
             // btn += ' class="active"';
         }
-        btn += '><a href="#' + target + '">' + text + '</a></li>';
+        btn += '><a href="#' + target + '" class="nav-link">' + text + '</a></li>';
 
         $("#box_navbar_buttons").append(btn);
         navBarButtonCount += 1;
@@ -434,7 +439,7 @@
 
         if (event.which == 37 || event.which == 39) {
             try {
-                current_href = $('#box_navbar_buttons li.active a').prop('href').split('#');
+                current_href = $('#box_navbar_buttons li a.active').prop('href').split('#');
                 current_btn = current_href[current_href.length - 1];
             }
             catch(err) {
@@ -892,7 +897,7 @@ if (typeof log !== 'function') {
     // Final step of the script ... to launch the site logic!
     //$(window).on('load', function() {
     $(document).ready(function() {
-        log("Client Script Operation launched.");
+        // log("Client Script Operation launched.");
 
         boxData.start();
     });
