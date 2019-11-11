@@ -8,7 +8,7 @@ import logging
 from tob.log import LoggingManager, ForwardHandler
 from tob.scheduler import Scheduler, SchedulerNotRunningError
 import livedata
-from time import time
+from time import time, strftime
 import functools
 from tob.proxy import Proxy as TorProxy
 
@@ -69,6 +69,13 @@ class Node(object):
         self.streams = tob.transportation.Streams()
 
         self._label = None
+
+        # This job runs at midnight to add a notification to the log
+        # showing the current day
+        def job_NewDayNotification():
+            self._log.notice(f"----- Today is {strftime('%A, %Y-%m-%d')}. -----")
+
+        self._cron.add_job(job_NewDayNotification, 'cron', id='ndn', hour='0', minute='0', second='0')
 
     @property
     def id(self) -> str:
