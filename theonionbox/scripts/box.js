@@ -437,7 +437,7 @@
         var current_href;
         var current_btn;
 
-        if (event.which == 37 || event.which == 39) {
+        if (event.which === 37 || event.which === 39) {
             try {
                 current_href = $('#box_navbar_buttons li a.active').prop('href').split('#');
                 current_btn = current_href[current_href.length - 1];
@@ -447,25 +447,47 @@
             }
 
             for (var i = 0; i < navBarButtonTargets.length; i++) {
-                if (current_btn == navBarButtonTargets[i]) {
+                if (current_btn === navBarButtonTargets[i]) {
                     break;
                 }
             }
 
             // left
-            if (event.which == 37) {
+            if (event.which === 37) {
                 if (i > 0) {
                     i -= 1;
                 }
             }
             // right
-            else if (event.which == 39) {
+            else if (event.which === 39) {
                 if (i < navBarButtonTargets.length - 1) {
                     i += 1;
                 }
             }
 
-            location.href = '#' + navBarButtonTargets[i];
+            // There are situations - when e.g. the last but one section is too small - that the
+            // scrollspy jumps over this section highlighting the last section.
+            // This is ok when going down (right key) yet prevents us from going up again (left key).
+            // This is a well known behaviour of scrollspy, yet annoying and needs to be fixed:
+
+            var current_st = $(document).scrollTop();
+
+            do {
+                // goto new section
+                location.href = '#' + navBarButtonTargets[i];
+                // the new scroll pos (there should be a change if 'goto' was successful)
+                var new_st = $(document).scrollTop();
+
+                if (current_btn === navBarButtonTargets[navBarButtonTargets.length - 1] && // at the last section
+                    event.which === 37 &&   // tried to go up
+                    new_st === current_st)  // no scroll
+                {
+                    // try to go up another section!
+                    i -=1;
+                } else {
+                    break;
+                }
+            } while ( i > 0 )
         }
     });
 

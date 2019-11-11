@@ -34,7 +34,7 @@ function create_monitor_glide() {
     }
 
     // monitor_glide_js = new boxGlide('#monitor_glide', {type: 'slider', startAt: current_slide});
-    monitor_glide_js = new Glide('#monitor_glide', {type: 'slider', startAt: current_slide});
+    monitor_glide_js = new Glide('#monitor_glide', {type: 'slider', startAt: current_slide, keyboard: false});
 
     monitor_glide_js.on('run.before', function(move) {
         // to stop the repaint on the canvas gliding away...
