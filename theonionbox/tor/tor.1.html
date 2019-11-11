@@ -461,179 +461,226 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <h2 id="_description">DESCRIPTION</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Tor is a connection-oriented anonymizing communication
-service. Users choose a source-routed path through a set of nodes, and
-negotiate a "virtual circuit" through the network, in which each node
-knows its predecessor and successor, but no others. Traffic flowing down
-the circuit is unwrapped by a symmetric key at each node, which reveals
-the downstream node.<br></p>
+<p>Tor is a connection-oriented anonymizing communication service. Users
+choose a source-routed path through a set of nodes, and negotiate a
+"virtual circuit" through the network. Each node in a virtual circuit
+knows its predecessor and successor nodes, but no other nodes. Traffic
+flowing down the circuit is unwrapped by a symmetric key at each node,
+which reveals the downstream node.<br></p>
 </div>
 <div class="paragraph">
-<p>Basically, Tor provides a distributed network of servers or relays ("onion routers").
-Users bounce their TCP streams&#8201;&#8212;&#8201;web traffic, ftp, ssh, etc.&#8201;&#8212;&#8201;around the
-network, and recipients, observers, and even the relays themselves have
-difficulty tracking the source of the stream.</p>
+<p>Basically, Tor provides a distributed network of servers or relays
+("onion routers").  Users bounce their TCP streams, including web
+traffic, ftp, ssh, etc., around the network, so that recipients,
+observers, and even the relays themselves have difficulty tracking the
+source of the stream.</p>
 </div>
-<div class="paragraph">
-<p>By default, <strong>tor</strong> will act as a client only.  To help the network
-by providing bandwidth as a relay, change the <strong>ORPort</strong> configuration
-option&#8201;&#8212;&#8201;see below.  Please also consult the documentation on the Tor
-Project&#8217;s website.</p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+By default, <strong>tor</strong> acts as a client only.  To help the network by
+providing bandwidth as a relay, change the <strong>ORPort</strong> configuration
+option as mentioned below.  Please also consult the documentation on
+the Tor Project&#8217;s website.
+</td>
+</tr>
+</table>
 </div>
 </div>
 </div>
 <div class="sect1">
 <h2 id="_command_line_options">COMMAND-LINE OPTIONS</h2>
 <div class="sectionbody">
+<div class="paragraph">
+<p>Tor has a powerful command-line interface. This section lists optional
+arguments you can specify at the command line using the <strong><code>tor</code></strong>
+command.</p>
+</div>
+<div class="paragraph">
+<p>Configuration options can be specified on the command line in the
+format <strong><code>--</code></strong><em>OptionName</em> <em>OptionValue</em>, on the command line in the
+format <em>OptionName</em> <em>OptionValue</em>, or in a configuration file.  For
+instance, you can tell Tor to start listening for SOCKS connections on
+port 9999 by passing either <strong><code>--SocksPort 9999</code></strong> or <strong><code>SocksPort
+9999</code></strong> on the command line, or by specifying <strong><code>SocksPort 9999</code></strong> in
+the configuration file.  On the command line, quote option values that
+contain spaces. For instance, if you want Tor to log all debugging
+messages to <strong><code>debug.log</code></strong>, you must specify <strong><code>--Log "debug file
+debug.log"</code></strong>.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+Configuration options on the command line override those in
+configuration files.  See <strong><a href="#conf-format">THE CONFIGURATION FILE
+FORMAT</a></strong> for more information.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The following options in this section are only recognized on the
+<strong><code>tor</code></strong> command line, not in a configuration file.</p>
+</div>
 <div class="dlist">
 <dl>
-<dt class="hdlist1"><a id="opt-h"></a> <strong>-h</strong>, <strong>--help</strong></dt>
+<dt class="hdlist1"><a id="opt-h"></a> <strong><code>-h</code></strong>, <strong><code>--help</code></strong></dt>
 <dd>
 <p>Display a short help message and exit.</p>
 </dd>
-<dt class="hdlist1"><a id="opt-f"></a> <strong>-f</strong> <em>FILE</em></dt>
+<dt class="hdlist1"><a id="opt-f"></a> <strong><code>-f</code></strong> <em>FILE</em></dt>
 <dd>
 <p>Specify a new configuration file to contain further Tor configuration
-options OR pass <strong>-</strong> to make Tor read its configuration from standard
-input. (Default: @CONFDIR@/torrc, or $HOME/.torrc if that file is not
-found)</p>
+options, or pass <strong>-</strong> to make Tor read its configuration from standard
+input. (Default: <strong><code>@CONFDIR@/torrc</code></strong>, or <strong><code>$HOME/.torrc</code></strong> if
+that file is not found)</p>
 </dd>
-<dt class="hdlist1"><a id="opt-allow-missing-torrc"></a> <strong>--allow-missing-torrc</strong></dt>
+<dt class="hdlist1"><a id="opt-allow-missing-torrc"></a> <strong><code>--allow-missing-torrc</code></strong></dt>
 <dd>
-<p>Do not require that configuration file specified by <strong>-f</strong> exist if
-default torrc can be accessed.</p>
+<p>Allow the configuration file specified by <strong><code>-f</code></strong> to be missing,
+if the defaults-torrc file (see below) is accessible.</p>
 </dd>
-<dt class="hdlist1"><a id="opt-defaults-torrc"></a> <strong>--defaults-torrc</strong> <em>FILE</em></dt>
+<dt class="hdlist1"><a id="opt-defaults-torrc"></a> <strong><code>--defaults-torrc</code></strong> <em>FILE</em></dt>
 <dd>
 <p>Specify a file in which to find default values for Tor options.  The
 contents of this file are overridden by those in the regular
 configuration file, and by those on the command line. (Default:
-@CONFDIR@/torrc-defaults.)</p>
+<strong><code>@CONFDIR@/torrc-defaults</code></strong>.)</p>
 </dd>
-<dt class="hdlist1"><a id="opt-ignore-missing-torrc"></a> <strong>--ignore-missing-torrc</strong></dt>
+<dt class="hdlist1"><a id="opt-ignore-missing-torrc"></a> <strong><code>--ignore-missing-torrc</code></strong></dt>
 <dd>
-<p>Specifies that Tor should treat a missing torrc file as though it
+<p>Specify that Tor should treat a missing torrc file as though it
 were empty. Ordinarily, Tor does this for missing default torrc files,
 but not for those specified on the command line.</p>
 </dd>
-<dt class="hdlist1"><a id="opt-hash-password"></a> <strong>--hash-password</strong> <em>PASSWORD</em></dt>
+<dt class="hdlist1"><a id="opt-hash-password"></a> <strong><code>--hash-password</code></strong> <em>PASSWORD</em></dt>
 <dd>
-<p>Generates a hashed password for control port access.</p>
+<p>Generate a hashed password for control port access.</p>
 </dd>
-<dt class="hdlist1"><a id="opt-list-fingerprint"></a> <strong>--list-fingerprint</strong></dt>
+<dt class="hdlist1"><a id="opt-list-fingerprint"></a> <strong><code>--list-fingerprint</code></strong></dt>
 <dd>
 <p>Generate your keys and output your nickname and fingerprint.</p>
 </dd>
-<dt class="hdlist1"><a id="opt-verify-config"></a> <strong>--verify-config</strong></dt>
+<dt class="hdlist1"><a id="opt-verify-config"></a> <strong><code>--verify-config</code></strong></dt>
 <dd>
-<p>Verify the configuration file is valid.</p>
+<p>Verify whether the configuration file is valid.</p>
 </dd>
-<dt class="hdlist1"><a id="opt-serviceinstall"></a> <strong>--service install</strong> [<strong>--options</strong> <em>command-line options</em>]</dt>
+<dt class="hdlist1"><a id="opt-serviceinstall"></a> <strong><code>--service install</code></strong> [<strong><code>--options</code></strong> <em>command-line options</em>]</dt>
 <dd>
 <p>Install an instance of Tor as a Windows service, with the provided
 command-line options. Current instructions can be found at
 <a href="https://www.torproject.org/docs/faq#NTService" class="bare">https://www.torproject.org/docs/faq#NTService</a></p>
 </dd>
-<dt class="hdlist1"><a id="opt-service"></a> <strong>--service</strong> <strong>remove</strong>|<strong>start</strong>|<strong>stop</strong></dt>
+<dt class="hdlist1"><a id="opt-service"></a> <strong><code>--service</code></strong> <strong><code>remove</code></strong>|<strong><code>start</code></strong>|<strong><code>stop</code></strong></dt>
 <dd>
 <p>Remove, start, or stop a configured Tor Windows service.</p>
 </dd>
-<dt class="hdlist1"><a id="opt-nt-service"></a> <strong>--nt-service</strong></dt>
+<dt class="hdlist1"><a id="opt-nt-service"></a> <strong><code>--nt-service</code></strong></dt>
 <dd>
 <p>Used internally to implement a Windows service.</p>
 </dd>
-<dt class="hdlist1"><a id="opt-list-torrc-options"></a> <strong>--list-torrc-options</strong></dt>
+<dt class="hdlist1"><a id="opt-list-torrc-options"></a> <strong><code>--list-torrc-options</code></strong></dt>
 <dd>
 <p>List all valid options.</p>
 </dd>
-<dt class="hdlist1"><a id="opt-list-deprecated-options"></a> <strong>--list-deprecated-options</strong></dt>
+<dt class="hdlist1"><a id="opt-list-deprecated-options"></a> <strong><code>--list-deprecated-options</code></strong></dt>
 <dd>
 <p>List all valid options that are scheduled to become obsolete in a
 future version. (This is a warning, not a promise.)</p>
 </dd>
-<dt class="hdlist1"><a id="opt-list-modules"></a> <strong>--list-modules</strong></dt>
+<dt class="hdlist1"><a id="opt-list-modules"></a> <strong><code>--list-modules</code></strong></dt>
 <dd>
-<p>For each optional module, list whether or not it has been compiled
-into Tor.  (Any module not listed is not optional in this version of Tor.)</p>
+<p>List whether each optional module has been compiled into Tor.
+(Any module not listed is not optional in this version of Tor.)</p>
 </dd>
-<dt class="hdlist1"><a id="opt-version"></a> <strong>--version</strong></dt>
+<dt class="hdlist1"><a id="opt-version"></a> <strong><code>--version</code></strong></dt>
 <dd>
 <p>Display Tor version and exit. The output is a single line of the format
 "Tor version [version number]."  (The version number format
 is as specified in version-spec.txt.)</p>
 </dd>
-<dt class="hdlist1"><a id="opt-quiet"></a> <strong>--quiet</strong>|<strong>--hush</strong></dt>
+<dt class="hdlist1"><a id="opt-quiet"></a> <strong><code>--quiet</code></strong>|<strong><code>--hush</code></strong></dt>
 <dd>
-<p>Override the default console log.  By default, Tor starts out logging
-messages at level "notice" and higher to the console.  It stops doing so
-after it parses its configuration, if the configuration tells it to log
-anywhere else.  You can override this behavior with the <strong>--hush</strong> option,
-which tells Tor to only send warnings and errors to the console, or with
-the <strong>--quiet</strong> option, which tells Tor not to log to the console at all.</p>
+<p>Override the default console logging behavior.  By default, Tor
+starts out logging messages at level "notice" and higher to the
+console.  It stops doing so after it parses its configuration, if
+the configuration tells it to log anywhere else.  These options
+override the default console logging behavior.  Use the
+<strong><code>--hush</code></strong> option if you want Tor to log only warnings and
+errors to the console, or use the <strong><code>--quiet</code></strong> option if you want
+Tor not to log to the console at all.</p>
 </dd>
-<dt class="hdlist1"><a id="opt-keygen"></a> <strong>--keygen</strong> [<strong>--newpass</strong>]</dt>
+<dt class="hdlist1"><a id="opt-keygen"></a> <strong><code>--keygen</code></strong> [<strong><code>--newpass</code></strong>]</dt>
 <dd>
-<p>  Running "tor --keygen" creates a new ed25519 master identity key for a
-  relay, or only a fresh temporary signing key and certificate, if you
-  already have a master key.  Optionally you can encrypt the master identity
-  key with a passphrase: Tor will ask you for one. If you don&#8217;t want to
-  encrypt the master key, just don&#8217;t enter any passphrase when asked.<br>
+<p>   Running <strong><code>tor --keygen</code></strong> creates a new ed25519 master identity key
+   for a relay, or only a fresh temporary signing key and
+   certificate, if you already have a master key.  Optionally, you
+   can encrypt the master identity key with a passphrase.  When Tor
+   asks you for a passphrase and you don&#8217;t want to encrypt the master
+   key, just don&#8217;t enter any passphrase when asked.<br>
 +
-  The <strong>--newpass</strong> option should be used with --keygen only when you need
-  to add, change, or remove a passphrase on an existing ed25519 master
-  identity key. You will be prompted for the old passphase (if any),
-  and the new passphrase (if any).<br>
-+
-  When generating a master key, you will probably want to use
-  <strong>--DataDirectory</strong> to control where the keys
-  and certificates will be stored, and <strong>--SigningKeyLifetime</strong> to
-  control their lifetimes.  Their behavior is as documented in the
-  server options section below.  (You must have write access to the specified
-  DataDirectory.)<br>
-+
-  To use the generated files, you must copy them to the DataDirectory/keys
-  directory of your Tor daemon, and make sure that they are owned by the
-  user actually running the Tor daemon on your system.</p>
+   Use the <strong><code>--newpass</code></strong> option with <strong><code>--keygen</code></strong> only when you
+   need to add, change, or remove a passphrase on an existing ed25519
+   master identity key. You will be prompted for the old passphase
+   (if any), and the new passphrase (if any).</p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+    When generating a master key, you may want to use
+    <strong><code>--DataDirectory</code></strong> to control where the keys and certificates
+    will be stored, and <strong><code>--SigningKeyLifetime</code></strong> to control their
+    lifetimes.  See the server options section to learn more about the
+    behavior of these options.  You must have write access to the
+    specified DataDirectory.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>To use the generated files, you must copy them to the
+<em>DataDirectory</em>/<strong><code>keys</code></strong> directory of your Tor daemon, and
+make sure that they are owned by the user actually running the Tor
+daemon on your system.</p>
+</div>
 </dd>
-<dt class="hdlist1"><strong>--passphrase-fd</strong> <em>FILEDES</em></dt>
+<dt class="hdlist1"><strong><code>--passphrase-fd</code></strong> <em>FILEDES</em></dt>
 <dd>
-<p>Filedescriptor to read the passphrase from.  Note that unlike with the
+<p>File descriptor to read the passphrase from.  Note that unlike with the
 tor-gencert program, the entire file contents are read and used as
 the passphrase, including any trailing newlines.
-Default: read from the terminal.</p>
+If the file descriptor is not specified, the passphrase is read
+from the terminal by default.</p>
 </dd>
-<dt class="hdlist1"><a id="opt-key-expiration"></a> <strong>--key-expiration</strong> [<strong>purpose</strong>]</dt>
+<dt class="hdlist1"><a id="opt-key-expiration"></a> <strong><code>--key-expiration</code></strong> [<em>purpose</em>]</dt>
 <dd>
-<p>   The <strong>purpose</strong> specifies which type of key certificate to determine
-   the expiration of.  The only currently recognised <strong>purpose</strong> is
+<p>   The <em>purpose</em> specifies which type of key certificate to determine
+   the expiration of.  The only currently recognised <em>purpose</em> is
    "sign".<br>
 +
-   Running "tor --key-expiration sign" will attempt to find your signing
-   key certificate and will output, both in the logs as well as to stdout,
-   the signing key certificate&#8217;s expiration time in ISO-8601 format.
-   For example, the output sent to stdout will be of the form:
-   "signing-cert-expiry: 2017-07-25 08:30:15 UTC"</p>
+   Running <strong><code>tor --key-expiration sign</code></strong> will attempt to find your
+   signing key certificate and will output, both in the logs as well
+   as to stdout, the signing key certificate&#8217;s expiration time in
+   ISO-8601 format.  For example, the output sent to stdout will be
+   of the form: "signing-cert-expiry: 2017-07-25 08:30:15 UTC"</p>
 </dd>
 </dl>
-</div>
-<div class="paragraph">
-<p>Other options can be specified on the command-line in the format "--option
-value", in the format "option value", or in a configuration file.  For
-instance, you can tell Tor to start listening for SOCKS connections on port
-9999 by passing --SocksPort 9999 or SocksPort 9999 to it on the command line,
-or by putting "SocksPort 9999" in the configuration file.  You will need to
-quote options with spaces in them: if you want Tor to log all debugging
-messages to debug.log, you will probably need to say <strong>--Log</strong> <code>"debug file
-debug.log"</code>.</p>
-</div>
-<div class="paragraph">
-<p>Options on the command line override those in configuration files. See the
-next section for more information.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_the_configuration_file_format">THE CONFIGURATION FILE FORMAT</h2>
+<h2 id="conf-format">THE CONFIGURATION FILE FORMAT</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>All configuration options in a configuration are written on a single line by
@@ -696,10 +743,14 @@ forward slash (/) in the configuration file and on the command line.</p>
    Note that this option, and other bandwidth-limiting options, apply to TCP
    data only: They do not count TCP headers or DNS traffic.<br>
 +
+   Tor uses powers of two, not powers of ten, so 1 GByte is
+   1024*1024*1024 bytes as opposed to 1 billion bytes.<br>
++
    With this option, and in other options that take arguments in bytes,
    KBytes, and so on, other formats are also supported. Notably, "KBytes" can
    also be written as "kilobytes" or "kb"; "MBytes" can be written as
    "megabytes" or "MB"; "kbits" can be written as "kilobits"; and so forth.
+   Case doesn&#8217;t matter.
    Tor also accepts "byte" and "bit" in the singular.
    The prefixes "tera" and "T" are also recognized.
    If no units are given, we default to bytes.
@@ -761,31 +812,32 @@ from a non-relay. (Default: 0)</p>
    client launches the pluggable transport proxy executable in
    <em>path-to-binary</em> using <em>options</em> as its command-line options, and
    forwards its traffic to it. It&#8217;s the duty of that proxy to properly forward
-   the traffic to the bridge.</p>
+   the traffic to the bridge. (Default: none)</p>
 </dd>
 <dt class="hdlist1"><a id="ServerTransportPlugin"></a> <strong>ServerTransportPlugin</strong> <em>transport</em> exec <em>path-to-binary</em> [options]</dt>
 <dd>
 <p>The Tor relay launches the pluggable transport proxy in <em>path-to-binary</em>
 using <em>options</em> as its command-line options, and expects to receive
-proxied client traffic from it.</p>
+proxied client traffic from it. (Default: none)</p>
 </dd>
 <dt class="hdlist1"><a id="ServerTransportListenAddr"></a> <strong>ServerTransportListenAddr</strong> <em>transport</em> <em>IP</em>:<em>PORT</em></dt>
 <dd>
 <p>When this option is set, Tor will suggest <em>IP</em>:<em>PORT</em> as the
 listening address of any pluggable transport proxy that tries to
 launch <em>transport</em>. (IPv4 addresses should written as-is; IPv6
-addresses should be wrapped in square brackets.)</p>
+addresses should be wrapped in square brackets.) (Default: none)</p>
 </dd>
 <dt class="hdlist1"><a id="ServerTransportOptions"></a> <strong>ServerTransportOptions</strong> <em>transport</em> <em>k=v</em> <em>k=v</em> &#8230;&#8203;</dt>
 <dd>
 <p>When this option is set, Tor will pass the <em>k=v</em> parameters to
 any pluggable transport proxy that tries to launch <em>transport</em>.<br>
-(Example: ServerTransportOptions obfs45 shared-secret=bridgepasswd cache=/var/lib/tor/cache)</p>
+(Example: ServerTransportOptions obfs45 shared-secret=bridgepasswd cache=/var/lib/tor/cache) (Default: none)</p>
 </dd>
 <dt class="hdlist1"><a id="ExtORPort"></a> <strong>ExtORPort</strong> <em class="<em>address</em>:">_port_</em>|<strong>auto</strong></dt>
 <dd>
 <p>Open this port to listen for Extended ORPort connections from your
-pluggable transports.</p>
+pluggable transports.<br>
+(Default: <strong>DataDirectory</strong>/extended_orport_auth_cookie)</p>
 </dd>
 <dt class="hdlist1"><a id="ExtORPortCookieAuthFile"></a> <strong>ExtORPortCookieAuthFile</strong> <em>Path</em></dt>
 <dd>
@@ -1282,7 +1334,7 @@ one.  This doesn&#8217;t affect controller log messages. (Default: 0)</p>
 in separate files by hash, up to the specified size in total.  Note that
 only files logged during the lifetime of this Tor process count toward the
 total; this is intended to be used to debug problems without opening live
-servers to resource exhaustion attacks. (Default: 10 MB)</p>
+servers to resource exhaustion attacks. (Default: 10 MBytes)</p>
 </dd>
 <dt class="hdlist1"><a id="OutboundBindAddress"></a> <strong>OutboundBindAddress</strong> <em>IP</em></dt>
 <dd>
@@ -1394,10 +1446,13 @@ available. Can not be changed while tor is running. (Default: 0)</p>
 </dd>
 <dt class="hdlist1"><a id="AccelName"></a> <strong>AccelName</strong> <em>NAME</em></dt>
 <dd>
-<p>When using OpenSSL hardware crypto acceleration attempt to load the dynamic
-engine of this name. This must be used for any dynamic hardware engine.
-Names can be verified with the openssl engine command. Can not be changed
-while tor is running.</p>
+<p>   When using OpenSSL hardware crypto acceleration attempt to load the dynamic
+   engine of this name. This must be used for any dynamic hardware engine.
+   Names can be verified with the openssl engine command. Can not be changed
+   while tor is running.
++
+   If the engine name is prefixed with a "!", then Tor will exit if the
+   engine cannot be loaded.</p>
 </dd>
 <dt class="hdlist1"><a id="AccelDir"></a> <strong>AccelDir</strong> <em>DIR</em></dt>
 <dd>
@@ -2753,15 +2808,11 @@ all connected servers as running.</p>
 </dd>
 <dt class="hdlist1"><a id="BridgeDistribution"></a> <strong>BridgeDistribution</strong> <em>string</em></dt>
 <dd>
-<p>   If set along with BridgeRelay, Tor will include a new line in its
-   bridge descriptor which indicates to the BridgeDB service how it
-   would like its bridge address to be given out. Set it to "none" if
-   you want BridgeDB to avoid distributing your bridge address, or "any" to
-   let BridgeDB decide. (Default: any)
-+
-   Note: as of Oct 2017, the BridgeDB part of this option is not yet
-   implemented.  Until BridgeDB is updated to obey this option, your
-   bridge will make this request, but it will not (yet) be obeyed.</p>
+<p>If set along with BridgeRelay, Tor will include a new line in its
+bridge descriptor which indicates to the BridgeDB service how it
+would like its bridge address to be given out. Set it to "none" if
+you want BridgeDB to avoid distributing your bridge address, or "any" to
+let BridgeDB decide. (Default: any)</p>
 </dd>
 <dt class="hdlist1"><a id="ContactInfo"></a> <strong>ContactInfo</strong> <em>email_address</em></dt>
 <dd>
@@ -3140,24 +3191,29 @@ main event loop. (Default: 0)</p>
 </dd>
 <dt class="hdlist1"><a id="AccountingMax"></a> <strong>AccountingMax</strong> <em>N</em> <strong>bytes</strong>|<strong>KBytes</strong>|<strong>MBytes</strong>|<strong>GBytes</strong>|<strong>TBytes</strong>|<strong>KBits</strong>|<strong>MBits</strong>|<strong>GBits</strong>|<strong>TBits</strong></dt>
 <dd>
-<p>Limits the max number of bytes sent and received within a set time period
-using a given calculation rule (see: AccountingStart, AccountingRule).
-Useful if you need to stay under a specific bandwidth. By default, the
-number used for calculation is the max of either the bytes sent or
-received. For example, with AccountingMax set to 1 GByte, a server
-could send 900 MBytes and receive 800 MBytes and continue running.
-It will only hibernate once one of the two reaches 1 GByte. This can
-be changed to use the sum of the both bytes received and sent by setting
-the AccountingRule option to "sum" (total bandwidth in/out). When the
-number of bytes remaining gets low, Tor will stop accepting new connections
-and circuits. When the number of bytes is exhausted, Tor will hibernate
-until some time in the next accounting period. To prevent all servers
-from waking at the same time, Tor will also wait until a random point
-in each period before waking up. If you have bandwidth cost issues,
-enabling hibernation is preferable to setting a low bandwidth, since
-it provides users with a collection of fast servers that are up some
-of the time, which is more useful than a set of slow servers that are
-always "available".</p>
+<p>   Limits the max number of bytes sent and received within a set time period
+   using a given calculation rule (see: AccountingStart, AccountingRule).
+   Useful if you need to stay under a specific bandwidth. By default, the
+   number used for calculation is the max of either the bytes sent or
+   received. For example, with AccountingMax set to 1 TByte, a server
+   could send 900 GBytes and receive 800 GBytes and continue running.
+   It will only hibernate once one of the two reaches 1 TByte. This can
+   be changed to use the sum of the both bytes received and sent by setting
+   the AccountingRule option to "sum" (total bandwidth in/out). When the
+   number of bytes remaining gets low, Tor will stop accepting new connections
+   and circuits. When the number of bytes is exhausted, Tor will hibernate
+   until some time in the next accounting period. To prevent all servers
+   from waking at the same time, Tor will also wait until a random point
+   in each period before waking up. If you have bandwidth cost issues,
+   enabling hibernation is preferable to setting a low bandwidth, since
+   it provides users with a collection of fast servers that are up some
+   of the time, which is more useful than a set of slow servers that are
+   always "available".<br>
++
+   Note that (as also described in the Bandwidth section) Tor uses
+   powers of two, not powers of ten: 1 GByte is 1024*1024*1024, not
+   one billion. Be careful: some internet service providers might count
+   GBytes differently.</p>
 </dd>
 <dt class="hdlist1"><a id="AccountingRule"></a> <strong>AccountingRule</strong> <strong>sum</strong>|<strong>max</strong>|<strong>in</strong>|<strong>out</strong></dt>
 <dd>
@@ -3353,7 +3409,7 @@ pluggable transports configured on private addresses.) Enabling this
 option can create security issues; you should probably leave it off.
 (Default: 0)</p>
 </dd>
-<dt class="hdlist1"><a id="MaxMemInQueues"></a> <strong>MaxMemInQueues</strong>  <em>N</em> <strong>bytes</strong>|<strong>KB</strong>|<strong>MB</strong>|<strong>GB</strong></dt>
+<dt class="hdlist1"><a id="MaxMemInQueues"></a> <strong>MaxMemInQueues</strong>  <em>N</em> <strong>bytes</strong>|<strong>KBytes</strong>|<strong>MBytes</strong>|<strong>GBytes</strong></dt>
 <dd>
 <p>This option configures a threshold above which Tor will assume that it
 needs to stop queueing or buffering data because it&#8217;s about to run out of
@@ -4383,7 +4439,7 @@ events.  Changing this requires that <strong>TestingTorNetwork</strong> is set.
 <dd>
 <p>Sets a lower-bound for assigning an exit flag when running as an
 authority on a testing network. Overrides the usual default lower bound
-of 4 KB. (Default: 0)</p>
+of 4 KBytes. (Default: 0)</p>
 </dd>
 <dt class="hdlist1"><a id="TestingLinkCertLifetime"></a> <strong>TestingLinkCertLifetime</strong> <em>N</em> <strong>seconds</strong>|<strong>minutes</strong>|<strong>hours</strong>|<strong>days</strong>|<strong>weeks</strong>|<strong>months</strong></dt>
 <dd>
@@ -4491,301 +4547,302 @@ can clean up.</p>
 <div class="sectionbody">
 <div class="dlist">
 <dl>
-<dt class="hdlist1"><strong>@CONFDIR@/torrc</strong></dt>
+<dt class="hdlist1"><strong><code>@CONFDIR@/torrc</code></strong></dt>
 <dd>
-<p>The configuration file, which contains "option value" pairs.</p>
+<p>Default location of the configuration file.</p>
 </dd>
-<dt class="hdlist1"><strong>$HOME/.torrc</strong></dt>
+<dt class="hdlist1"><strong><code>$HOME/.torrc</code></strong></dt>
 <dd>
 <p>Fallback location for torrc, if @CONFDIR@/torrc is not found.</p>
 </dd>
-<dt class="hdlist1"><strong>@LOCALSTATEDIR@/lib/tor/</strong></dt>
+<dt class="hdlist1"><strong><code>@LOCALSTATEDIR@/lib/tor/</code></strong></dt>
 <dd>
 <p>The tor process stores keys and other data here.</p>
 </dd>
-<dt class="hdlist1"><em>CacheDirectory</em><strong>/cached-certs</strong></dt>
+<dt class="hdlist1"><em>CacheDirectory</em>/<strong><code>cached-certs</code></strong></dt>
 <dd>
-<p>This file holds downloaded directory key certificates that are used to
-verify authenticity of documents generated by Tor directory authorities.</p>
+<p>Contains downloaded directory key certificates that are used to verify
+authenticity of documents generated by the Tor directory authorities.</p>
 </dd>
-<dt class="hdlist1"><em>CacheDirectory</em><strong>/cached-consensus</strong> and/or <strong>cached-microdesc-consensus</strong></dt>
+<dt class="hdlist1"><em>CacheDirectory</em>/<strong><code>cached-consensus</code></strong> and/or <strong><code>cached-microdesc-consensus</code></strong></dt>
 <dd>
 <p>The most recent consensus network status document we&#8217;ve downloaded.</p>
 </dd>
-<dt class="hdlist1"><em>CacheDirectory</em><strong>/cached-descriptors</strong> and <strong>cached-descriptors.new</strong></dt>
+<dt class="hdlist1"><em>CacheDirectory</em>/<strong><code>cached-descriptors</code></strong> and <strong><code>cached-descriptors.new</code></strong></dt>
 <dd>
-<p>These files hold downloaded router statuses. Some routers may appear more
-than once; if so, the most recently published descriptor is used. Lines
-beginning with @-signs are annotations that contain more information about
-a given router. The ".new" file is an append-only journal; when it gets
-too large, all entries are merged into a new cached-descriptors file.</p>
+<p>These files contain the downloaded router statuses. Some routers may appear
+more than once; if so, the most recently published descriptor is
+used. Lines beginning with <strong><code>@</code></strong>-signs are annotations that contain more
+information about a given router. The <strong><code>.new</code></strong> file is an append-only
+journal; when it gets too large, all entries are merged into a new
+cached-descriptors file.</p>
 </dd>
-<dt class="hdlist1"><em>CacheDirectory</em><strong>/cached-extrainfo</strong> and <strong>cached-extrainfo.new</strong></dt>
+<dt class="hdlist1"><em>CacheDirectory</em>/<strong><code>cached-extrainfo</code></strong> and <strong><code>cached-extrainfo.new</code></strong></dt>
 <dd>
-<p>As "cached-descriptors", but holds optionally-downloaded "extra-info"
-documents. Relays use these documents to send inessential information
-about statistics, bandwidth history, and network health to the
-authorities. They aren&#8217;t fetched by default; see the DownloadExtraInfo
-option for more info.</p>
+<p>Similar to <strong>cached-descriptors</strong>, but holds optionally-downloaded
+"extra-info" documents. Relays use these documents to send inessential
+information about statistics, bandwidth history, and network health to the
+authorities. They aren&#8217;t fetched by default. See the DownloadExtraInfo
+option for more information.</p>
 </dd>
-<dt class="hdlist1"><em>CacheDirectory</em><strong>/cached-microdescs</strong> and <strong>cached-microdescs.new</strong></dt>
+<dt class="hdlist1"><em>CacheDirectory</em>/<strong><code>cached-microdescs</code></strong> and <strong><code>cached-microdescs.new</code></strong></dt>
 <dd>
 <p>These files hold downloaded microdescriptors.  Lines beginning with
-@-signs are annotations that contain more information about a given
-router. The ".new" file is an append-only journal; when it gets too
+<strong><code>@</code></strong>-signs are annotations that contain more information about a given
+router. The <strong><code>.new</code></strong> file is an append-only journal; when it gets too
 large, all entries are merged into a new cached-microdescs file.</p>
 </dd>
-<dt class="hdlist1"><em>DataDirectory</em><strong>/state</strong></dt>
+<dt class="hdlist1"><em>DataDirectory</em>/<strong><code>state</code></strong></dt>
 <dd>
-<p>A set of persistent key-value mappings. These are documented in
-the file. These include:</p>
+<p>Contains a set of persistent key-value mappings. These include:</p>
 <div class="ulist">
 <ul>
 <li>
-<p>The current entry guards and their status.</p>
+<p>the current entry guards and their status.</p>
 </li>
 <li>
-<p>The current bandwidth accounting values.</p>
+<p>the current bandwidth accounting values.</p>
 </li>
 <li>
-<p>When the file was last written</p>
+<p>when the file was last written</p>
 </li>
 <li>
-<p>What version of Tor generated the state file</p>
+<p>what version of Tor generated the state file</p>
 </li>
 <li>
-<p>A short history of bandwidth usage, as produced in the server
+<p>a short history of bandwidth usage, as produced in the server
 descriptors.</p>
 </li>
 </ul>
 </div>
 </dd>
-<dt class="hdlist1"><em>DataDirectory</em><strong>/sr-state</strong></dt>
+<dt class="hdlist1"><em>DataDirectory</em>/<strong><code>sr-state</code></strong></dt>
 <dd>
-<p>Authority only. State file used to record information about the current
+<p><em>Authority only</em>. This file is used to record information about the current
 status of the shared-random-value voting state.</p>
 </dd>
-<dt class="hdlist1"><em>CacheDirectory</em><strong>/diff-cache</strong></dt>
+<dt class="hdlist1"><em>CacheDirectory</em>/<strong><code>diff-cache</code></strong></dt>
 <dd>
-<p>Directory cache only. Holds older consensuses, and diffs from older
-consensuses to the most recent consensus of each type, compressed
-in various ways. Each file contains a set of key-value arguments
-describing its contents, followed by a single NUL byte, followed by the
-main file contents.</p>
+<p><em>Directory cache only</em>. Holds older consensuses and diffs from oldest to
+the most recent consensus of each type compressed in various ways. Each
+file contains a set of key-value arguments describing its contents,
+followed by a single NUL byte, followed by the main file contents.</p>
 </dd>
-<dt class="hdlist1"><em>DataDirectory</em><strong>/bw_accounting</strong></dt>
+<dt class="hdlist1"><em>DataDirectory</em>/<strong><code>bw_accounting</code></strong></dt>
 <dd>
-<p>Used to track bandwidth accounting values (when the current period starts
-and ends; how much has been read and written so far this period). This file
-is obsolete, and the data is now stored in the 'state' file instead.</p>
+<p>This file is obsolete and the data is now stored in the <strong><code>state</code></strong> file
+instead. Used to track bandwidth accounting values (when the current period
+starts and ends; how much has been read and written so far this period).</p>
 </dd>
-<dt class="hdlist1"><em>DataDirectory</em><strong>/control_auth_cookie</strong></dt>
+<dt class="hdlist1"><em>DataDirectory</em>/<strong><code>control_auth_cookie</code></strong></dt>
 <dd>
-<p>Used for cookie authentication with the controller. Location can be
-overridden by the CookieAuthFile config option. Regenerated on startup. See
-control-spec.txt in <a href="https://spec.torproject.org/">torspec</a> for details.
-Only used when cookie authentication is enabled.</p>
+<p>This file can be used only when cookie authentication is enabled. Used for
+cookie authentication with the controller. Location can be overridden by
+the <code>CookieAuthFile</code> configuration option. Regenerated on startup. See
+control-spec.txt in <a href="https://spec.torproject.org/">torspec</a> for details.</p>
 </dd>
-<dt class="hdlist1"><em>DataDirectory</em><strong>/lock</strong></dt>
+<dt class="hdlist1"><em>DataDirectory</em>/<strong><code>lock</code></strong></dt>
 <dd>
-<p>This file is used to prevent two Tor instances from using same data
-directory. If access to this file is locked, data directory is already
-in use by Tor.</p>
+<p>This file is used to prevent two Tor instances from using the same data
+directory. If access to this file is locked, data directory is already in
+use by Tor.</p>
 </dd>
-<dt class="hdlist1"><em>DataDirectory</em><strong>/key-pinning-journal</strong></dt>
+<dt class="hdlist1"><em>DataDirectory</em>/<strong><code>key-pinning-journal</code></strong></dt>
 <dd>
 <p>Used by authorities. A line-based file that records mappings between
-RSA1024 identity keys and Ed25519 identity keys. Authorities enforce
-these mappings, so that once a relay has picked an Ed25519 key, stealing
-or factoring the RSA1024 key will no longer let an attacker impersonate
-the relay.</p>
+RSA1024 and Ed25519 identity keys. Authorities enforce these mappings, so
+that once a relay has picked an Ed25519 key, stealing or factoring the
+RSA1024 key will no longer let an attacker impersonate the relay.</p>
 </dd>
-<dt class="hdlist1"><em>KeyDirectory</em><strong>/authority_identity_key</strong></dt>
+<dt class="hdlist1"><em>KeyDirectory</em>/<strong><code>authority_identity_key</code></strong></dt>
 <dd>
 <p>A v3 directory authority&#8217;s master identity key, used to authenticate its
 signing key. Tor doesn&#8217;t use this while it&#8217;s running. The tor-gencert
-program uses this. If you&#8217;re running an authority, you should keep this
-key offline, and not actually put it here.</p>
+program uses this. If you&#8217;re running an authority, you should keep this key
+offline, and not put it in this file.</p>
 </dd>
-<dt class="hdlist1"><em>KeyDirectory</em><strong>/authority_certificate</strong></dt>
+<dt class="hdlist1"><em>KeyDirectory</em>/<strong><code>authority_certificate</code></strong></dt>
 <dd>
-<p>A v3 directory authority&#8217;s certificate, which authenticates the authority&#8217;s
-current vote- and consensus-signing key using its master identity key.
-Only directory authorities use this file.</p>
+<p>Only directory authorities use this file. A v3 directory authority&#8217;s
+certificate which authenticates the authority&#8217;s current vote- and
+consensus-signing key using its master identity key.</p>
 </dd>
-<dt class="hdlist1"><em>KeyDirectory</em><strong>/authority_signing_key</strong></dt>
+<dt class="hdlist1"><em>KeyDirectory</em>/<strong><code>authority_signing_key</code></strong></dt>
 <dd>
-<p>A v3 directory authority&#8217;s signing key, used to sign votes and consensuses.
-Only directory authorities use this file.  Corresponds to the
+<p>Only directory authorities use this file. A v3 directory authority&#8217;s
+signing key that is used to sign votes and consensuses. Corresponds to the
 <strong>authority_certificate</strong> cert.</p>
 </dd>
-<dt class="hdlist1"><em>KeyDirectory</em><strong>/legacy_certificate</strong></dt>
+<dt class="hdlist1"><em>KeyDirectory</em>/<strong><code>legacy_certificate</code></strong></dt>
 <dd>
-<p>As authority_certificate: used only when V3AuthUseLegacyKey is set.
-See documentation for V3AuthUseLegacyKey.</p>
+<p>As authority_certificate; used only when <code>V3AuthUseLegacyKey</code> is set.  See
+documentation for V3AuthUseLegacyKey.</p>
 </dd>
-<dt class="hdlist1"><em>KeyDirectory</em><strong>/legacy_signing_key</strong></dt>
+<dt class="hdlist1"><em>KeyDirectory</em>/<strong><code>legacy_signing_key</code></strong></dt>
 <dd>
-<p>As authority_signing_key: used only when V3AuthUseLegacyKey is set.
-See documentation for V3AuthUseLegacyKey.</p>
+<p>As authority_signing_key: used only when <code>V3AuthUseLegacyKey</code> is set.  See
+documentation for V3AuthUseLegacyKey.</p>
 </dd>
-<dt class="hdlist1"><em>KeyDirectory</em><strong>/secret_id_key</strong></dt>
+<dt class="hdlist1"><em>KeyDirectory</em>/<strong><code>secret_id_key</code></strong></dt>
 <dd>
 <p>A relay&#8217;s RSA1024 permanent identity key, including private and public
-components.  Used to sign router descriptors, and to sign other keys.</p>
+components. Used to sign router descriptors, and to sign other keys.</p>
 </dd>
-<dt class="hdlist1"><em>KeyDirectory</em><strong>/ed25519_master_id_public_key</strong></dt>
+<dt class="hdlist1"><em>KeyDirectory</em>/<strong><code>ed25519_master_id_public_key</code></strong></dt>
 <dd>
 <p>The public part of a relay&#8217;s Ed25519 permanent identity key.</p>
 </dd>
-<dt class="hdlist1"><em>KeyDirectory</em><strong>/ed25519_master_id_secret_key</strong></dt>
+<dt class="hdlist1"><em>KeyDirectory</em>/<strong><code>ed25519_master_id_secret_key</code></strong></dt>
 <dd>
-<p>The private part of a relay&#8217;s Ed25519 permanent identity key.  This key
-is used to sign the medium-term ed25519 signing key.  This file can be
-kept offline, or kept encrypted. If so, Tor will not be able to generate
-new signing keys itself; you&#8217;ll need to use tor --keygen yourself to do
-so.</p>
+<p>The private part of a relay&#8217;s Ed25519 permanent identity key.  This key is
+used to sign the medium-term ed25519 signing key.  This file can be kept
+offline or encrypted. If so, Tor will not be able to generate new signing
+keys automatically; you&#8217;ll need to use <code>tor --keygen</code> to do so.</p>
 </dd>
-<dt class="hdlist1"><em>KeyDirectory</em><strong>/ed25519_signing_secret_key</strong></dt>
+<dt class="hdlist1"><em>KeyDirectory</em>/<strong><code>ed25519_signing_secret_key</code></strong></dt>
 <dd>
 <p>The private and public components of a relay&#8217;s medium-term Ed25519 signing
-key. This key is authenticated by the Ed25519 master key, in turn
+key. This key is authenticated by the Ed25519 master key, which in turn
 authenticates other keys (and router descriptors).</p>
 </dd>
-<dt class="hdlist1"><em>KeyDirectory</em><strong>/ed25519_signing_cert</strong></dt>
+<dt class="hdlist1"><em>KeyDirectory</em>/<strong><code>ed25519_signing_cert</code></strong></dt>
 <dd>
-<p>The certificate which authenticates "ed25519_signing_secret_key" as
-having been signed by the Ed25519 master key.</p>
+<p>The certificate which authenticates "ed25519_signing_secret_key" as having
+been signed by the Ed25519 master key.</p>
 </dd>
-<dt class="hdlist1"><em>KeyDirectory</em><strong>/secret_onion_key</strong> and <strong>secret_onion_key.old</strong></dt>
+<dt class="hdlist1"><em>KeyDirectory</em>/<strong><code>secret_onion_key</code></strong> and <strong><code>secret_onion_key.old</code></strong></dt>
 <dd>
 <p>A relay&#8217;s RSA1024 short-term onion key. Used to decrypt old-style ("TAP")
-circuit extension requests. The ".old" file holds the previously
-generated key, which the relay uses to handle any requests that were
-made by clients that didn&#8217;t have the new one.</p>
+circuit extension requests. The <strong><code>.old</code></strong> file holds the previously
+generated key, which the relay uses to handle any requests that were made
+by clients that didn&#8217;t have the new one.</p>
 </dd>
-<dt class="hdlist1"><em>KeyDirectory</em><strong>/secret_onion_key_ntor</strong> and <strong>secret_onion_key_ntor.old</strong></dt>
+<dt class="hdlist1"><em>KeyDirectory</em>/<strong><code>secret_onion_key_ntor</code></strong> and <strong><code>secret_onion_key_ntor.old</code></strong></dt>
 <dd>
 <p>A relay&#8217;s Curve25519 short-term onion key. Used to handle modern ("ntor")
-circuit extension requests. The ".old" file holds the previously
-generated key, which the relay uses to handle any requests that were
-made by clients that didn&#8217;t have the new one.</p>
+circuit extension requests. The <strong><code>.old</code></strong> file holds the previously
+generated key, which the relay uses to handle any requests that were made
+by clients that didn&#8217;t have the new one.</p>
 </dd>
-<dt class="hdlist1"><em>DataDirectory</em><strong>/fingerprint</strong></dt>
+<dt class="hdlist1"><em>DataDirectory</em>/<strong><code>fingerprint</code></strong></dt>
 <dd>
-<p>Only used by servers. Holds the fingerprint of the server&#8217;s identity key.</p>
+<p>Only used by servers. Contains the fingerprint of the server&#8217;s identity key.</p>
 </dd>
-<dt class="hdlist1"><em>DataDirectory</em><strong>/hashed-fingerprint</strong></dt>
+<dt class="hdlist1"><em>DataDirectory</em>/<strong><code>hashed-fingerprint</code></strong></dt>
 <dd>
-<p>Only used by bridges. Holds the hashed fingerprint of the bridge&#8217;s
+<p>Only used by bridges. Contains the hashed fingerprint of the bridge&#8217;s
 identity key. (That is, the hash of the hash of the identity key.)</p>
 </dd>
-<dt class="hdlist1"><em>DataDirectory</em><strong>/approved-routers</strong></dt>
+<dt class="hdlist1"><em>DataDirectory</em>/<strong><code>approved-routers</code></strong></dt>
 <dd>
-<p>Only used by authoritative directory servers. This file lists
-the status of routers by their identity fingerprint.
-Each line lists a status and a fingerprint separated by
-whitespace. See your <strong>fingerprint</strong> file in the <em>DataDirectory</em> for an
-example line. If the status is <strong>!reject</strong> then descriptors from the
-given identity (fingerprint) are rejected by this server. If it is
-<strong>!invalid</strong> then descriptors are accepted but marked in the directory as
-not valid, that is, not recommended.</p>
+<p>Only used by authoritative directory servers. This file lists the status of
+routers by their identity fingerprint.  Each line lists a status and a
+fingerprint separated by whitespace. See your <strong><code>fingerprint</code></strong> file in the
+<em>DataDirectory</em> for an example line. If the status is <strong>!reject</strong>, then
+the descriptors from the given identity (fingerprint) are rejected by this
+server. If it is <strong>!invalid</strong>, then the descriptors are accepted but marked
+in the directory as not valid, that is, not recommended.</p>
 </dd>
-<dt class="hdlist1"><em>DataDirectory</em><strong>/v3-status-votes</strong></dt>
+<dt class="hdlist1"><em>DataDirectory</em>/<strong><code>v3-status-votes</code></strong></dt>
 <dd>
-<p>Only for v3 authoritative directory servers. This file contains
-status votes from all the authoritative directory servers.</p>
+<p>Only for v3 authoritative directory servers. This file contains status
+votes from all the authoritative directory servers.</p>
 </dd>
-<dt class="hdlist1"><em>CacheDirectory</em><strong>/unverified-consensus</strong></dt>
+<dt class="hdlist1"><em>CacheDirectory</em>/<strong><code>unverified-consensus</code></strong></dt>
 <dd>
-<p>This file contains a network consensus document that has been downloaded,
-but which we didn&#8217;t have the right certificates to check yet.</p>
+<p>Contains a network consensus document that has been downloaded, but which
+we didn&#8217;t have the right certificates to check yet.</p>
 </dd>
-<dt class="hdlist1"><em>CacheDirectory</em><strong>/unverified-microdesc-consensus</strong></dt>
+<dt class="hdlist1"><em>CacheDirectory</em>/<strong><code>unverified-microdesc-consensus</code></strong></dt>
 <dd>
-<p>This file contains a microdescriptor-flavored network consensus document
-that has been downloaded, but which we didn&#8217;t have the right certificates
-to check yet.</p>
+<p>Contains a microdescriptor-flavored network consensus document that has
+been downloaded, but which we didn&#8217;t have the right certificates to check
+yet.</p>
 </dd>
-<dt class="hdlist1"><em>DataDirectory</em><strong>/unparseable-desc</strong></dt>
+<dt class="hdlist1"><em>DataDirectory</em>/<strong><code>unparseable-desc</code></strong></dt>
 <dd>
 <p>Onion server descriptors that Tor was unable to parse are dumped to this
 file. Only used for debugging.</p>
 </dd>
-<dt class="hdlist1"><em>DataDirectory</em><strong>/router-stability</strong></dt>
+<dt class="hdlist1"><em>DataDirectory</em>/<strong><code>router-stability</code></strong></dt>
 <dd>
 <p>Only used by authoritative directory servers. Tracks measurements for
-router mean-time-between-failures so that authorities have a good idea of
+router mean-time-between-failures so that authorities have a fair idea of
 how to set their Stable flags.</p>
 </dd>
-<dt class="hdlist1"><em>DataDirectory</em><strong>/stats/dirreq-stats</strong></dt>
+<dt class="hdlist1"><em>DataDirectory</em>/<strong><code>stats/dirreq-stats</code></strong></dt>
 <dd>
 <p>Only used by directory caches and authorities. This file is used to
 collect directory request statistics.</p>
 </dd>
-<dt class="hdlist1"><em>DataDirectory</em><strong>/stats/entry-stats</strong></dt>
+<dt class="hdlist1"><em>DataDirectory</em>/<strong><code>stats/entry-stats</code></strong></dt>
 <dd>
 <p>Only used by servers. This file is used to collect incoming connection
 statistics by Tor entry nodes.</p>
 </dd>
-<dt class="hdlist1"><em>DataDirectory</em><strong>/stats/bridge-stats</strong></dt>
+<dt class="hdlist1"><em>DataDirectory</em>/<strong><code>stats/bridge-stats</code></strong></dt>
 <dd>
 <p>Only used by servers. This file is used to collect incoming connection
 statistics by Tor bridges.</p>
 </dd>
-<dt class="hdlist1"><em>DataDirectory</em><strong>/stats/exit-stats</strong></dt>
+<dt class="hdlist1"><em>DataDirectory</em>/<strong><code>stats/exit-stats</code></strong></dt>
 <dd>
 <p>Only used by servers. This file is used to collect outgoing connection
 statistics by Tor exit routers.</p>
 </dd>
-<dt class="hdlist1"><em>DataDirectory</em><strong>/stats/buffer-stats</strong></dt>
+<dt class="hdlist1"><em>DataDirectory</em>/<strong><code>stats/buffer-stats</code></strong></dt>
 <dd>
 <p>Only used by servers. This file is used to collect buffer usage
 history.</p>
 </dd>
-<dt class="hdlist1"><em>DataDirectory</em><strong>/stats/conn-stats</strong></dt>
+<dt class="hdlist1"><em>DataDirectory</em>/<strong><code>stats/conn-stats</code></strong></dt>
 <dd>
 <p>Only used by servers. This file is used to collect approximate connection
 history (number of active connections over time).</p>
 </dd>
-<dt class="hdlist1"><em>DataDirectory</em><strong>/stats/hidserv-stats</strong></dt>
+<dt class="hdlist1"><em>DataDirectory</em>/<strong><code>stats/hidserv-stats</code></strong></dt>
 <dd>
 <p>Only used by servers. This file is used to collect approximate counts
 of what fraction of the traffic is hidden service rendezvous traffic, and
 approximately how many hidden services the relay has seen.</p>
 </dd>
-<dt class="hdlist1"><em>DataDirectory</em><strong>/networkstatus-bridges</strong></dt>
+<dt class="hdlist1"><em>DataDirectory</em>/<strong>networkstatus-bridges`</strong></dt>
 <dd>
 <p>Only used by authoritative bridge directories. Contains information
 about bridges that have self-reported themselves to the bridge
 authority.</p>
 </dd>
-<dt class="hdlist1"><em>DataDirectory</em><strong>/approved-routers</strong></dt>
+<dt class="hdlist1"><em>HiddenServiceDirectory</em>/<strong><code>hostname</code></strong></dt>
 <dd>
-<p>Authorities only. This file is used to configure which relays are
-known to be valid, invalid, and so forth.</p>
+<p>The &lt;base32-encoded-fingerprint&gt;.onion domain name for this hidden service.
+If the hidden service is restricted to authorized clients only, this file
+also contains authorization data for all clients.</p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+    The clients will ignore any extra subdomains prepended to a hidden
+    service hostname. Supposing you have "xyz.onion" as your hostname, you
+    can ask your clients to connect to "www.xyz.onion" or "irc.xyz.onion"
+    for virtual-hosting purposes.
+</td>
+</tr>
+</table>
+</div>
 </dd>
-<dt class="hdlist1"><em>HiddenServiceDirectory</em><strong>/hostname</strong></dt>
+<dt class="hdlist1"><em>HiddenServiceDirectory</em>/<strong><code>private_key</code></strong></dt>
 <dd>
-<p>   The &lt;base32-encoded-fingerprint&gt;.onion domain name for this hidden service.
-   If the hidden service is restricted to authorized clients only, this file
-   also contains authorization data for all clients.
-+
-   Note that clients will ignore any extra subdomains prepended to a hidden
-   service hostname. So if you have "xyz.onion" as your hostname, you
-   can tell clients to connect to "www.xyz.onion" or "irc.xyz.onion"
-   for virtual-hosting purposes.</p>
+<p>Contains the private key for this hidden service.</p>
 </dd>
-<dt class="hdlist1"><em>HiddenServiceDirectory</em><strong>/private_key</strong></dt>
+<dt class="hdlist1"><em>HiddenServiceDirectory</em>/<strong><code>client_keys</code></strong></dt>
 <dd>
-<p>The private key for this hidden service.</p>
-</dd>
-<dt class="hdlist1"><em>HiddenServiceDirectory</em><strong>/client_keys</strong></dt>
-<dd>
-<p>Authorization data for a hidden service that is only accessible by
+<p>Contains authorization data for a hidden service that is only accessible by
 authorized clients.</p>
 </dd>
-<dt class="hdlist1"><em>HiddenServiceDirectory</em><strong>/onion_service_non_anonymous</strong></dt>
+<dt class="hdlist1"><em>HiddenServiceDirectory</em>/<strong><code>onion_service_non_anonymous</code></strong></dt>
 <dd>
 <p>This file is present if a hidden service key was created in
 <strong>HiddenServiceNonAnonymousMode</strong>.</p>
@@ -4798,13 +4855,9 @@ authorized clients.</p>
 <h2 id="_see_also">SEE ALSO</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><strong>torsocks</strong>(1), <strong>torify</strong>(1)<br></p>
-</div>
-<div class="paragraph">
-<p><strong><a href="https://www.torproject.org/" class="bare">https://www.torproject.org/</a></strong></p>
-</div>
-<div class="paragraph">
-<p><strong>torspec: <a href="https://spec.torproject.org" class="bare">https://spec.torproject.org</a> </strong></p>
+<p>For more information, refer to the Tor Project website at
+<a href="https://www.torproject.org/" class="bare">https://www.torproject.org/</a> and the Tor specifications at
+<a href="https://spec.torproject.org" class="bare">https://spec.torproject.org</a>. See also <strong>torsocks</strong>(1) and <strong>torify</strong>(1).</p>
 </div>
 </div>
 </div>
@@ -4812,7 +4865,8 @@ authorized clients.</p>
 <h2 id="_bugs">BUGS</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Plenty, probably. Tor is still in development. Please report them at <a href="https://trac.torproject.org/" class="bare">https://trac.torproject.org/</a>.</p>
+<p>Because Tor is still under development, there may be plenty of bugs. Please
+report them at <a href="https://trac.torproject.org/" class="bare">https://trac.torproject.org/</a>.</p>
 </div>
 </div>
 </div>
@@ -4827,7 +4881,7 @@ authorized clients.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2019-10-14 22:44:12 +0200
+Last updated 2019-11-11 21:25:31 +0100
 </div>
 </div>
 </body>
