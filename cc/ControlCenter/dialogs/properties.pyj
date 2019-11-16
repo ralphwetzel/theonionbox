@@ -150,14 +150,17 @@ class Properties(DialogBase):
                                     <input type="text" class="form-control" id="iCookie"
                                         aria-label="Text input for cookie".
                                         aria-describedby="connectionCookieHelp"
-                                        placeholder='Hidden Service Authorization Cookie - as created by Tor.'>
+                                        placeholder='v2 Hidden Service Authorization Cookie - as created by Tor.'>
                                     <small id="connectionCookieHelp" class="form-text">
-                                        Hidden Services can be setup to allow access only for clients <a
+                                        <b>v2</b> Hidden Services can be setup to allow access only for clients <a
                                         href='{base_path}/{session_id}/manpage.html#HidServAuth' target='_blank'>
                                         providing a valid authorization cookie</a>. To access the ControlPort of a Tor 
                                         node guarded by this method, you need to provide this cookie value here.
                                         <br>If a cookie is defined here, it will be validated as part of the host
-                                        connection verification process - if connecting to a Hidden Service.
+                                        connection verification process - if connecting to a v2 Hidden Service.
+                                        <br>If you operate a <b>v3</b> Hidden Service, there're  
+                                        <a href="manpage.html#_client_authorization" target="manpage_window">
+                                        alternative methods for Client Authorization</a>.
                                         {trunc_cookie}
                                     </small>
                                 </div>
@@ -174,8 +177,8 @@ class Properties(DialogBase):
         """
 
         trunc_cookie = ''
-        if self.cookie? and self.cookie[-3:] == '...':
-            trunc_cookie = '<br><b>Please be aware, that the value displayed here was truncated for safety reasons.</b>'
+        if self.config.cookie? and self.config.cookie[-3:] == '...':
+            trunc_cookie = '<br>Please be aware, that the value displayed here was truncated for safety reasons.'
 
         btn_remove = ''
         if self.remove_button is True:

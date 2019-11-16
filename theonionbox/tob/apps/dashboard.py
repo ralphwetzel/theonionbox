@@ -81,14 +81,16 @@ class Dashboard(BaseApp):
                        callback=self.get_restart,
                        **config)
 
-        self.app.route('/<login_id>/login.html',
-                       method='GET',
-                       callback=self.perform_login,
-                       **config)
-
         self.app.route('/<session_id>/failed.html',
                        method='GET',
                        callback=self.get_failed,
+                       **config)
+
+        config['valid_status'] = ['ok', 'auto']
+
+        self.app.route('/<login_id>/login.html',
+                       method='GET',
+                       callback=self.perform_login,
                        **config)
 
         self.app.route('/<session_id>/logout.html',
@@ -96,23 +98,22 @@ class Dashboard(BaseApp):
                        callback=self.get_logout,
                        **config)
 
-        config = {
-            'no_session_redirect': self.redirect.path('/')
-        }
-
         self.app.route('/<session>/index.html',
                        method='GET',
                        callback=self.get_index,
                        **config)
+
+        config = {
+            'valid_status': ['ok', 'auto']
+        }
 
         self.app.route('/<session>/data.html',
                        method='POST',
                        callback=self.post_data,
                        **config)
 
-        config = {
-            'valid_status': ['ok', 'auto']
-        }
+        config = {}
+
         self.app.route('/<session>/manpage.html',
                        method='GET',
                        callback=self.get_manpage,
