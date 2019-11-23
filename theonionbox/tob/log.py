@@ -457,6 +457,10 @@ class LoggingManager(object):
     def get_logger_name(self):
         return self.logger_name
 
+    @property
+    def logger(self):
+        return logging.getLogger(self.logger_name)
+
     def get_id(self):
         return self.self_id
 
