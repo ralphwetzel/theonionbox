@@ -410,7 +410,7 @@ $(document).ready(function() {
 
 function connect_history_canvas(tag) {
 
-    console.log(tag);
+    // console.log(tag);
 
     var glide = $("#history_glide_" + tag);
     if (glide.length > 0) {

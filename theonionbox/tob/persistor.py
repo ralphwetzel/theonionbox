@@ -66,9 +66,9 @@ class BandwidthPersistor(object):
 
         self.path = None
         self.fp = None
+        log = logging.getLogger('theonionbox')
 
         if len(fingerprint) == 0:
-            log = logging.getLogger('theonionbox')
             log.debug('Skipped registration for persistance of node with fingerprint of length = 0.')
             return
 
@@ -85,7 +85,6 @@ class BandwidthPersistor(object):
             with conn:
                 conn.execute("INSERT OR IGNORE INTO nodes(fp) VALUES(?);", (fingerprint,))
         except Exception as exc:
-            log = logging.getLogger('theonionbox')
             log.warning('Failed to register {}... for persistance. {}'.format(fingerprint[:6], exc))
             return
 
@@ -139,6 +138,8 @@ class BandwidthPersistor(object):
             connection.execute("INSERT INTO bandwidth(fp, interval, timestamp, read, write) VALUES(?, ?, ?, ?, ?)",
                                (self.fp, interval, timestamp, read, write))
         except Exception as e:
+            log = logging.getLogger('theonionbox')
+            log.warning(f'Failed to open persist bandwidth data for fingerprint {self.fp}: {e}')
             return False
 
         return True

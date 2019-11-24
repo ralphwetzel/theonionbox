@@ -159,6 +159,9 @@ class Node(object):
         log = logging.getLogger('theonionbox')
         log.debug("Shutting down controller to '{}'...".format(self._id))
 
+        if self._bandwidth is not None:
+            self._bandwidth.shutdown()
+
         self.disconnect()
 
         # if self._onionoo is not None:

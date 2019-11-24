@@ -749,7 +749,6 @@ class Dashboard(BaseApp):
                     if len(retval) > 0:
                         return_data_dict['mon'][interval] = retval
                 except Exception as e:
-                    # print(e)
                     pass
 
             # if ('network_bw' not in session) or (session['network_bw'] == 0):

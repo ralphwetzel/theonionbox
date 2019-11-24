@@ -134,8 +134,6 @@ monitor_handler.prototype.process = function(data, timedelta) {
     var data_point;
     var DOM_changed = false;
 
-    // console.log(data);
-
     for (var key in data) {
         if (!data.hasOwnProperty(key)) {
             //The current property is not a direct property of p
@@ -220,17 +218,19 @@ monitor_handler.prototype.process = function(data, timedelta) {
             var ia = $.inArray(key, monitor_keys);
             if (ia > -1) {
 
+                // console.log(key)
+
                 DOM_changed = connect_canvas(key) || DOM_changed;
 
+                if (data_points.length > 0) {
+                    if (monitor_read_data[key].data.length === 0) {
+                        monitor_read_data[key].append(data_points[0].m - (monitor_intervals[key] * 1000), 0);
+                    }
 
-                if (monitor_read_data[key].length === 0) {
-                    monitor_read_data[key].append(data_points[data_point].m - (monitor_intervals[key] * 1000), 0);
+                    if (monitor_written_data[key].data.length === 0) {
+                        monitor_written_data[key].append(data_points[0].m - (monitor_intervals[key] * 1000), 0);
+                    }
                 }
-
-                if (monitor_written_data[key].length === 0) {
-                    monitor_written_data[key].append(data_points[data_point].m - (monitor_intervals[key] * 1000), 0);
-                }
-
 
                 for (data_point in data_points) {
                     monitor_read_data[key].append(data_points[data_point].m, data_points[data_point].r / monitor_intervals[key]);
@@ -500,6 +500,11 @@ $(document).ready(function() {
 });
 
 function connect_canvas(tag) {
+
+    // only show chart with at least 3 points (to avoid empty charts!)
+    if (monitor_read_data[tag].data.length < 3) {
+        return false;
+    }
 
     var glide = $("#monitor_glide_" + tag);
     if (glide.length > 0) {
