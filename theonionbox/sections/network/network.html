@@ -122,11 +122,13 @@ fp = get('family_fp', None)
                 <div class='col-6' id="location_data">
                     {{!location_row('Country', geoip.country(ip, oo_details('country')))}}
                     {{!location_row('Country Name', geoip.country_name(ip, oo_details('country_name')))}}
-                    % if geoip.region_name(ip, oo_details('region_name')) is not None:
-                            {{!location_row('Region Name', geoip.region_name(ip, oo_details('region_name')))}}
+                    % rn = geoip.region_name(ip, oo_details('region_name'))
+                    % if rn is not None:
+                        {{!location_row('Region Name', rn)}}
                     % end
-                    % if geoip.city_name(ip, oo_details('city_name')) is not None:
-                        {{!location_row('City Name', geoip.city_name(ip, oo_details('city_name')))}}
+                    % cn = geoip.city_name(ip, oo_details('city_name'))
+                    % if cn is not None:
+                        {{!location_row('City Name', cn)}}
                     % end
                     % geoip_lat = geoip.latitude(ip, oo_details('latitude'))
                     % geoip_long = geoip.longitude(ip, oo_details('longitude'))

@@ -463,25 +463,26 @@ class Details(DocumentInterface):
         if self.has_data() is False:
             return None
 
+        retval = None
+
         if self._document.is_relay():
             if detail in self._document.object_data:
                 retval = self._document.object_data[detail]
             elif detail in self.relay_detail:
                 retval = self.relay_detail[detail]
-            else:
-                return None
-
-            # print(detail, retval, type(retval))
-            return retval
 
         elif self._document.is_bridge():
             if detail in self._document.object_data:
-                return self._document.object_data[detail]
+                retval = self._document.object_data[detail]
             elif detail in self.bridge_detail:
-                return self.bridge_detail[detail]
+                retval = self.bridge_detail[detail]
 
-        return None
+        # OO sometimes returns strings with encoded unicode characters
+        # e.g. Baden-W\u00FCrttemberg Region
+        if isinstance(retval, str):
+            retval = bytes(retval, 'utf-8').decode()
 
+        return retval
 
 class Bandwidth(DocumentInterface):
 
