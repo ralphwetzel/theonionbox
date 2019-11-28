@@ -573,6 +573,14 @@ but not for those specified on the command line.</p>
 <dd>
 <p>Verify whether the configuration file is valid.</p>
 </dd>
+<dt class="hdlist1"><a id="opt-dump-config"></a> <strong><code>--dump-config</code></strong> <strong><code>short</code></strong>|<strong><code>full</code></strong>|<strong><code>non-builtin</code></strong></dt>
+<dd>
+<p>Write a complete list of Tor&#8217;s configured options to standard output.
+When the <code>short</code> flag is selected, only write the options that
+are different from their default values.  When <code>non-builtin</code> is selected,
+write options that are not zero or the empty string.
+When <code>full</code> is selected, write every option.</p>
+</dd>
 <dt class="hdlist1"><a id="opt-serviceinstall"></a> <strong><code>--service install</code></strong> [<strong><code>--options</code></strong> <em>command-line options</em>]</dt>
 <dd>
 <p>Install an instance of Tor as a Windows service, with the provided
@@ -2141,6 +2149,94 @@ one. You can disable this behavior, so that Tor will select "No
 authentication" when IsolateSOCKSAuth is disabled, or when this
 option is set.</p>
 </dd>
+<dt class="hdlist1"><strong>ExtendedErrors</strong></dt>
+<dd>
+<p>Return extended error code in the SOCKS reply. So far, the possible
+errors are:</p>
+<div class="literalblock">
+<div class="content">
+<pre>X'F0' Onion Service Descriptor Can Not be Found</pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>The requested onion service descriptor can't be found on the
+hashring and thus not reachable by the client. (v3 only)</pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>X'F1' Onion Service Descriptor Is Invalid</pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>The requested onion service descriptor can't be parsed or
+signature validation failed. (v3 only)</pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>X'F2' Onion Service Introduction Failed</pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>Client failed to introduce to the service meaning the descriptor
+was found but the service is not connected anymore to the
+introduction point. The service has likely changed its descriptor
+or is not running. (v3 only)</pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>X'F3' Onion Service Rendezvous Failed</pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>Client failed to rendezvous with the service which means that the
+client is unable to finalize the connection. (v3 only)</pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>X'F4' Onion Service Missing Client Authorization</pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>Client was able to download the requested onion service descriptor
+but is unable to decrypt its content because it is missing client
+authorization information. (v3 only)</pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>X'F5' Onion Service Wrong Client Authorization</pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>Client was able to download the requested onion service descriptor
+but is unable to decrypt its content using the client
+authorization information it has. This means the client access
+were revoked. (v3 only)</pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>X'F6' Onion Service Invalid Address</pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>The given .onion address is invalid. In one of these cases this
+error is returned: address checksum doesn't match, ed25519 public
+key is invalid or the encoding is invalid. (v3 only)</pre>
+</div>
+</div>
+</dd>
 </dl>
 </div>
 </dd>
@@ -3448,11 +3544,13 @@ signing keys and certificates. (Default: 0)</p>
 running.
 (Default: the "keys" subdirectory of DataDirectory.)</p>
 </dd>
-<dt class="hdlist1"><a id="KeyDirectoryGroupReadable"></a> <strong>KeyDirectoryGroupReadable</strong> <strong>0</strong>|<strong>1</strong></dt>
+<dt class="hdlist1"><a id="KeyDirectoryGroupReadable"></a> <strong>KeyDirectoryGroupReadable</strong> <strong>0</strong>|<strong>1</strong>|<strong>auto</strong></dt>
 <dd>
 <p>If this option is set to 0, don&#8217;t allow the filesystem group to read the
-KeywDirectory. If the option is set to 1, make the KeyDirectory readable
-by the default GID. (Default: 0)</p>
+KeyDirectory. If the option is set to 1, make the KeyDirectory readable
+by the default GID. If the option is "auto", then we use the
+setting for DataDirectoryGroupReadable when the KeyDirectory is the
+same as the DataDirectory, and 0 otherwise. (Default: auto)</p>
 </dd>
 <dt class="hdlist1"><a id="RephistTrackTime"></a> <strong>RephistTrackTime</strong> <em>N</em> <strong>seconds</strong>|<strong>minutes</strong>|<strong>hours</strong>|<strong>days</strong>|<strong>weeks</strong></dt>
 <dd>
@@ -4881,7 +4979,7 @@ report them at <a href="https://trac.torproject.org/" class="bare">https://trac.
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2019-11-11 21:25:31 +0100
+Last updated 2019-11-27 21:32:33 +0100
 </div>
 </div>
 </body>
