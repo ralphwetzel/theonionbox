@@ -233,7 +233,7 @@ class LoggingManager(object):
 
         def flush(self, limit=None, encode=None):
 
-            # ghis function cumulates same messages...
+            # this function cumulates same messages...
 
             retval = []
             self.acquire()
@@ -506,6 +506,24 @@ class LoggingManager(object):
                 except ProtocolError as pe:
                     lgr.debug("Failed to remove event_listener for runlevel '{}': {}".format(level, pe))
 
+    def notice(self, message):
+        self._log(message, 'NOTICE')
+
+    # We could add here trace, debug and others later ... if necessary
+
+    def _log(self, message, level):
+
+        # The Unpacker of the log messages expects a certain format
+        # ... thus we have to provide this here for standard messages.
+        timer = getTimer()
+        timestamp = timer.time()
+
+        extra = {
+            'source': 'box',
+            'source_time': int(timestamp * 1000)  # ms for JS!
+        }
+
+        self.logger.log(level_box_to_tor[level], msg=message, extra=extra)
 
 class ForwardHandler(MemoryHandler):
 

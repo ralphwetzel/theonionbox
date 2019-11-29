@@ -73,7 +73,7 @@ class Node(object):
         # This job runs at midnight to add a notification to the log
         # showing the current day
         def job_NewDayNotification():
-            self._log.logger.notice(f"----- Today is {strftime('%A, %Y-%m-%d')}. -----")
+            self._log.notice(f"----- Today is {strftime('%A, %Y-%m-%d')}. -----")
 
         self._cron.add_job(job_NewDayNotification, 'cron', id='ndn', hour='0', minute='0', second='0')
 
