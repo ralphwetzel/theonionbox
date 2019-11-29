@@ -135,7 +135,7 @@ class VersionManager(object):
         if proxy_address is None:
             return False
 
-        # v5.0
+        # v19.2
         __VERSION_PROTOCOL__ = 3
 
         proxies = {
@@ -164,12 +164,8 @@ class VersionManager(object):
 
         if r is None:
             return False
-
-        self.lmc.last_mod_header = r.headers.get('Last-Modified', '')
-
         if r.status_code == requests.codes.not_modified:
             return True
-
         if r.status_code != 200:
             return False
 
@@ -214,5 +210,7 @@ class VersionManager(object):
         _null = back.get('null', None)
         if _null is not None:
             self.Null.version = _null.get('version', None)
+
+        self.lmc.last_mod_header = r.headers.get('Last-Modified', '')
 
         return True
