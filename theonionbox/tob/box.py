@@ -498,8 +498,6 @@ class Box:
         try:
             self.server.run(self.box)
         except KeyboardInterrupt:
-            # SIGINT consumed before ...
-            # ... so this never emits!!
             self.log.notice("Received SIGINT signal.")
         except Exception as exc:
             self.log.error(exc)

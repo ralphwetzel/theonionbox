@@ -66,6 +66,8 @@ class BandwidthPersistor(object):
 
         self.path = None
         self.fp = None
+        self.fpid = None
+
         log = logging.getLogger('theonionbox')
 
         if len(fingerprint) == 0:
@@ -105,7 +107,8 @@ class BandwidthPersistor(object):
 
         if fpid is not None:
             self.path = path
-            self.fp = fpid
+            self.fp = fingerprint
+            self.fpid = fpid
 
         conn.close()
 
@@ -129,6 +132,9 @@ class BandwidthPersistor(object):
     def persist(self, interval: str, timestamp: float,
                 read: Optional[int] = 0, write: Optional[int] = 0, connection: Optional[Connection] = None) -> bool:
 
+        if self.fpid is None:
+            return False
+
         if connection is None:
             connection = self.open_connection()
             if connection is None:
@@ -136,10 +142,10 @@ class BandwidthPersistor(object):
 
         try:
             connection.execute("INSERT INTO bandwidth(fp, interval, timestamp, read, write) VALUES(?, ?, ?, ?, ?)",
-                               (self.fp, interval, timestamp, read, write))
+                               (self.fpid, interval, timestamp, read, write))
         except Exception as e:
             log = logging.getLogger('theonionbox')
-            log.warning(f'Failed to open persist bandwidth data for fingerprint {self.fp}: {e}')
+            log.warning(f'Failed to open persist bandwidth data for fingerprint {self.fp[:6]}: {e}')
             return False
 
         return True
@@ -168,7 +174,7 @@ class BandwidthPersistor(object):
 
         try:
             cur.execute(sql, {'jsts': js_timestamp,
-                              'fp': self.fp,
+                              'fp': self.fpid,
                               'interval': interval,
                               'limit': limit,
                               'offset': offset}
