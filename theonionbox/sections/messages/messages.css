@@ -53,7 +53,7 @@
 }
 
 .DEBUG, .BOX_DEBUG { color: Gray; display: block; }
-.INFO, .BOX_INFO {display: block;}
+.INFO, .BOX_INFO {color: Blue; display: block;}
 .NOTICE {display: block;}
 .WARN, .BOX_WARN { color: OrangeRed; display: block;}
 .ERR, .BOX_ERR { color: Red; display: block;}

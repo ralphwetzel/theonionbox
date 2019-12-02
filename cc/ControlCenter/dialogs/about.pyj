@@ -1,0 +1,64 @@
+from dialogs.base import Base as DialogBase
+from utils.auth import Basic, Digest
+
+class About(DialogBase):
+
+    def __init__(self, session_id, base_path = None):
+        DialogBase.__init__(self)
+        self.base_path = base_path
+        self.session_id = session_id
+
+    def create(self):
+
+        html = """
+            <div class="modal fade tobcc-font" id="login_modal" tabindex="-1" role="dialog"
+                aria-labelledby="exampleModalLabel" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header cc-dialog-header">
+                            <h5 class="modal-title cc-dialog-title">About</h5>
+                            <button type="button" class="close cc-dialog-close" data-dismiss="modal"
+                                id="bClose{id}" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body text-center" id='about'>
+                            <i class="fas fa-circle-notch fa-spin fa-5x" style="color: darkgrey;"></i>
+                        </div>
+                        <div class="modal-footer">
+                            <a href="https://github.com/ralphwetzel/theonionbox" target="_blank">
+                                <i class="fab fa-github fa-lg"></i> GitHub
+                            </a>
+                            <div style="margin-right: auto" id="lStatus{id}"></div>
+                            <button type="button" class="btn btn-outline-secondary" data-dismiss="modal"
+                                id="bClose">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                </form>
+            </div>
+        """
+
+        # html = str.format(html, id=self.id, server=self.server)
+        DialogBase.create(self, html)
+
+
+    def show(self):
+        if self.modal is None:
+            self.create()
+
+        p = DialogBase.show(self)
+
+        $.post({
+            'url': self.base_path + "/" + self.session_id + "/cc/" + "about"
+            , 'timeout': 2000
+        })
+        .done(def(data):
+            $('#about').removeClass('text-center').addClass('text-left')
+            .css('color', 'black')
+            .html(data)
+        )
+
+        return p

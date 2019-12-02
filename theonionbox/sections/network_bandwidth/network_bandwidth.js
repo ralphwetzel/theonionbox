@@ -1,7 +1,7 @@
 % from tob.livedata import intervals
 var history_intervals = {{!intervals}};
 
-var history_keys = ['1s', '1m', '5m', '1h', '4h', 'Ch', 'y1', 'y5'];
+var history_keys = ['1s', '1m', '5m', '1h', '4h', 'Ch', 'm6', 'y1', 'y5'];
 var history_read_data = {};
 var history_written_data = {};
 var history_bandwidth = {};
@@ -13,6 +13,7 @@ var history_bandwidth = {};
 var translate_onionoo_to_history = {
     'y5': 'y5',
     'y1': 'y1',
+    'm6': 'm6',
     'm3': 'Ch',
     'm1': '4h',
     'w1': '1h',
@@ -202,7 +203,7 @@ history_handler.prototype.nav = function() {
 };
 
 $(document).ready(function() {
-    addNavBarButton('Onionoo Network Data', 'history');
+    // addNavBarButton('Onionoo Network Data', 'history');
     boxData.addHandler('oo_bw', new history_handler());
 
     for (var len = history_keys.length, i = 0; i < len; i++) {
@@ -227,6 +228,7 @@ function history_interval_style(key) {
         '1h': 0.25,
         '4h': 0.25,
         'Ch': 0.25,
+        'm6': 0.25,
         'y1': 0.25,
         'y5': 0.25
     };
@@ -238,6 +240,7 @@ function history_interval_style(key) {
         '1h': history_intervals['1h'] * 1000 * mppf['1h'],
         '4h': history_intervals['4h'] * 1000 * mppf['4h'],
         'Ch': history_intervals['Ch'] * 1000 * mppf['Ch'],
+        'm6': 1000 * 86400 * mppf['m6'],
         'y1': 1000 * 172800 * mppf['y1'],
         'y5': 1000 * 864000 * mppf['y5']
     };
@@ -249,6 +252,7 @@ function history_interval_style(key) {
         '1h': 60 * 60 * 24 * 1000, // daily,
         '4h': 0,
         'Ch': 0,
+        'm6': 0,
         'y1': 0,
         'y5': 0
     };
@@ -260,6 +264,7 @@ function history_interval_style(key) {
         '1h': '',
         '4h': 'weekly',
         'Ch': 'monthly',
+        'm6': 'monthly',
         'y1': 'monthly',
         'y5': 'yearly'
     };
@@ -280,7 +285,7 @@ function history_interval_style(key) {
             return function(date) {
                 return pad2(date.getHours()) + ':' + pad2(date.getMinutes());
                 }
-        } else if ($.inArray(key, ['1h', '4h', 'Ch', 'y1']) > -1) {
+        } else if ($.inArray(key, ['1h', '4h', 'Ch', 'm6', 'y1']) > -1) {
             return function (date) {
                 return pad2(date.getDate()) + "." + pad2(date.getMonth() + 1) + ".";
             }
@@ -335,7 +340,7 @@ function history_interval_style(key) {
                 precision: 2
             },
 
-            tooltip: true,
+            tooltip: false,
             tooltipLine: {
                 lineWidth: 1,
                 strokeStyle: '#FF0000'
@@ -396,9 +401,9 @@ $(document).ready(function() {
     // written_data_ld.append(client_time - 5000, 0);
 
     // history_bandwidth['1s'].prepare(canvas, 5000);
-    history_bandwidth['Ch'].setDisplay(history_interval_style('Ch'));
-    var canvas = document.getElementById('history_canvas_Ch');
-    history_bandwidth['Ch'].streamTo(canvas, 0);
+    history_bandwidth['m6'].setDisplay(history_interval_style('m6'));
+    var canvas = document.getElementById('history_canvas_m6');
+    history_bandwidth['m6'].streamTo(canvas, 0);
 
     create_history_glide();
 
@@ -422,7 +427,7 @@ $(document).ready(function() {
 
 function connect_history_canvas(tag) {
 
-    console.log(tag);
+    // console.log(tag);
 
     var glide = $("#history_glide_" + tag);
     if (glide.length > 0) {
@@ -494,6 +499,7 @@ var history_buttons = {
     '1h': 'unexpected',
     '4h': '1 Month',
     'Ch': '3 Months',
+    'm6': '6 Months',
     'y1': '1 Year',
     'y5': '5 Years'
 };

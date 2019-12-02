@@ -18,8 +18,8 @@ var guard_probability_history = [];
 // var history_chart_keys = ['3_days', '1_week', '1_month', '3_months', '1_year', '5_years'];
 // var history_chart_labels = ['3 Days', '1 Week', '1 Month', '3 Months', '1 Year', '5 Years'];
 
-var weights_chart_keys = ['y5', 'y1', 'm3', 'm1', 'w1', 'd3'];
-var weights_chart_labels = ['5 Years', '1 Year', '3 Months', '1 Month', '1 Week', '3 Days'];
+var weights_chart_keys = ['y5', 'y1', 'm6', 'm3', 'm1', 'w1', 'd3'];
+var weights_chart_labels = ['5 Years', '1 Year', '6 Months', '3 Months', '1 Month', '1 Week', '3 Days'];
 
 
 for (var len = weights_chart_keys.length, i=0; i<len; ++i) {
@@ -316,7 +316,7 @@ $(document).ready(function() {
 
 function set_consensus_display(selector)
 {
-    var charts = ['d3', 'w1', 'm1', 'm3', 'y1', 'y5'];
+    var charts = ['d3', 'w1', 'm1', 'm3', 'm6', 'y1', 'y5'];
     if ($.inArray(selector, charts) < 0) { return False; }
 
     var s = selector;

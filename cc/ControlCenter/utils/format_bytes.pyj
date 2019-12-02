@@ -1,0 +1,48 @@
+def format_bytes(pBytes, pCalc = 'iec', pUnits = 'si', separator = None):
+
+    # Thank's to 'Brennan T' on
+    # http://stackoverflow.com/questions/15900485/correct-way-to-convert-size-in-bytes-to-kb-mb-gb-in-javascript
+
+    if separator is None:
+        separator = ' '
+
+    # Handle some special cases
+    if pBytes == 0:
+        return '0 Bytes'
+    if pBytes == 1:
+        return '1 Byte'
+    if pBytes == -1:
+        return '-1 Byte'
+
+    bytes = Math.abs(pBytes)
+
+    # Attention: arm calculates according IEC, yet displays 'si' - Abbreviations
+    # Therefore we have to enable this wrong behaviour here!
+
+    # IEC units use 2^10 as an order of magnitude
+    orderOfMagnitude = Math.pow(2, 10)
+    if pCalc is not None and pCalc.toLowerCase() == 'si':
+        #SI units use the Metric representation based on 10^3 as a order of magnitude
+        orderOfMagnitude = Math.pow(10, 3)
+
+    # IEC units use 2^10 as an order of magnitude
+    abbreviations = ['Bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']
+    if pUnits is not None and pUnits.toLowerCase() == 'si':
+        # SI units use the Metric representation based on 10^3 as a order of magnitude
+        abbreviations = ['Bytes', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
+
+    i = Math.floor(Math.log(bytes) / Math.log(orderOfMagnitude))
+    result = bytes / Math.pow(orderOfMagnitude, i)
+
+    # This will get the sign right
+    if pBytes < 0:
+        result *= -1
+
+    # This bit here is purely for show. it drops the precision on numbers greater than 100 before the units.
+    # it also always shows the full number of bytes if bytes is the unit.
+    if result >= 99.995 or i == 0:
+        if result.toFixed(0) == 1:
+            return '1 Byte'
+        return result.toFixed(0) + separator + abbreviations[i]
+
+    return result.toFixed(2) + separator + abbreviations[i]

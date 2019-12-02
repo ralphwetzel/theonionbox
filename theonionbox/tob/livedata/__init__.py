@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 from time import time
 from collections import deque
 # from math import floor
@@ -9,6 +8,11 @@ from tob.deviation import getTimer
 import logging
 from .recorder import Recorder
 from persistor import BandwidthPersistor
+
+from sqlite3 import Row, Connection
+from typing import Optional, List, Dict
+
+import math
 
 # class tob_list(list):
 #
@@ -24,6 +28,7 @@ intervals = {
     '4h': 60 * 60 * 4,  # 4 hours - to generate "1 month" graph
     'Ch': 60 * 60 * 12,  # 12 hours - to generate "3 month" graph - 'x0C' = 12
 }
+
 
 class Manager(object):
 
@@ -61,12 +66,12 @@ class Manager(object):
 
     persistor = None
 
-    def __init__(self, Persistor):
+    def __init__(self, persistor: BandwidthPersistor):
 
         log = logging.getLogger('theonionbox')
         log.debug('Creating LiveDataManager...')
 
-        self.persistor = Persistor
+        self.persistor = persistor
 
         # intervals = {
         #     # '1s': 1,         # 1 second
@@ -86,7 +91,7 @@ class Manager(object):
 
         # this is a generator to transform sqlite3.row in to pure dict.
         # at the same time, we reverse the order of the items for the resulting deque.
-        def row_to_dict(data):
+        def row_to_dict(data: List[Row]):
             try:
                 while 1:
                     row = data.pop()
@@ -111,7 +116,7 @@ class Manager(object):
                 continue
 
             # (Bandwidth)Persistor returns the items in exactly the format we need to feed them into the deque...
-            # ... yet the order is "newest first" -> "oldest last" and it's stuckerd into a sqlite3.Row
+            # ... yet the order is "newest first" -> "oldest last" and it's stucked into a sqlite3.Row
             # With the generator 'row_to_dict' we feed it into the deque in the correct form.
             init_data = self.persistor.get(interval=key, js_timestamp=time_stamp, limit=maxlen, connection=conn) or []
 
@@ -159,8 +164,9 @@ class Manager(object):
             # conn.commit()
             conn.close()
 
-    def record_bandwidth(self, time_stamp=None, bytes_read=0, bytes_written=0, compensate_deviation=True,
-                         connection=None):
+    def record_bandwidth(self, time_stamp: Optional[float] = None, bytes_read: Optional[int] = 0,
+                         bytes_written: Optional[int] = 0, compensate_deviation: Optional[bool] = True,
+                         connection: Optional[Connection] = None) -> Connection:
 
         # This returns the used (or generated) sqlite3.Connection object!
 
@@ -173,7 +179,9 @@ class Manager(object):
             time_stamp = timer.compensate(time_stamp)
 
         # Javascript timestamp
-        js_time_stamp = int(time_stamp*1000)                # ms for JS!
+        js_time_stamp = int(time_stamp * 1000)          # ms for JS!
+        # js_time_stamp = math.floor(time_stamp) * 1000   # ms for JS!
+        # print(time_stamp, js_time_stamp)
 
         new_lbwnz = bytes_read > 0 or bytes_written > 0     # True if there's data to be recorded
 
@@ -184,7 +192,7 @@ class Manager(object):
             self.bandwidth_total_read += bytes_read
             self.bandwidth_total_written += bytes_written
 
-            # bytes_read = download = < 0
+            # bytes_read == download => < 0
             bytes_read = -int(bytes_read)
             bytes_written = int(bytes_written)
 
@@ -251,7 +259,8 @@ class Manager(object):
         self.last_bandwidth_not_zero = new_lbwnz
         return conn
 
-    def _persist_and_append(self, interval, js_timestamp, slot, read=0, write=0, connection=None):
+    def _persist_and_append(self, interval: str, js_timestamp: int, slot: int,
+                            read: Optional[int] = 0, write: Optional[int] = 0, connection: Optional[Connection] = None):
 
         # print("interval: {} - slot: {} - read: {} - write: {}".format(interval, slot, read, write))
 
@@ -262,7 +271,6 @@ class Manager(object):
                                           'r': read,
                                           'w': write,
                                           })
-
 
     # def get_data_hd(self, limit=None):
     #     # return HD Data; limit is in seconds
@@ -306,11 +314,14 @@ class Manager(object):
     #         self.ld_Lock.release()
     #         return retval
 
-    def get_data(self, interval='1s', since_timestamp=None, limit=None):
+    def get_data(self, interval: Optional[str] = '1s',
+                 since_timestamp: Optional[float] = None, limit: Optional[int] = None) -> List[Dict[str, int]]:
 
         # This could raise a KeyError, if wrong 'interval' used.
         # This is done by intension!
         bw = self.bandwidths[interval]
+
+        # print('len(bw): {}'.format(len(bw)))
 
         self.live_Lock.acquire()
         if since_timestamp is None:
@@ -351,14 +362,14 @@ class Manager(object):
     #     self.bandwidth_total_count = 0
     #     return
 
-    def set_traffic(self, traffic_read, traffic_written):
+    def set_traffic(self, traffic_read: int, traffic_written: int):
 
         self.bandwidth_total_read = traffic_read
         self.bandwidth_total_written = traffic_written
 
-    def get_persistor_path(self):
-        if self.persistor is not None:
-            return self.persistor
+    # def get_persistor_path(self):
+    #     if self.persistor is not None:
+    #         return self.persistor
 
     def shutdown(self):
 
@@ -368,8 +379,8 @@ class Manager(object):
             for key in self.recorders:
                 self.persistor.persist(interval=key,
                                        timestamp=self.recorders[key].get_slot_start(),
-                                       read=self.recorders[key]['read'],
-                                       write=self.recorders[key]['write'],
+                                       read=self.recorders[key].get('read'),
+                                       write=self.recorders[key].get('write'),
                                        connection=conn
                                        )
             conn.commit()

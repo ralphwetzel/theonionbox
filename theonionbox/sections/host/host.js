@@ -22,7 +22,7 @@ general_handler.prototype.process = function(data, timedelta) {
         % end
         mem_data.append(timestamp, data[data_point].mp);
 
-        % if host['temp']:
+        % if host.temperature:
             if (data[data_point].t) {
                 temp_data.append(timestamp, data[data_point].t);
             }
@@ -32,7 +32,7 @@ general_handler.prototype.process = function(data, timedelta) {
     general_plyr_cpu.append(data);
     general_plyr_mem.append(data);
 
-    % if host['temp']:
+    % if host.temperature:
         general_plyr_temp.append(data);
     % end
 
@@ -137,7 +137,7 @@ var temp_style = {
 var mem_data = new TimeSeries();
 var chart_mem = new boxChart(proc_style);
 
-% if host['temp']:
+% if host.temperature:
     var temp_data = new TimeSeries();
     var chart_temp = new boxChart(temp_style);
 % end
@@ -180,7 +180,7 @@ $(document).ready(function() {
         chart_mem.stop();
     });
 
-    % if host['temp']:
+    % if host.temperature:
         temp_data.append(client_time - 5000, 0);
         canvas = document.getElementById('temp');
         chart_temp.addTimeSeries(temp_data, {lineWidth:1,strokeStyle:'rgb(255, 0, 0)',fillStyle:'rgba(255, 0, 0, 0.15)'});

@@ -1,16 +1,13 @@
-from __future__ import absolute_import
+from typing import Optional, Dict
 from tob.deviation import getTimer
 from math import floor
 from time import time
 
 
 class Recorder(object):
-    interval = 1
-    compensate = None
-    reference_slot = time()
-    basket = None
 
-    def __init__(self, interval=1, compensate=True, timestamp=time(), **kwargs):
+    def __init__(self, interval: Optional[int] = 1, compensate: Optional[bool] = True,
+                 timestamp: Optional[float] = time(), **kwargs):
 
         assert (interval > 0)
 
@@ -25,7 +22,7 @@ class Recorder(object):
         for key in kwargs:
             self.basket[key] = kwargs[key]
 
-    def record(self, timestamp=time(), **kwargs):
+    def record(self, timestamp: Optional[float] = time(), **kwargs) -> Dict[str, int]:
 
         current_slot = self._calc_slot(timestamp)
 
@@ -50,16 +47,16 @@ class Recorder(object):
 
         return out
 
-    def get_interval(self):
+    def get_interval(self) -> int:
         return self.interval
 
-    def get_slot_start(self):
+    def get_slot_start(self) -> int:
         return int(self.reference_slot * self.interval)
 
-    def get(self, key):
+    def get(self, key: str) -> int:
         if key is 'timestamp':
             return self.reference_slot * self.interval
         return self.basket[key]
 
-    def _calc_slot(self, timestamp):
+    def _calc_slot(self, timestamp: float) -> int:
         return int(floor(self.compensate(timestamp) / self.interval))

@@ -9,7 +9,7 @@ stats_handler.prototype.prepare = function() {
 };
 
 stats_handler.prototype.nav = function() {
-    return 'Statistics';
+    return 'Local Status';
 };
 
 $(document).ready(function() {

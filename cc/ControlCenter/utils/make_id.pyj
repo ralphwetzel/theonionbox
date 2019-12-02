@@ -1,0 +1,12 @@
+def make_id(id, tag=None, jquery=True):
+
+    mid = "tobcc." + id
+    if tag is not None:
+        mid += "." + tag
+
+    if jquery:
+        # https://learn.jquery.com/using-jquery-core/faq/how-do-i-select-an-element-by-an-id-that-has-characters-used-in-css-notation/
+        # attention: '\\' has to be escaped @ $1 => '\\\\' @ v'' (Literal JavaScript)
+        return "#" + v'mid.replace( /(:|\.|\[|\]|,|=|@)/g, "\\\\$1" )'
+
+    return mid

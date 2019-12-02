@@ -1,11 +1,5 @@
 ## Configuration File for TheOnionBox
-## Latest Modification: 20170618 while preparing v4.0
-
-
-[config]
-## v4.0 will only support version = 2
-protocol = 2
-
+## Latest Modification: 20190811 while preparing v5.0 - which then became 19.1
 
 [TheOnionBox]
 ## Address of your Onion Box:
@@ -48,8 +42,6 @@ protocol = 2
 ## DON'T distribute this combined private/public key to clients!
 ## (see http://www.piware.de/2011/01/creating-an-https-server-in-python/#comment-11380)
 ##
-## ssl = yes    # deprecated 20170218
-## Just set ssl_certificate & ssl_key to enable ssl mode!
 ## The file that holds the Certificate!
 # ssl_certificate = server.pem
 ## The file that holds the Key!
@@ -92,12 +84,18 @@ protocol = 2
 # port = 9051
 ## Default for a TorBrowser
 # port = 9151
-## You may use 'default' (port = default) to test for 9051 (relay default) and 9151 (browser default)
-# port = default
-## Note: This defaults to port = default if not defined!
+## You may use 'auto' (port = auto) to test for 9051 (relay default) and 9151 (browser default)
+# port = auto
+## Note: This defaults to port = auto if not defined!
 
 ## ControlSocket of this Tor instance
 # socket = /var/run/tor/control
+
+## Authorization Cookie - necessary to access a Tor node via a hidden service utilizing HiddenServiceAuthorizeClient
+# auth_cookie = YourCookieHereLength22
+## There's no default value for this option.
+
+# TODO 20190811: [Tor] options below this line are deprecated!
 
 ## Timeout when connecting to Tor.
 ## Usually the connection should be established very quick;
@@ -128,117 +126,48 @@ protocol = 2
 
 
 [TorProxy]
+## These parameters configure a connection to a Tor node acting as SocksProxy into the Tor network.
 ## Note: Operation via a proxy given by a unix domain socket is (as of 04/2017) not supported!
 
 ## If you establish connection cookies for hosts to be controlled via the control center, there is the need
 ## to verify that those cookies are defined. To perform the verification, we need valid control port
 ## settings of the node acting as proxy:
+
 ## How shall we establish the connection to the node?
 ## => via a ControlSocket (define additionally 'socket' parameter):
 # control = socket
 ## => via a ControlPort (define additionally 'port' parameter):
 # control = port
-## You may use control = default to operate with [Tor]control
-## Note: This defaults to control = default if not defined!
+## You may use control = tor to operate with the node configured in [Tor]
+# control = tor
+## Note: This defaults to control = tor if not defined!
 
 ## Address of the proxy to use
 ## Do NOT use 'localhost' but 127.0.0.1 to connect locally
-## You may use 'default' (host = default) to use [Tor]host
-# host = default
+## You may use 'tor' (host = tor) to use [Tor]host
+# host = tor
 # host = 127.0.0.1
-## Note: This defaults to host = default if not defined!
 
-## Port for the proxy
+## SocksPort of the proxy
 ## Default for a Relay (or Bridge)
 # proxy = 9050
 ## Default for a Tor Browser
 # proxy = 9150
-## You may use 'default' (proxy = default) to test for 9050 (relay default) and 9150 (browser default)
-# proxy = default
-## Note: This defaults to proxy = default if not defined!
+## You may use 'auto' (proxy = auto) to test for 9050 (relay default) and 9150 (browser default)
+# proxy = auto
+## Note: This defaults to proxy = auto if not defined!
 
 ## ControlPort of the proxy Tor node
 ## Default for a Relay (or Bridge)
 # port = 9051
 ## Default for a Tor Browser
 # port = 9151
-## You may use 'default' (port = default) to test for 9051 (relay default) and 9151 (browser default)
-# port = default
-## Note: This defaults to port = default if not defined!
+## You may use 'auto' (port = auto) to test for 9051 (relay default) and 9151 (browser default)
+# port = auto
+## You may use 'tor' (port = tor) to use [Tor]port
+# port = tor
 
 ## ControlSocket of the proxy Tor node
 # socket = /var/run/tor/control
-## You may use 'default' (socket = default) to use [Tor]socket
-# socket = default
-## Note: This defaults to socket = default if not defined!
-
-
-#####
-## Those are the Tor nodes to be controlled with the control center
-## Note: You must not name any of the following sections 'config', 'TheOnionBox', 'Tor' or 'TorProxy'.
-
-
-## Define one section per node:
-# [myControlledNode]
-
-## Alternatively: Beginning the section identifier with '#' indicates a nickname;
-## if you later omit the 'nick' parameter, the nickname will be derived from the section identifier.
-# [#myControlledNode]
-## If you intend to define several ways to connect to this node,
-## add whatever you like after a ':' to distinguish the sections:
-# [#myControlledNode:2]
-
-## Alternatively: You can use the fingerprint (with preceding '$') as section identifier.
-## Ensure a length of 41 characters: '$' + fingerprint[40];
-## if you later omit the 'fp' parameter, the fingerprint will be derived from the section identifier.
-# [$5COOL5C30AXX4B3DE460815323967087ZZ53D947]
-## If you intend to define several ways to connect to this node,
-## add whatever you like after a ':' to distinguish the sections:
-# [$5COOL5C30AXX4B3DE460815323967087ZZ53D947:2]
-
-
-## How shall we establish the connection to this node?
-## => via a ControlSocket (define additionally 'socket' parameter):
-# control = socket
-## => via a ControlPort (define additionally 'host' & 'port' parameter):
-# control = port
-## => via a Proxy (define a proxy via the [Proxy] section and set 'host' to an address reachable through this proxy):
-# control = proxy
-## Note: There is no default setting. If not defined, this section (and thus the node) will be ignored.
-
-## IP Address of this Tor node
-# host = 127.0.0.1
-## You may as well define an onion or http address
-# host = takeonionaddress.onion
-## Note: There is no default setting.
-
-## ControlPort of this Tor node
-## Default for a Relay (or Bridge)
-# port = 9051
-## Note: There is no default setting.
-
-## This is only relevant for very rare setups - yet if you like, you may use it!
-## ControlSocket of this Tor node
-# socket = /var/run/tor/control
-## Note: There is no default setting.
-
-## Hidden Service connections may be secured by definition of a authorization cookie.
-## To operate via those connections, you may define this cookie here.
-## For further details refer to 'HiddenServiceAuthorizeClient' on https://www.torproject.org/docs/tor-manual.html
-# cookie = xuseyourcookieherexTOB
-## The Box will ensure that the cookie is registered before establishing the connection.
-## Note: There is no default setting.
-
-## The nickname of this node
-# nick = myControlledNode
-## Defining a nickname here overrides a nickname defined as the name of the section.
-## Note: The Box is able to retrieve the nickname itself,
-##       yet defining nickname (and fingerprint) parameters saves onionoo queries.
-## Note: There is no default setting.
-
-## The fingerprint of this node
-# fp = $5COOL5C30AXX4B3DE460815323967087ZZ53D947
-## Defining a fingerprint here overrides a fingerprint defined as the name of the section.
-## Note: The Box is able to retrieve the fingerprint itself,
-##       yet defining fingerprint (and nickname) parameters saves onionoo queries.
-## Note: There is no default setting.
+## You may use 'tor' (socket = tor) to use [Tor]socket
+# socket = tor

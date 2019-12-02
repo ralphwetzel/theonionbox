@@ -10,6 +10,7 @@
     from tob.template_tools import *
 
     login = get('box.js_login', False)
+    token = get('token', 'ThisIsAnError')
 %>
 
 % if login is False:
@@ -55,12 +56,21 @@
         var process_data = function(json_text) {
 
             pull_error_counter = 0;
-            var data = JSON.parse(json_text);
+            try {
+                var data = JSON.parse(json_text);
+            }
+            catch(err) {
+                console.log(json_text);
+            }
 
             var timedelta = 0;
             if (data && data.tick)
             {
                 timedelta = new Date().getTime() - data.tick;
+            }
+
+            if (data && data.token) {
+                session_token_set(data.token)
             }
 
             // console.log(data)
@@ -76,7 +86,7 @@
         var pull_data = function () {
 
             this.stop_flag = false;
-            var action = '';
+            var action = 'token=' + session_token_get();
 
             for (var name in this.handlers) {
                 var param = this.handlers[name].prepare();
@@ -411,11 +421,11 @@
     var navBarButtonCount = 0;
     var navBarButtonTargets = ['top'];
     function addNavBarButton(text, target) {
-        var btn = '<li style="font-size: 25px;"';
+        var btn = '<li style="font-size: 25px;" class="nav-item"';
         if (navBarButtonCount < 1) {
             // btn += ' class="active"';
         }
-        btn += '><a href="#' + target + '">' + text + '</a></li>';
+        btn += '><a href="#' + target + '" class="nav-link">' + text + '</a></li>';
 
         $("#box_navbar_buttons").append(btn);
         navBarButtonCount += 1;
@@ -427,9 +437,9 @@
         var current_href;
         var current_btn;
 
-        if (event.which == 37 || event.which == 39) {
+        if (event.which === 37 || event.which === 39) {
             try {
-                current_href = $('#box_navbar_buttons li.active a').prop('href').split('#');
+                current_href = $('#box_navbar_buttons li a.active').prop('href').split('#');
                 current_btn = current_href[current_href.length - 1];
             }
             catch(err) {
@@ -437,25 +447,47 @@
             }
 
             for (var i = 0; i < navBarButtonTargets.length; i++) {
-                if (current_btn == navBarButtonTargets[i]) {
+                if (current_btn === navBarButtonTargets[i]) {
                     break;
                 }
             }
 
             // left
-            if (event.which == 37) {
+            if (event.which === 37) {
                 if (i > 0) {
                     i -= 1;
                 }
             }
             // right
-            else if (event.which == 39) {
+            else if (event.which === 39) {
                 if (i < navBarButtonTargets.length - 1) {
                     i += 1;
                 }
             }
 
-            location.href = '#' + navBarButtonTargets[i];
+            // There are situations - when e.g. the last but one section is too small - that the
+            // scrollspy jumps over this section highlighting the last section.
+            // This is ok when going down (right key) yet prevents us from going up again (left key).
+            // This is a well known behaviour of scrollspy, yet annoying and needs to be fixed:
+
+            var current_st = $(document).scrollTop();
+
+            do {
+                // goto new section
+                location.href = '#' + navBarButtonTargets[i];
+                // the new scroll pos (there should be a change if 'goto' was successful)
+                var new_st = $(document).scrollTop();
+
+                if (current_btn === navBarButtonTargets[navBarButtonTargets.length - 1] && // at the last section
+                    event.which === 37 &&   // tried to go up
+                    new_st === current_st)  // no scroll
+                {
+                    // try to go up another section!
+                    i -=1;
+                } else {
+                    break;
+                }
+            } while ( i > 0 )
         }
     });
 
@@ -633,6 +665,24 @@ var oobw_style = {
 
     chart_style.m3 = {
         millisPerPixel: 1000 * 43200 / 4,
+        grid: {
+            millisPerLine: 0,
+            timeDividers: 'monthly'
+        },
+        timestampFormatter: function(date) {
+            return pad2(date.getDate()) + "." + pad2(date.getMonth() + 1) + "." ;
+        },
+        yMaxFormatter: function(data, precision) {
+            if (!precision) {
+                precision = 2;
+            }
+            return (prettyNumber(data, '', 'si') + '/s');
+        },
+        yMinFormatter: function() { return ""; }
+    };
+
+    chart_style.m6 = {
+        millisPerPixel: 1000 * 86400 / 4,
         grid: {
             millisPerLine: 0,
             timeDividers: 'monthly'
@@ -855,12 +905,22 @@ if (typeof log !== 'function') {
 
 
 
+    var session_token = '{{token}}';
+
+    function session_token_get() {
+        return session_token;
+    }
+
+    function session_token_set(token) {
+        session_token = token;
+    }
 
 
     // Final step of the script ... to launch the site logic!
     //$(window).on('load', function() {
     $(document).ready(function() {
-        log("Client Script Operation launched.");
+        // log("Client Script Operation launched.");
+
         boxData.start();
     });
 

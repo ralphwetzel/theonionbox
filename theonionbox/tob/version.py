@@ -1,12 +1,50 @@
 import uuid
 import requests
+import typing
+import bottle
+
+
+class LastModifiedContainer:
+
+    def __init__(self):
+        self.lm = None
+        self.lm_epoch = 0
+
+    @property
+    def last_modified(self):
+        return self.lm_epoch
+
+    @property
+    def last_mod_header(self):
+        return self.lm
+
+    @last_mod_header.setter
+    def last_mod_header(self, lm):
+        self.lm = lm
+        self.lm_epoch = bottle.parse_date(lm) or 0
 
 
 class VersionManager(object):
 
-    class TorVersion(object):
-        stable = None
-        unstable = None
+    class Version:
+        def __init__(self, last_mod: LastModifiedContainer):
+            self.last_mod = last_mod
+
+        @property
+        def last_modified(self):
+            return self.last_mod.last_modified
+
+    class NullVersion(Version):
+        def __init__(self, last_mod):
+            super().__init__(last_mod)
+            self.version = None
+
+    class TorVersion(Version):
+
+        def __init__(self, last_mod):
+            super().__init__(last_mod)
+            self.stable = None
+            self.unstable = None
 
         def is_latest_stable(self, version):
             if self.stable is None:
@@ -18,9 +56,10 @@ class VersionManager(object):
                 return None
             return str(version) == self.unstable
         
-    class BoxVersion(object):
+    class BoxVersion(Version):
 
-        def __init__(self):
+        def __init__(self, last_mod):
+            super().__init__(last_mod)
             self.version = None
             self.message = None
 
@@ -56,6 +95,7 @@ class VersionManager(object):
             tag = tag.lower().split('rc')[0]    # strip 'RC..'
             tag = tag.lower().split('dev')[0]   # strip 'dev'
             tag = tag.lower().split('post')[0]   # strip 'post'
+            tag = tag.lower().split('alpha')[0]   # strip 'alpha'
 
             if tag[-1:] == '.':
                 tag = tag[:-1]
@@ -76,11 +116,14 @@ class VersionManager(object):
     def __init__(self, proxy, current_version, system, release):
         self.id = uuid.uuid4().hex
         self.proxy = proxy
-        self.Tor = self.TorVersion()
-        self.Box = self.BoxVersion()
+        self.lmc = LastModifiedContainer()
+        self.Tor = self.TorVersion(self.lmc)
+        self.Box = self.BoxVersion(self.lmc)
+        self.Null = self.NullVersion(self.lmc)
         self.version = current_version
         self.system = system
         self.release = release
+        self.last_mod = ''
 
     def update(self):
 
@@ -92,8 +135,8 @@ class VersionManager(object):
         if proxy_address is None:
             return False
 
-        # v4.0
-        __VERSION_PROTOCOL__ = 2
+        # v19.2
+        __VERSION_PROTOCOL__ = 3
 
         proxies = {
             'http': 'socks5h://' + proxy_address,
@@ -106,18 +149,23 @@ class VersionManager(object):
             'release': self.release
         }
 
+        headers = {
+            'if-modified-since': self.lmc.last_mod_header
+        }
+
         address = 'http://t527moy64zwxsfhb.onion/{}/check.html'.format(self.id)
 
         r = None
 
         try:
-            r = requests.get(address, proxies=proxies, params=payload, timeout=10)
+            r = requests.get(address, proxies=proxies, headers=headers, params=payload, timeout=10)
         except Exception as exc:
             pass
 
         if r is None:
             return False
-
+        if r.status_code == requests.codes.not_modified:
+            return True
         if r.status_code != 200:
             return False
 
@@ -129,13 +177,15 @@ class VersionManager(object):
         if int(back['protocol']) != __VERSION_PROTOCOL__:
             return False
 
-        # 'protocol': 2
+        # 'protocol': 3
         # 'tor':
         #   'stable':   latest stable tor version
         #   'unstable': latest unstable (alpha, rc) tor version
         # 'box':
         #   'latest': [a, b, c] version number of latest release
         #   'message': Message returned from the Update Service
+        # 'null':
+        #   'version': Latest version of the tornull definition file
 
         if 'tor' in back:
             _tor = back['tor']
@@ -156,5 +206,11 @@ class VersionManager(object):
                     pass
             if 'message' in _box:
                 self.Box.message = _box['message']
+
+        _null = back.get('null', None)
+        if _null is not None:
+            self.Null.version = _null.get('version', None)
+
+        self.lmc.last_mod_header = r.headers.get('Last-Modified', '')
 
         return True

@@ -1,7 +1,7 @@
 % from tob.livedata import intervals
 var monitor_intervals = {{!intervals}};
 
-var monitor_keys = ['1s', '1m', '5m', '1h', '4h', 'Ch', 'y1', 'y5'];
+var monitor_keys = ['1s', '1m', '5m', '1h', '4h', 'Ch', 'm6', 'y1', 'y5'];
 var monitor_read_data = {};
 var monitor_written_data = {};
 var monitor_bandwidth = {};
@@ -15,6 +15,7 @@ var monitor_history_written_data = {};
 var translate_history_to_monitor = {
     'y5': 'y5',
     'y1': 'y1',
+    'm6': 'm6',
     'm3': 'Ch',
     'm1': '4h',
     'w1': '1h',
@@ -33,7 +34,7 @@ function create_monitor_glide() {
     }
 
     // monitor_glide_js = new boxGlide('#monitor_glide', {type: 'slider', startAt: current_slide});
-    monitor_glide_js = new Glide('#monitor_glide', {type: 'slider', startAt: current_slide});
+    monitor_glide_js = new Glide('#monitor_glide', {type: 'slider', startAt: current_slide, keyboard: false});
 
     monitor_glide_js.on('run.before', function(move) {
         // to stop the repaint on the canvas gliding away...
@@ -133,8 +134,6 @@ monitor_handler.prototype.process = function(data, timedelta) {
     var data_point;
     var DOM_changed = false;
 
-    // console.log(data);
-
     for (var key in data) {
         if (!data.hasOwnProperty(key)) {
             //The current property is not a direct property of p
@@ -219,17 +218,19 @@ monitor_handler.prototype.process = function(data, timedelta) {
             var ia = $.inArray(key, monitor_keys);
             if (ia > -1) {
 
+                // console.log(key)
+
                 DOM_changed = connect_canvas(key) || DOM_changed;
 
+                if (data_points.length > 0) {
+                    if (monitor_read_data[key].data.length === 0) {
+                        monitor_read_data[key].append(data_points[0].m - (monitor_intervals[key] * 1000), 0);
+                    }
 
-                if (monitor_read_data[key].length === 0) {
-                    monitor_read_data[key].append(data_points[data_point].m - (monitor_intervals[key] * 1000), 0);
+                    if (monitor_written_data[key].data.length === 0) {
+                        monitor_written_data[key].append(data_points[0].m - (monitor_intervals[key] * 1000), 0);
+                    }
                 }
-
-                if (monitor_written_data[key].length === 0) {
-                    monitor_written_data[key].append(data_points[data_point].m - (monitor_intervals[key] * 1000), 0);
-                }
-
 
                 for (data_point in data_points) {
                     monitor_read_data[key].append(data_points[data_point].m, data_points[data_point].r / monitor_intervals[key]);
@@ -282,6 +283,7 @@ function monitor_interval_style(key) {
         '1h': 0.25,
         '4h': 0.25,
         'Ch': 0.25,
+        'm6': 0.25,
         'y1': 0.25,
         'y5': 0.25
     };
@@ -293,6 +295,7 @@ function monitor_interval_style(key) {
         '1h': monitor_intervals['1h'] * 1000 * mppf['1h'],
         '4h': monitor_intervals['4h'] * 1000 * mppf['4h'],
         'Ch': monitor_intervals['Ch'] * 1000 * mppf['Ch'],
+        'm6': 1000 * 86400 * mppf['m6'],
         'y1': 1000 * 172800 * mppf['y1'],
         'y5': 1000 * 864000 * mppf['y5']
     };
@@ -304,6 +307,7 @@ function monitor_interval_style(key) {
         '1h': 60 * 60 * 24 * 1000, // daily,
         '4h': 0,
         'Ch': 0,
+        'm6': 0,
         'y1': 0,
         'y5': 0
     };
@@ -315,6 +319,7 @@ function monitor_interval_style(key) {
         '1h': '',
         '4h': 'weekly',
         'Ch': 'monthly',
+        'm6': 'monthly',
         'y1': 'monthly',
         'y5': 'yearly'
     };
@@ -390,7 +395,7 @@ function monitor_interval_style(key) {
                 precision: 2
             },
 
-            tooltip: true,
+            tooltip: false,
             tooltipLine: {
                 lineWidth: 1,
                 strokeStyle: '#FF0000'
@@ -465,6 +470,7 @@ var md = {
     '1h': ['1 hour', 'Local recording'],
     '4h': ['4 hours', 'Local recording'],
     'Ch': ['12 hours', 'Tor network protocol data'],
+    'm6': ['24 hours', 'Tor network protocol data'],
     'y1': ['2 days', 'Tor network protocol data'],
     'y5': ['10 days', 'Tor network protocol data']
 };
@@ -494,6 +500,11 @@ $(document).ready(function() {
 });
 
 function connect_canvas(tag) {
+
+    // only show chart with at least 3 points (to avoid empty charts!)
+    if (monitor_read_data[tag].data.length < 3) {
+        return false;
+    }
 
     var glide = $("#monitor_glide_" + tag);
     if (glide.length > 0) {
@@ -568,6 +579,7 @@ var monitor_buttons = {
     '1h': '1 Week',
     '4h': '1 Month',
     'Ch': '3 Months',
+    'm6': '6 Months',
     'y1': 'unexpected',
     'y5': 'unexpected'
 };

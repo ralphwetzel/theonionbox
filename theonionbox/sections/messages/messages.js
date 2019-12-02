@@ -5,6 +5,8 @@
 var msgStatus;
 var messages_player;
 
+var last_message;
+
 function msg_handler() {}
 msg_handler.prototype = new DataHandler();
 msg_handler.prototype.process = function(data, timedelta) {
@@ -30,6 +32,23 @@ msg_handler.prototype.prepare = function() {
     return;
 };
 
+function msg_status_handler() {}
+msg_status_handler.prototype = new DataHandler();
+msg_status_handler.prototype.process = function(data, timedelta) {
+
+    for (var level in data) {
+        var status = data[level];
+        var btn = $(".message_selector[data-severity='" + level.toUpperCase() + "']");
+        if (status === true && btn.hasClass('active') === false) {
+            btn.addClass('active');
+        } else if (status === false && btn.hasClass('active') === true) {
+            btn.removeClass('active');
+        }
+        msgStatus.set(level, status);
+    }
+};
+
+
 $(document).ready(function() {
     addNavBarButton('Messages', 'messages');
 
@@ -46,11 +65,12 @@ $(document).ready(function() {
     % end
 
     boxData.addHandler('msg', new msg_handler());
+    boxData.addHandler('msg_status', new msg_status_handler());
 });
 
 function msg_play(data)
 {
-    log(data.m, data.s, data.l, data.t);
+    log(data.m, data.s, data.l, data.t, data.c);
 }
 
 $(".message_selector").on('click', function () {
@@ -122,12 +142,12 @@ boxLogSelector.prototype.json = function(if_changed) {
     return retval;
 };
 
-function log(message, timestamp, runlevel, tag) {
+function log(message, timestamp, runlevel, tag, times) {
     var cnsle = $('#msg');
-    cnsle.trigger('msg:log', [message, timestamp, runlevel, tag]);
+    cnsle.trigger('msg:log', [message, timestamp, runlevel, tag, times]);
 }
 
-$('#msg').on('msg:log', function (event, message, timestamp, runlevel, tag) {
+$('#msg').on('msg:log', function (event, message, timestamp, runlevel, tag, times) {
 
     var runlevel_translate = {
         'D': 'DEBUG',
@@ -164,13 +184,34 @@ $('#msg').on('msg:log', function (event, message, timestamp, runlevel, tag) {
         }
     }
 
+    if (!times) {
+        times = 0;
+    }
+
     var runlevel_display = runlevel;
+
+    if (last_message) {
+        if (last_message.rl === runlevel && last_message.message === message) {
+            $('#log_data').find('tr:first').remove();
+            times += last_message.times
+        }
+    }
 
     var log_msg = "<tr class='%s'><td class='box_Log_runlevel'>[%s]</td>".$(runlevel, runlevel_display);
     log_msg += "<td nowrap class='box_Log_stamp'>" + format_time(timestamp) + "</td>";
-    log_msg += '<td>' + message + '</td></tr>';
+    log_msg += '<td>' + message;
+    if (times > 1) {
+        log_msg += ' (' + times + ' times)';
+    }
+    log_msg += '</td></tr>';
 
     $('#log_data').prepend(log_msg);
+
+    last_message = {
+        rl: runlevel,
+        message: message,
+        times: times
+    }
 
 });
 

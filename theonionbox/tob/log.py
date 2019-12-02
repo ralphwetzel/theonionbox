@@ -1,4 +1,5 @@
-from __future__ import absolute_import
+from typing import Dict
+# from __future__ import absolute_import
 from time import time, strftime, mktime, localtime
 from collections import deque
 import uuid
@@ -9,7 +10,8 @@ import sys
 from threading import RLock
 from stem import ProtocolError
 
-from .deviation import getTimer
+from tob.deviation import getTimer
+import os.path
 
 normalize_level = {'DEBUG': 'DEBUG',
                    'INFO': 'INFO',
@@ -179,6 +181,13 @@ class LoggingManager(object):
             except ValueError:
                 return False
 
+        @property
+        def status(self) -> Dict[str, bool]:
+            status = {}
+            for level, sessions in self.sessions_for_level.items():
+                status[level] = len(sessions) > 0
+            return status
+
     class _EventHandler(logging.Handler):
 
         # Custom Handler with integrated Filter according to Tor's Event system
@@ -192,14 +201,10 @@ class LoggingManager(object):
         # Flag to decide if the buffer should be cleared when flush() is called
         clear_at_flush = True
 
-        # The Lock to guard the buffer
-        buffer_lock = None
-
         def __init__(self, capacity=400, clear_at_flush=True):
 
             logging.Handler.__init__(self)
             self.buffer = deque(maxlen=capacity)
-            self.buffer_lock = RLock()
 
             self.levels = {}
 
@@ -209,6 +214,7 @@ class LoggingManager(object):
                 self.addFilter(FilterCallback(self._filter))
 
             self.clear_at_flush = clear_at_flush
+            self.createLock()
 
         def switch(self, level, status=True):
             # set the information for filtering
@@ -221,39 +227,49 @@ class LoggingManager(object):
             return self.levels[level] if level in self.levels else False
 
         def emit(self, record):
-            self.buffer_lock.acquire()
+            self.acquire()
             self.buffer.append(record)
-            self.buffer_lock.release()
+            self.release()
 
         def flush(self, limit=None, encode=None):
 
+            # this function cumulates same messages...
+
             retval = []
-            self.buffer_lock.acquire()
+            self.acquire()
+
+            last = None
 
             for record in self.buffer:
-                try:
-                    msg = str(record.msg).strip()
-                    if encode is not None:
-                        msg = encode(msg)
 
-                    evnt = {'s': record.source_time,
-                            'l': record.levelname[0],
-                            'm': msg,
-                            't': record.source[0]}
-                    retval.append(evnt)
-                except:
-                    pass
+                msg = str(record.msg).strip()
+
+                if last is not None:
+                    if last['m'] == msg:
+                        last['c'] += 1
+                        continue
+                    retval.append(last)
+
+                last = {'s': record.source_time,
+                        'l': record.levelname[0],
+                        'm': msg,
+                        't': record.source[0],
+                        'c': 1
+                        }
+
+            if last is not None:
+                retval.append(last)
 
             if self.clear_at_flush:
                     self.buffer.clear()
 
-            self.buffer_lock.release()
+            self.release()
             return retval
 
         def flush_to_target(self, target, limit=None):
 
             count = 0
-            self.buffer_lock.acquire()
+            self.acquire()
             for msg in self.buffer:
                 target.emit(msg)
                 count += 1
@@ -263,7 +279,11 @@ class LoggingManager(object):
             if self.clear_at_flush:
                 self.buffer.clear()
 
-            self.buffer_lock.release()
+            self.release()
+
+        @property
+        def status(self) -> Dict[str, bool]:
+            return self.levels
 
     tor = None
     logger_name = None   # name of the logger of this node
@@ -284,7 +304,7 @@ class LoggingManager(object):
               # 'BOX': True,
               }
 
-    def __init__(self, controller, notice=True, warn=True, err=True):
+    def __init__(self, controller=None, notice=True, warn=True, err=True):
 
         lgr = logging.getLogger('theonionbox')  # logging messages back to the box
 
@@ -299,7 +319,9 @@ class LoggingManager(object):
         self.monitor = self._EventSwitchMonitor()
 
         # This is necessary to ensure a different object for each runlevel
-        torLog = logging.getLogger(self.logger_name)
+        torLog = logging.getLogger(self.logger_name)    # created with level 'WARNING'
+        torLog.setLevel('DEBUG')
+
         self.event_handlers = {'DEBUG': functools.partial(handle_tor_event, logger=torLog),
                                'INFO': functools.partial(handle_tor_event, logger=torLog),
                                'NOTICE': functools.partial(handle_tor_event, logger=torLog),
@@ -320,7 +342,10 @@ class LoggingManager(object):
     #         raise AttributeError('You may connect this manager to Tor only once!')
     #     self.tor = tor
 
-    def add_client(self, session_id, capacity=400, clear_at_flush=True):
+    def add_client(self, session_id, capacity=400, clear_at_flush=True, levels = None):
+
+        if levels is None:
+            levels = self.levels
 
         # check if this session_id already has a handler
         try:
@@ -335,8 +360,8 @@ class LoggingManager(object):
             logging.getLogger(self.logger_name).addHandler(mh)
 
         # switch on the default events
-        for level in self.levels:
-            self.switch(session_id, level, self.levels[level])
+        for level in levels:
+            self.switch(session_id, level, levels[level])
 
         # now fill it with the preserved messages
         if session_id is not self.self_id:
@@ -368,9 +393,6 @@ class LoggingManager(object):
 
     def switch(self, session_id, level, status=True):
 
-        if self.tor is None:
-            return False
-
         lgr = logging.getLogger('theonionbox')
 
         try:
@@ -393,36 +415,7 @@ class LoggingManager(object):
 
             # switch the monitor; if the monitor returns 'True'...
             if self.monitor.switch(session_id, level, status) is True:
-    
-                # check if we have an event_handler for this, then ...
-                if level in self.event_handlers:
-    
-                    # ... add or remove the event_listener
-                    if status is True:
-    
-                        # translate to Tor's events
-                        if level == 'WARNING':
-                            tor_level = 'WARN'
-                        elif level == 'ERROR':
-                            tor_level = 'ERR'
-                        else:
-                            tor_level = level
-
-                        lgr.debug(
-                            "Adding event_listener for Tor's runlevel '{}': {}".format(tor_level,
-                                                                                       self.event_handlers[level]))
-                        try:
-                            self.tor.add_event_listener(self.event_handlers[level], tor_level)
-                        except ProtocolError as pe:
-                            lgr.debug("Failed to add event_listener for runlevel '{}': {}".format(level, pe))
-
-                    if status is False:
-                        lgr.debug(
-                            "Removing event_listener for runlevel '{}': {}".format(level, self.event_handlers[level]))
-                        try:
-                            self.tor.remove_event_listener(self.event_handlers[level])
-                        except ProtocolError as pe:
-                            lgr.debug("Failed to remove event_listener for runlevel '{}': {}".format(level, pe))
+                self._switch(level, status)
 
         return True
 
@@ -451,14 +444,86 @@ class LoggingManager(object):
         # and return the stored messages!
         return mh.flush(encode=encode)
 
+    def get_status(self, session_id):
+        try:
+            # get the MessageHandler
+            mh = self.clients[session_id]
+        except KeyError:
+            return None
+
+        # and return the stored messages!
+        return mh.status
+
     def get_logger_name(self):
         return self.logger_name
+
+    @property
+    def logger(self):
+        return logging.getLogger(self.logger_name)
 
     def get_id(self):
         return self.self_id
 
+    def connect(self, controller):
+        self.tor = controller
+        for level, status in self.monitor.status.items():
+            self._switch(level, status)
 
+    def _switch(self, level, status):
 
+        if self.tor is None:
+            return
+
+        lgr = logging.getLogger('theonionbox')
+
+        # check if we have an event_handler for this, then ...
+        if level in self.event_handlers:
+
+            # ... add or remove the event_listener
+            if status is True:
+
+                # translate to Tor's events
+                if level == 'WARNING':
+                    tor_level = 'WARN'
+                elif level == 'ERROR':
+                    tor_level = 'ERR'
+                else:
+                    tor_level = level
+
+                lgr.debug(
+                    "Adding event_listener for Tor's runlevel '{}': {}".format(tor_level,
+                                                                               self.event_handlers[level]))
+                try:
+                    self.tor.add_event_listener(self.event_handlers[level], tor_level)
+                except ProtocolError as pe:
+                    lgr.debug("Failed to add event_listener for runlevel '{}': {}".format(level, pe))
+
+            if status is False:
+                lgr.debug(
+                    "Removing event_listener for runlevel '{}': {}".format(level, self.event_handlers[level]))
+                try:
+                    self.tor.remove_event_listener(self.event_handlers[level])
+                except ProtocolError as pe:
+                    lgr.debug("Failed to remove event_listener for runlevel '{}': {}".format(level, pe))
+
+    def notice(self, message):
+        self._log(message, 'NOTICE')
+
+    # We could add here trace, debug and others later ... if necessary
+
+    def _log(self, message, level):
+
+        # The Unpacker of the log messages expects a certain format
+        # ... thus we have to provide this here for standard messages.
+        timer = getTimer()
+        timestamp = timer.time()
+
+        extra = {
+            'source': 'box',
+            'source_time': int(timestamp * 1000)  # ms for JS!
+        }
+
+        self.logger.log(level_box_to_tor[level], msg=message, extra=extra)
 
 class ForwardHandler(MemoryHandler):
 
@@ -494,7 +559,8 @@ class ForwardHandler(MemoryHandler):
 # http://stackoverflow.com/questions/17931426/strip-newline-and-white-spaces-from-python-logger-messages
 class WhitespaceRemovingFormatter(logging.Formatter):
     def format(self, record):
-        record.msg = record.msg.strip()
+        # record.msg = record.msg.strip()
+        record.msg = record.getMessage().strip()
         return super(WhitespaceRemovingFormatter, self).format(record)
 
 
@@ -502,7 +568,7 @@ class WhitespaceRemovingFormatter(logging.Formatter):
 class ClientFormatter(logging.Formatter):
 
     def format(self, record):
-        msg = str(record.msg).strip()
+        msg = record.getMessage().strip()
         lvlname = record.levelname
 
         out_lvlname = lvlname
@@ -548,7 +614,7 @@ def colorize(msg, record):
         'INFO': '\033[94m',       # light blue
         'NOTICE': '',             # default
         'WARNING': '\033[91m',    # light red
-        'ERROR': '\033[93;1m'     # yellow (bold)
+        'ERROR': '\033[31;1m'     # yellow (bold)
     }
 
     level = record.levelname.upper()
@@ -585,7 +651,15 @@ def prepend_timestamp(msg, record):
 
 def prepend_generated_at(msg, record):
 
-    premsg = '{}[{}'.format(record.filename, record.lineno)
+    fn = record.filename
+    if fn in ['__init__.py']:
+        # displaying those filenames is not too supportive
+        # thus we add the directory.
+        d = os.path.dirname(record.pathname)
+        b = os.path.basename(d)
+        fn = '{}/{}'.format(b, fn)
+
+    premsg = '{}[{}'.format(fn, record.lineno)
     if record.funcName != '<module>':
         premsg += '|{}'.format(record.funcName)
     premsg += ']: '
@@ -598,7 +672,8 @@ class FileFormatter(logging.Formatter):
     def format(self, record):
 
         # to perform casting to string
-        msg = '{}'.format(record.msg)
+        # msg = '{}'.format(record.msg)
+        msg = record.getMessage()
 
         if msg is None or len(msg) < 1:
             return ""
@@ -631,7 +706,8 @@ class ConsoleFormatter(logging.Formatter):
     def format(self, record):
 
         # to perform casting to string
-        msg = '{}'.format(record.msg)
+        # msg = '{}'.format(record.msg)
+        msg = record.getMessage()
 
         if msg is None or len(msg) < 1:
             return ""
@@ -705,7 +781,9 @@ class LogFormatter(logging.Formatter):
     def format(self, record):
 
         # to perform casting to string
-        msg = '{}'.format(record.msg)
+        # msg = '{}'.format(record.msg)
+        msg = record.getMessage()
+
 
         if msg is None or len(msg) < 1:
             return ""

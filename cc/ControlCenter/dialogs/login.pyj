@@ -1,0 +1,208 @@
+from dialogs.base import Base as DialogBase
+from utils.auth import Basic, Digest
+
+class Login_orig(DialogBase):
+
+    def __init__(self, server, session_id, base_path = None):
+        DialogBase.__init__(self)
+        self.server = server
+        self.base_path = base_path
+        self.session_id = session_id
+
+    def create(self):
+
+        html = """
+            <div class="modal fade" id="login_modal" tabindex="-1" role="dialog"
+                aria-labelledby="exampleModalLabel" aria-hidden="true">
+                <form onsubmit='return false'>
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header cc-dialog-header">
+                            <h5 class="modal-title cc-dialog-title">Authentication Request</h5>
+                            <button type="button" class="close cc-dialog-close" data-dismiss="modal"
+                                id="bClose{id}" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div class='row'>
+                                <label for="server" class="col-3 col-form-label">Tor:</label>
+                                <div class='col-9 col-form-label' id='server'>{server}
+                                </div>
+                            </div>
+                                <div class='row'>
+                                    <label for="password" class="col-3 col-form-label">Password:</label>
+                                    <div class='col-9' id='password'>
+                                        <input type="password" id="iPassword{id}" class="form-control" tabIndex="0"
+                                            aria-describedby="labelHelp"
+                                            value=''>
+                                    </div>
+                                </div>
+                        </div>
+                        <div class="modal-footer">
+                            <div style="margin-right: auto" id="lStatus{id}"></div>
+                            <button type="button" class="btn btn-outline-secondary" data-dismiss="modal"
+                                id="bCancel{id}">
+                                Cancel
+                            </button>
+                            <button type="submit" id="bLogin{id}" class="btn cc-dialog-btn-login">
+                                Submit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                </form>
+            </div>
+        """
+
+        html = str.format(html, id=self.id, server=self.server)
+        DialogBase.create(self, html)
+
+
+    def show(self):
+        if self.modal is None:
+            self.create()
+
+        p = DialogBase.show(self)
+
+        $('#bLogin' + self.id).on('click', def(e):
+
+            # console.log("bLogin click")
+
+            $('#bLogin' + self.id).prop("disabled", True)
+            $('#bClose' + self.id).prop("disabled", True)
+            $('#bCancel' + self.id).prop("disabled", True)
+            $('#iPassword' + self.id).prop("disabled", True)
+            self.esc_to_dismiss = False
+
+            pwd = $('#iPassword' + self.id).val()
+            if not pwd?:
+                self.modal.modal('hide')
+                return
+
+            url = self.base_path + "/" + self.session_id + "/cc/" + "login"
+
+            $.post({
+                'url': url,
+                'timeout': 2000
+            })
+            .fail(def(request, textStatus, errorThrown):
+                if request.status == 401:
+                    header = request.getResponseHeader('WWW-Authenticate')
+                    # console.log(header)
+                    elements = header.split(',')
+                    if elements.length > 1:
+                        auth = Digest(header, 'POST', url)
+                    else:
+                        auth = Basic(header)
+
+                    $.post({
+                        'url': url,
+                        'timeout': 2000,
+                        'headers': {
+                            'Authorization': auth.create_auth_header(self.session_id, pwd)
+                        }
+                    })
+                    .fail(def(request, textStatus, errorThrown):
+                        error_html = """
+                            <div class="text-danger small">Failed to authenticate.</div>
+                        """
+                        $('#lStatus' + self.id).html(error_html)
+                        $('#bClose' + self.id).prop("disabled", False)
+                        $('#bCancel' + self.id).prop("disabled", False)
+                        self.esc_to_dismiss = True
+                        return
+                    )
+                    .done(def(data, textStatus, response):
+                        self.dfd.resolve({'id': data})
+                        self.modal.modal('hide')
+                        return
+                    )
+
+                else:
+                    error_html = """
+                        <div class="text-danger small">Failed to launch authentication sequence.</div>
+                    """
+                    $('#lStatus' + self.id).html(error_html)
+                    $('#bClose' + self.id).prop("disabled", False)
+                    $('#bCancel' + self.id).prop("disabled", False)
+                    self.esc_to_dismiss = True
+                    return
+            )
+        )
+
+        return p
+
+
+class Login(DialogBase):
+
+    def __init__(self, server, session_id):
+        DialogBase.__init__(self)
+        self.server = server
+        self.session_id = session_id
+
+    def create(self):
+
+        html = """
+            <div class="modal fade tobcc-font" id="login_modal" tabindex="-1" role="dialog"
+                aria-labelledby="exampleModalLabel" aria-hidden="true">
+                <form onsubmit='return false'>
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header cc-dialog-header">
+                            <h5 class="modal-title cc-dialog-title">Authentication Request</h5>
+                            <button type="button" class="close cc-dialog-close" data-dismiss="modal"
+                                id="bClose{id}" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div class='row'>
+                                <label for="server" class="col-3 col-form-label">Tor:</label>
+                                <div class='col-9 col-form-label' id='server'>{server}
+                                </div>
+                            </div>
+                                <div class='row'>
+                                    <label for="password" class="col-3 col-form-label">Password:</label>
+                                    <div class='col-9' id='password'>
+                                        <input type="password" id="iPassword{id}" class="form-control" tabIndex="0"
+                                            aria-describedby="labelHelp"
+                                            value=''>
+                                    </div>
+                                </div>
+                        </div>
+                        <div class="modal-footer">
+                            <div style="margin-right: auto" id="lStatus{id}"></div>
+                            <button type="button" class="btn btn-outline-secondary" data-dismiss="modal"
+                                id="bCancel{id}">
+                                Cancel
+                            </button>
+                            <button type="submit" id="bLogin{id}" class="btn cc-dialog-btn-login">
+                                Submit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                </form>
+            </div>
+        """
+
+        html = str.format(html, id=self.id, server=self.server)
+        DialogBase.create(self, html)
+
+
+    def show(self):
+        if self.modal is None:
+            self.create()
+
+        p = DialogBase.show(self)
+
+        $('#bLogin' + self.id).on('click', def(e):
+
+            pwd = $('#iPassword' + self.id).val()
+            self.dfd.resolve({'password': pwd})
+            self.modal.modal('hide')
+            return
+        )
+
+        return p

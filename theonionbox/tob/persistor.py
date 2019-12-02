@@ -1,68 +1,77 @@
+from typing import Optional, List
 import logging
 import sqlite3
 import tempfile
 import os
 from time import time
+from sqlite3 import Connection, Row
 
 
 class Storage(object):
 
     path = None
 
-    def __init__(self, path=None, user=None):
+    def __init__(self, path: Optional[str] = None, user: Optional[str] = None):
 
         log = logging.getLogger('theonionbox')
         self.path = None
 
         if path is None:
             path = tempfile.gettempdir()
+            log.debug("Temp directory identified as {}.".format(path))
 
         path = os.path.abspath(path)
 
-        if os.access(path, os.F_OK | os.R_OK | os.W_OK) is True:
-
-            if user is None or user == '':
-                path = os.path.join(path, '.theonionbox.persist')
-            else:
-                path = os.path.join(path, '.theonionbox.{}'.format(user))
+        if user is None or user == '':
+            path = os.path.join(path, '.theonionbox.persist')
         else:
-            log.warning("No permissions to access '{}' for data persistance. Trying to operate with in-memory database.".format(path))
-            path = ':memory:'
-        try:
-            with sqlite3.connect(path) as conn:
-                sql = "CREATE TABLE IF NOT EXISTS nodes (fp string PRIMARY KEY NOT NULL UNIQUE );"
-                # The UNIQUE constraint ensures that there's always only one record per interval
-                sql += """
-                            CREATE TABLE IF NOT EXISTS bandwidth (fp int,
-                                                                  interval text(2),
-                                                                  timestamp int,
-                                                                  read int,
-                                                                  write int,
-                                                                  UNIQUE (fp, interval, timestamp)
-                                                                  ON CONFLICT REPLACE
-                                                                  );
-                        """
-                conn.executescript(sql)
-        except:
-            log.warning("Failed to create persistance database @ '{}'.".format(path))
-        else:
-            log.notice("Persistance data will be written to '{}'.".format(path))
-            self.path = path
+            path = os.path.join(path, '.theonionbox.{}'.format(user))
 
-    def get_path(self):
+        attempts = 0
+        while attempts < 2:
+            try:
+                with sqlite3.connect(path) as conn:
+                    sql = "CREATE TABLE IF NOT EXISTS nodes (fp string PRIMARY KEY NOT NULL UNIQUE );"
+                    # The UNIQUE constraint ensures that there's always only one record per interval
+                    sql += """CREATE TABLE IF NOT EXISTS bandwidth (fp int,
+                                                                    interval text(2),
+                                                                    timestamp int,
+                                                                    read int,
+                                                                    write int,
+                                                                    UNIQUE (fp, interval, timestamp)
+                                                                    ON CONFLICT REPLACE
+                                                                    );"""
+                    conn.executescript(sql)
+
+                log.notice("Persistance data will be written to '{}'.".format(path))
+                self.path = path
+                return
+
+            except:
+                log.notice("Failed to create persistance database @ '{}'.".format(path))
+                path = ':memory:'
+                attempts += 1
+
+        # At this point there's no persistance db created.
+        # That's domague - yet inevitable.
+        self.path = None
+
+    def get_path(self) -> str:
         return self.path
 
 
 class BandwidthPersistor(object):
 
-    def __init__(self, storage, fingerprint):
+    def __init__(self, storage: Storage, fingerprint: str):
 
         self.path = None
         self.fp = None
+        self.fpid = None
+
+        log = logging.getLogger('theonionbox')
 
         if len(fingerprint) == 0:
-            log = logging.getLogger('theonionbox')
-            log.info('Skipped registration for persistance of node with fingerprint of length=0.')
+            log.debug('Skipped registration for persistance of node with fingerprint of length = 0.')
             return
 
         path = storage.get_path()
@@ -78,7 +87,6 @@ class BandwidthPersistor(object):
             with conn:
                 conn.execute("INSERT OR IGNORE INTO nodes(fp) VALUES(?);", (fingerprint,))
         except Exception as exc:
-            log = logging.getLogger('theonionbox')
             log.warning('Failed to register {}... for persistance. {}'.format(fingerprint[:6], exc))
             return
 
@@ -99,11 +107,12 @@ class BandwidthPersistor(object):
 
         if fpid is not None:
             self.path = path
-            self.fp = fpid
+            self.fp = fingerprint
+            self.fpid = fpid
 
         conn.close()
 
-    def open_connection(self, path=None):
+    def open_connection(self, path: Optional[str] = None) -> Optional[Connection]:
 
         if path is None:
             path = self.path
@@ -120,7 +129,11 @@ class BandwidthPersistor(object):
         return None
 
     # This does not commit!
-    def persist(self, interval, timestamp, read=0, write=0, connection=None):
+    def persist(self, interval: str, timestamp: float,
+                read: Optional[int] = 0, write: Optional[int] = 0, connection: Optional[Connection] = None) -> bool:
+
+        if self.fpid is None:
+            return False
 
         if connection is None:
             connection = self.open_connection()
@@ -129,14 +142,17 @@ class BandwidthPersistor(object):
 
         try:
             connection.execute("INSERT INTO bandwidth(fp, interval, timestamp, read, write) VALUES(?, ?, ?, ?, ?)",
-                               (self.fp, interval, timestamp, read, write))
+                               (self.fpid, interval, timestamp, read, write))
         except Exception as e:
+            log = logging.getLogger('theonionbox')
+            log.warning(f'Failed to open persist bandwidth data for fingerprint {self.fp[:6]}: {e}')
             return False
 
         return True
 
     # get the data back from the table
-    def get(self, interval, js_timestamp=int(time()*1000), limit=-1, offset=0, connection=None):
+    def get(self, interval: str, js_timestamp: Optional[int] = int(time()*1000), limit: Optional[int] = -1,
+            offset: Optional[int] = 0, connection: Optional[Connection] = None) -> Optional[List[Row]]:
         if connection is None:
             connection = self.open_connection()
             if connection is None:
@@ -158,7 +174,7 @@ class BandwidthPersistor(object):
 
         try:
             cur.execute(sql, {'jsts': js_timestamp,
-                              'fp': self.fp,
+                              'fp': self.fpid,
                               'interval': interval,
                               'limit': limit,
                               'offset': offset}

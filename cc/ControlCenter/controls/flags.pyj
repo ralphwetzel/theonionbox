@@ -1,0 +1,169 @@
+from controls.base import Base as ControlBase
+
+
+class Flags(ControlBase):
+
+    def __init__(self, id, tag):
+
+        ControlBase.__init__(self, id, tag)
+
+        # console.log("Flags created for " + id)
+        self.flags = []
+
+        self.known_flags = {
+            'Authority': '<i class="fas fa-shield-alt fa-2x"></i>'
+            , 'BadExit': """
+                    <span class="fa-stack ">
+                        <i class="fas fa-door-closed fa-stack-1x"></i>
+                        <i class="fas fa-ban fa-stack-2x" style="color:Tomato"></i>
+                    </span>
+                """
+            , 'BadDirectory': """
+                    <span class="fa-stack ">
+                        <i class="fas fa-folder fa-stack-1x"></i>
+                        <i class="fas fa-ban fa-stack-2x" style="color:Tomato"></i>
+                    </span>
+                """
+            , 'Exit': '<i class="fas fa-door-open fa-2x" style="color:#000000"></i>'
+            , 'Fast': '<i class="fas fa-shipping-fast fa-2x"></i>'
+            , 'Guard': '<i class="fas fa-user-shield fa-2x"></i>'
+            , 'HSDir': '<i class="fas fa-folder-open fa-2x"></i>'
+            , 'Named': '<i class="fas fa-user-tag fa-2x"></i>'
+            , 'Stable': '<i class="fas fa-dice-d6 fa-2x"></i>'
+            , 'Running': '<i class="fas fa-running fa-2x"></i>'
+            , 'Unnamed': """
+                    <span class="fa-stack ">
+                        <i class="fas fa-tag fa-stack-1x"></i>
+                        <i class="fas fa-ban fa-stack-2x" style="color:Tomato"></i>
+                    </span>
+                """
+            # , 'unknown': '<i class="fas fa-ban fa-2x"></i>'
+            , 'unknown': """
+                    <span class="fa-stack ">
+                        <i class="far fa-square fa-stack-2x"></i>
+                        <i class="fa-stack-1x" style="font-size: 14px;font-family:'LatoLatinWeb';font-style:normal;font-weight:bold;">B</i>
+                    </span>
+            """
+            , 'Valid': """
+                    <span class="fa-stack ">
+                        <i class="fas fa-circle fa-stack-2x" style="color:#00FF00"></i>
+                        <i class="fas fa-check-circle fa-stack-2x"></i>
+                    </span>
+                """
+            , 'soft': '<i class="far fa-pause-circle fa-2x"></i>'
+            , 'hard': '<i class="fas fa-pause-circle fa-2x"></i>'
+            , 'mode': '<i class="fas fa-circle-notch fa-spin fa-2x"></i>'
+        }
+
+    def create_flag_icon_html(self, flag, tor_mode):
+
+        # if flag in ['C', 'B', 'R']:
+        #
+        #     cbr = {
+        #         'C': 'Client',
+        #         'B': 'Bridge',
+        #         'R': 'Relay'
+        #     }
+        #
+        #     flag_html = """
+        #         <span class="fa-stack ">
+        #             <i class="far fa-square fa-stack-2x"></i>
+        #             <i class="fa-stack-1x" style="font-size:14px;
+        #                                           font-family:'LatoLatinWebBlack';
+        #                                           font-style:normal;">
+        #                 {mode}
+        #             </i>
+        #         </span>
+        #     """
+        #     flag_html = str.format(flag_html, mode=flag)
+        #
+        #     tooltip = cbr[flag] + ' Mode'
+        #
+        #     return str.format(html, id=self.id, flag=flag.toLowerCase(), tooltip=tooltip, html=flag_html)
+
+        if flag in self.known_flags:
+
+            html = """
+                <div class="col cc-flag align-middle" id="tobcc.{id}.flags.{flag}"
+                    data-toggle="tooltip" data-placement="bottom" title="{tooltip}">
+                    {html}
+                </div>
+            """
+
+            tooltips = {
+                'soft': 'Hibernating | Soft'
+                , 'hard': 'Hibernating | Hard'
+                , 'mode': ''
+            }
+
+            if flag == 'unknown' and tor_mode == 'Client':
+                tooltip = "Tor @ Client Mode maintains no flags."
+            elif flag in tooltips:
+                tooltip = tooltips[flag]
+            else:
+                tooltip = flag
+
+            return str.format(html, id=self.id, flag=flag.toLowerCase(), tooltip=tooltip, html=self.known_flags[flag])
+
+
+        html = """
+            <div class="col" style="margin-top:auto; margin-bottom:auto; font-size:13px;" id="tobcc.{id}.flags.{lflag}">
+                {flag}
+            </div>
+        """
+        return str.format(html, id=self.id, flag=flag, lflag=flag.toLowerCase())
+
+
+    def update(self, value=None, tor_mode=None):
+
+        flag_container = $(self.make_id(self.tag))
+
+        if not value?:
+            value = []
+
+        if value != self.flags:
+
+            for flag in self.flags:
+                if flag not in value:
+                    f = $(self.make_id('flags.' + flag.toLowerCase()))
+                    if f.length > 0:
+                        f.tooltip('dispose')
+                        f.remove()
+
+            # flag_check = flag_container.children(":first")
+            flag_count = 0
+            flag_row = None
+            flag_row_count = 0
+
+            for flag in value:
+                if (flag_count % 4) == 0:
+                    flag_row_count += 1
+                    flag_row = $(self.make_id('flags.row.' + flag_row_count))
+                    if flag_row.length < 1:
+                        html = "<div class='row cc-flags-row justify-content-around' id='tobcc.{id}.flags.row.{count}'></div>"
+                        flag_row = $(str.format(html, id=self.id, count=flag_row_count)).appendTo(flag_container)
+                    flag_check = flag_row.children(":first")
+
+                else:
+                    flag_check = flag_check.next()
+
+                flag_count +=1
+                f = $(self.make_id('flags.' + flag.toLowerCase()))
+
+                if f.length > 0:
+                    if f.is(flag_check):
+                        continue
+                    else:
+                        f.tooltip('dispose')
+                        f.remove()
+
+                new_flag = $(self.create_flag_icon_html(flag, tor_mode))
+                if flag_check.length > 0:
+                    new_flag.insertBefore(flag_check)
+                else:
+                    new_flag.appendTo(flag_row)
+
+                new_flag.tooltip({'container': 'body',
+                                  'trigger': 'click hover'})
+
+        self.flags = value

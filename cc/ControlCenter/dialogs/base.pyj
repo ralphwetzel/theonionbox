@@ -1,0 +1,84 @@
+from utils.uuid import uuid4
+
+class Base():
+
+    def __init__(self):
+        self.modal = None
+
+        # https://stackoverflow.com/questions/29552904/return-a-value-from-bootstraps-modal-box-yes-or-no-option
+        self.dfd = jQuery.Deferred()
+        self.id = uuid4().replace(v'/-/g', "")
+        self.esc_to_dismiss = True
+
+    def remove(self):
+        if self.modal is not None:
+            self.modal.remove()
+            del self.modal
+
+    def create(self, html = '<div></div>'):
+        self.remove()
+        self.modal = $(html).modal({'backdrop': 'static', 'keyboard': False})
+        return self.modal
+
+    def show(self, html = None):
+        if html is not None:
+            self.create(html)
+
+        if self.modal is not None:
+            $('body').append(self.modal)
+
+            self.modal.on('hidden.bs.modal', def(event):
+                self.remove()
+            )
+
+            self.modal.on('keydown', def(event):
+                if event.which == 27:   # Esc
+                    if self.esc_to_dismiss == True:
+                        self.modal.modal('hide')
+            )
+
+            self.modal.modal('show')
+
+        return self.dfd.promise()
+
+
+class Message(Base):
+
+    def __init__(self, message = None, title = 'The Onion Box'):
+
+        Base.__init__(self)
+        self.title = title
+        self. message = message
+
+    def create(self):
+
+        html = """
+            <div class="modal fade" id="login_modal" tabindex="-1" role="dialog" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header cc-dialog-header">
+                            <h5 id="title.{id}" class="modal-title cc-dialog-title">{title}</h5>
+                            <button type="button" class="close cc-dialog-close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div id="message.{id}" class="modal-body">{message}</div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-primary" data-dismiss="modal" tabIndex="2">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        """
+
+        html = str.format(html, id=self.id, title = self.title, message = self.message)
+        return Base.create(self, html)
+
+    def show(self):
+
+        if self.modal is None:
+            self.create()
+
+        return Base.show(self)

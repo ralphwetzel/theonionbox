@@ -1,0 +1,124 @@
+class NotImplemetedError(Exception):
+    def __init__(self, message):
+        self.name = 'NotImplementedError'
+        self.message = message
+
+class Base():
+
+    def __init__(self, header):
+        self.header = header
+
+    def create_auth_header(self, username, password):
+        raise NotImplemetedError('Not implemented.')
+
+class Basic(Base):
+
+    def create_auth_header(self, username, password):
+
+        headers = self.header.split(',')
+        if headers.length > 1:
+            # not a 'basic' header
+            return None
+
+        regex = v'/(.+) realm=(.+)/g'
+        elements = regex.exec(headers[0])
+
+        if not elements? or elements.length != 3:
+            return None
+
+        scheme = elements[1]
+        response = btoa(username+':'+password)
+
+        return scheme + " " + response
+
+class Digest(Base):
+
+    def __init__(self, header, method='GET', url='login'):
+
+        Base.__init__(self, header)
+        self.method = method
+        self.url = url
+        self.nc = 1
+
+    def create_auth_header(self, username, password):
+
+        # This code is based on the contribution from
+        # Jamie Perkins' "Digest Auth Request"
+        # https://github.com/inorganik/digest-auth-request
+        # adapted to suit our needs!
+
+        # requires an md5 implementation - to be provided seperately!
+
+        # generate 16 char client nonce
+        def generate_client_nonce():
+            characters = 'abcdef0123456789'
+            token = ''
+
+            for i in range(16):
+                randNum = Math.round(Math.random() * characters.length)
+                token += characters.substr(randNum, 1)
+
+            return token
+
+
+        headers = self.header.split(', ')
+        if headers.length == 1:
+            # not a 'digest' header
+            return None
+
+        hh = headers[0].split(' ')
+        if not hh.length == 2:
+            return None
+
+        auth_method = hh[0]
+        headers[0] = hh[1]
+
+        for item in headers:
+            item = item.split(',')[0]
+            data = item.split('=')
+            if data.length != 2:
+                continue
+
+            if data[0] == 'realm':
+                realm = data[1]
+            elif data[0] == 'nonce':
+                nonce = data[1]
+            elif data[0] == 'opaque':
+                opaque = data[1]
+            elif data[0] == 'qop':
+                qop = data[1]
+
+        cnonce = generate_client_nonce()
+        self.nc += 1
+
+        # generate response
+        # md5 by md5.js
+
+        ha1_prep = username + ':' + realm + ':' + password
+        HA1 = md5(ha1_prep)
+        ha2_prep = self.method + ':' + self.url
+        HA2 = md5(ha2_prep)
+        response = md5(HA1 + ':' + nonce + ':' + ('00000000' + self.nc).slice(-8) + ':' + cnonce + ':' +
+                       qop + ':' + HA2) if qop else md5(HA1 + ':' + nonce + ':' + HA2)
+
+        if qop:
+            return (auth_method + ' ' +
+                    'username="' + username + '", ' +
+                    'realm="' + realm + '", ' +
+                    'nonce="' + nonce + '", ' +
+                    'uri="' + self.url + '", ' +
+                    'response="' + response + '", ' +
+                    'opaque="' + opaque + '", ' +
+                    'qop=' + qop + '", ' +
+                    'nc=' + ('00000000' + self.nc).slice(-8)+', '+
+                    'cnonce="' + cnonce + '"'
+                    )
+
+        return (auth_method + ' ' +
+                'username="' + username + '", ' +
+                'realm="' + realm + '", ' +
+                'nonce="' + nonce + '", ' +
+                'uri="' + self.url + '", ' +
+                'response="' + response + '"'
+                )
+

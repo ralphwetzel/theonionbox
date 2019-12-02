@@ -1,0 +1,356 @@
+header, .cc-dialog-header {
+    font-family: "LatoLatinWeb";
+    background-image: linear-gradient(to right, rgba(100, 178, 43, 100), rgba(75, 160, 39, 100));
+}
+
+header .navbar-brand, .cc-dialog-title, .cc-dialog-close {
+    font-family: "LatoLatinWebSemiBold";
+    color: white;
+    text-shadow: 1px 1px 2px #23300e;
+}
+
+.cc-dialog-close:hover {
+    color: white;
+}
+
+.cc-dialog-btn-login {
+    color: white;
+    background-color: #fff;
+    border-color: rgba(132, 54, 187, 100);
+    background-color: rgba(132, 54, 187, 100);
+}
+
+.cc-dialog-btn-login:hover, .cc-dialog-btn-login:disabled {
+  color: #fff;
+  background-color: rgba(132, 54, 187, 100);
+  border-color: black;
+}
+
+
+header #button_logout {
+
+}
+
+.cc-cards-area {
+    padding: 10px;
+}
+
+.scrollDiv {
+    overflow: auto;
+    white-space: nowrap;
+}
+
+.cc-flags {
+    /*margin-left: .25rem;*/
+    /*padding-right: .25rem;*/
+
+}
+
+
+.cc-flags-row {
+    font-size: 11px;
+    /*margin-bottom:5px;*/
+    /*margin-top: 5px;*/
+}
+
+
+.Xarrow {
+    border: solid black;
+    border-width: 0 3px 3px 0;
+    display: inline-block;
+    padding: 3px;
+    margin-right: 7px;
+}
+
+.Xarrow.right {
+    transform: rotate(-45deg);
+    -webkit-transform: rotate(-45deg);
+}
+
+.Xarrow.left {
+    transform: rotate(135deg);
+    -webkit-transform: rotate(135deg);
+}
+
+.Xarrow.up {
+    transform: rotate(-135deg);
+    -webkit-transform: rotate(-135deg);
+}
+
+.Xarrow.down {
+    transform: rotate(45deg);
+    -webkit-transform: rotate(45deg);
+}
+
+.Xarrow.success {
+    border-color: #28a745 !important
+}
+
+.Xarrow.info {
+    border-color: #17a2b8 !important
+}
+
+.Xarrow.warning {
+    border-color: #ffc107 !important
+}
+
+.Xarrow.danger {
+    border-color: #dc3545 !important
+}
+
+.spnnr
+{
+  display: inline-block;
+}
+/*
+ *  https://github.com/tobiasahlin/SpinKit/blob/master/css/spinners/7-three-bounce.css
+
+    The MIT License (MIT)
+
+    Copyright (c) 2015 Tobias Ahlin
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of
+    this software and associated documentation files (the "Software"), to deal in
+    the Software without restriction, including without limitation the rights to
+    use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+    the Software, and to permit persons to whom the Software is furnished to do so,
+    subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+    FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+    COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+    IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+    CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+ *  Usage:
+ *
+      <div class="sk-three-bounce">
+        <div class="sk-child sk-bounce1"></div>
+        <div class="sk-child sk-bounce2"></div>
+        <div class="sk-child sk-bounce3"></div>
+      </div>
+ *
+ */
+.sk-three-bounce {
+/*  margin: 40px auto;
+  width: 80px;*/
+  /*text-align: center;*/ }
+  .sk-three-bounce .sk-child {
+    width: 20px;
+    height: 20px;
+    background-color: #333;
+    border-radius: 100%;
+/*    display: inline-block;*/
+    vertical-align: middle;
+    -webkit-animation: sk-three-bounce 1.4s ease-in-out 0s infinite both;
+            animation: sk-three-bounce 1.4s ease-in-out 0s infinite both; }
+  .sk-three-bounce .sk-bounce1 {
+    -webkit-animation-delay: -0.32s;
+            animation-delay: -0.32s; }
+  .sk-three-bounce .sk-bounce2 {
+    -webkit-animation-delay: -0.16s;
+            animation-delay: -0.16s; }
+
+@-webkit-keyframes sk-three-bounce {
+  0%, 80%, 100% {
+    -webkit-transform: scale(0);
+            transform: scale(0); }
+  40% {
+    -webkit-transform: scale(1);
+            transform: scale(1); } }
+
+@keyframes sk-three-bounce {
+  0%, 80%, 100% {
+    -webkit-transform: scale(0);
+            transform: scale(0); }
+  40% {
+    -webkit-transform: scale(1);
+            transform: scale(1); } }
+
+#tob_start_tob {
+    color: white;
+    text-shadow: 1px 1px 2px #23300e;
+}
+
+#tob_start_div {
+    background-image: linear-gradient(to right, rgba(100, 178, 43, 100), rgba(75, 160, 39, 100));
+}
+
+.tobcc-font  {
+    font-family: "LatoLatinWebLight";
+}
+
+.tobcc-header {
+    font-family: "LatoLatinWebLight";
+}
+
+.tobcc.body {
+    font-family: "LatoLatinWeb";
+}
+
+.tobcc.footer {
+    font-family: "LatoLatinWebLight";
+}
+
+
+.card-flip {
+  -webkit-perspective: 1000px;
+          perspective: 1000px;
+}
+.card-flip:hover .flip, .card-flip.hover .flip {
+  -webkit-transform: rotateY(180deg);
+          transform: rotateY(180deg);
+}
+
+.card-flip,
+.front,
+.back {
+  width: 100%;
+  height: 480px;
+}
+
+.flip {
+  transition: 0.6s;
+  -webkit-transform-style: preserve-3d;
+          transform-style: preserve-3d;
+  position: relative;
+}
+
+.front,
+.back {
+  -webkit-backface-visibility: hidden;
+          backface-visibility: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.front {
+  z-index: 2;
+  -webkit-transform: rotateY(0deg);
+          transform: rotateY(0deg);
+}
+
+.back {
+  -webkit-transform: rotateY(180deg);
+          transform: rotateY(180deg);
+}
+
+
+/*https://www.jquery-az.com/bootstrap4/demo2.php?ex=94.0_3*/
+
+.form-label-group {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.form-label-group > input,
+.form-label-group > label {
+  padding: var(--input-padding-y) var(--input-padding-x);
+}
+
+.form-label-group > label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 100%;
+  margin-bottom: 0; /* Override default `<label>` margin */
+  line-height: 1.5;
+  color: #495057;
+  border: 1px solid transparent;
+  border-radius: .25rem;
+  transition: all .1s ease-in-out;
+}
+
+.form-label-group input::-webkit-input-placeholder {
+  color: transparent;
+}
+
+.form-label-group input:-ms-input-placeholder {
+  color: transparent;
+}
+
+.form-label-group input::-ms-input-placeholder {
+  color: transparent;
+}
+
+.form-label-group input::-moz-placeholder {
+  color: transparent;
+}
+
+.form-label-group input::placeholder {
+  color: transparent;
+}
+
+.form-label-group input:not(:placeholder-shown) {
+  padding-top: calc(var(--input-padding-y) + var(--input-padding-y) * (2 / 3));
+  padding-bottom: calc(var(--input-padding-y) / 3);
+}
+
+.form-label-group input:not(:placeholder-shown) ~ label {
+  padding-top: calc(var(--input-padding-y) / 3);
+  padding-bottom: calc(var(--input-padding-y) / 3);
+  font-size: 12px;
+  color: #777;
+}
+
+.cc-flag {
+    margin-top: .25rem;
+    /*padding-bottom: 5px;*/
+}
+
+.tooltip {
+    font-family: "LatoLatinWebLight";
+}
+
+.cc-conn {
+    vertical-align: middle;
+}
+
+.toggle-on, .toggle-off {
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+}
+
+/*
+https://css-tricks.com/snippets/css/star-wars-crawl-text/
+ */
+/*
+.credits {
+  display: flex;
+  justify-content: center;
+  position: relative;
+  height: 800px;
+  color: #feda4a;
+  font-family: 'Pathway Gothic One', sans-serif;
+  font-size: 500%;
+  font-weight: 600;
+  letter-spacing: 6px;
+  line-height: 150%;
+  perspective: 400px;
+  text-align: justify;
+}
+
+.crawl {
+  position: relative;
+  top: 9999px;
+  transform-origin: 50% 100%;
+  animation: crawl 60s linear;
+}
+
+@keyframes crawl {
+  0% {
+    top: 0;
+    transform: rotateX(20deg)  translateZ(0);
+  }
+  100% {
+    top: -6000px;
+    transform: rotateX(25deg) translateZ(-2500px);
+  }
+}
+*/

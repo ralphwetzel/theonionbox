@@ -1,0 +1,98 @@
+from controls.base import Base as ControlBase
+
+class Version(ControlBase):
+
+    def __init__(self, id, tag):
+
+        ControlBase.__init__(self, id, tag)
+
+        # print(self.tag, self.make_id(self.tag))
+
+        $me = $(self.make_id(self.tag))
+        # assert($me.length > 0)
+
+        html = """
+            <div class="col card-text text-center" id="tobcc.{id}.{tag}.container">
+                <span id="tobcc.{id}.{tag}.version"></span>
+                <span id="tobcc.{id}.{tag}.check" style="display:none"></span>
+            </div>
+            <div class="col card-text text-left" id="tobcc.{id}.{tag}.mode" style="display:none"></div>
+        """
+
+        html = str.format(html, id=self.id, tag=self.tag)
+        $me.html(html)
+
+    def update(self, version, mode = '', latest = None, flag = None):
+
+        if (version == self.version and
+                mode == self.mode and
+                latest == self.latest and
+                flag == self.flag):
+            return True
+
+        red_flags = ['obsolete', 'old', 'unrecommended', 'unknown']
+
+        $version = $(self.make_id(self.tag + '.version'))
+        $version.text('Tor ' + version)
+
+        $check = $(self.make_id(self.tag + '.check'))
+        $check.tooltip('dispose')
+
+        if latest is None or (version == latest and flag not in red_flags):
+            if $check.is(':visible'):
+                $check.hide(500)
+
+        else:
+            html = """
+                <i class="fas fa-exclamation" style="color:{color};"></i>
+            """
+            color = 'black'
+            title = ''
+
+            if flag in red_flags:
+                color = 'tomato'
+                if len(title) > 0:
+                    title += '<br>'
+                title += 'This Tor version is <b>' + flag + '</b>!'
+
+            if latest is not None:
+                # console.log(latest)
+                if len(title) > 0:
+                    title += '<br>'
+                title += 'Latest stable Tor version is <b>' + latest + '</b>.'
+
+            html = str.format(html, color=color)
+            $check.html(html)
+
+            if $check.is(':hidden'):
+                $check.show(1000)
+
+            $check.tooltip({'container': 'body',
+                            'trigger': 'click hover',
+                            'html': True,
+                            'title': title
+                            })
+
+        $mode = $(self.make_id(self.tag + '.mode'))
+
+        if mode == '':
+            if $mode.is(':visible'):
+                $mode.hide('slow')
+                $container = $(self.make_id(self.tag + '.container'))
+                $container.addClass('text-center').removeClass('text-right')
+
+        else:
+
+            $mode.text(mode + " Mode")
+
+            if $mode.is(':hidden'):
+                $mode.show('slow')
+                $container = $(self.make_id(self.tag + '.container'))
+                $container.removeClass('text-center').addClass('text-right')
+
+        self.version = version
+        self.mode = mode
+        self.latest = latest
+        self.flag = flag
+
+        return True

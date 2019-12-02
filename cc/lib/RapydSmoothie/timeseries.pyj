@@ -1,0 +1,95 @@
+#
+#   Part of RapydSmoothie
+#   A RapydScript-NG clone of SmoothieChart
+#
+#   SmoothieChart   Copyright (c)   2010-2013, Joe Walnes
+#                                   2013-2018, Drew Noakes
+#                   Details:        www.smoothiechart.org / https://github.com/joewalnes/smoothie
+#                   License:        MIT @ https://github.com/joewalnes/smoothie/blob/master/LICENSE.txt
+#
+#   RapydSmoothie   Copyright (c)   2018, Ralph Wetzel
+#                   License:        MIT
+#                   Language:       RapydScript-NG Transpiler
+#                                   https://github.com/kovidgoyal/rapydscript-ng
+#                   Coverage:       SmoothieChart 1.36 ("Add title option, by @mesca")
+#
+
+from RapydSmoothie.util import extend
+
+class TimeSeries():
+
+    defaultOptions = {
+        "resetBoundsInterval": 3000,
+        "resetBounds": True
+    }
+
+    def __init__(self, options: dict = {}):
+
+        self.options = extend({}, TimeSeries.defaultOptions, options)
+        self.disabled = False
+        self.clear()
+
+   # Clears all data and state from this TimeSeries object.
+    def clear(self):
+        self.data = []
+        self.maxValue = None
+        self.minValue = None
+
+    # Recalculate the min/max values for this <code>TimeSeries</code> object.
+    # This causes the graph to scale itself in the y-axis.
+    def resetBounds(self):
+
+        if len(self.data) > 0:
+            self.minValue = self.data[0][1]
+            self.maxValue = self.data[0][1]
+            for p in self.data:
+                pv = p[1]
+                if pv < self.minValue:
+                    self.minValue = pv
+                elif pv > self.maxValue:
+                    self.maxValue = pv
+        else:
+            self.maxValue = None
+            self.minValue = None
+
+    # Adds a new data point to the <code>TimeSeries</code>, preserving chronological order.
+    def append(self, timestamp, value, sumRepeatedTimeStampValues=False):
+
+        i = len(self.data) - 1
+
+        while i>=0 and self.data[i][0] > timestamp:
+            i-=1
+
+        if i == -1:
+            # This new item is the oldest data
+            self.data.insert(0, [timestamp, value])
+        elif len(self.data)>0 and self.data[i][0] == timestamp:
+            # Update existing values in the array
+            if sumRepeatedTimeStampValues is True:
+                # Sum this value into the existing 'bucket'
+                self.data[i][1] += value
+            else:
+                # Replace the previous value
+                self.data[i][1] = value
+        elif i < len(self.data) - 1:
+            # Splice into the correct position to keep timestamps in order
+            self.data.insert(i+1, [timestamp, value])
+        else:
+            # Add to the end of the array
+            self.data.push([timestamp, value])
+
+        self.maxValue = value if self.maxValue is None else max(self.maxValue, value)
+        self.minValue = value if self.minValue is None else min(self.minValue, value)
+
+    def dropOldData(self, oldestValidTime, maxDataSetLength):
+        # We must always keep one expired data point as we need this to draw the
+        # line that comes into the chart from the left, but any points prior to that can be removed.
+        removeCount = 0
+        lsd = len(self.data)
+
+        while lsd - removeCount >= maxDataSetLength and self.data[removeCount + 1][0] < oldestValidTime:
+            removeCount += 1
+        if removeCount != 0:
+            self.data.splice(0, removeCount)
+
+window.TimeSeries = TimeSeries

@@ -13,12 +13,12 @@
 %>
 
 {{!header_row('Host', 'General Information', 'host')}}
-{{!standard_row('Name', host['name'])}}
-{{!standard_row('OS', "{} {} (Version: {})".format(host['system'], host['release'], host['version']))}}
-{{!standard_row('System', "{} {}".format(host['processor'], host['machine']))}}
+{{!standard_row('Name', host.name)}}
+{{!standard_row('OS', "{} {} (Version: {})".format(host.system, host.release, host.version))}}
+{{!standard_row('System', "{} {}".format(host.processor, host.machine))}}
 
-% if host['up']:
-    {{!standard_row('Latest Reboot', host['up'])}}
+% if host.uptime:
+    {{!standard_row('Latest Reboot', host.uptime)}}
 % end
 
 {{!standard_row('# of CPU Cores', cpu_count)}}
@@ -48,7 +48,7 @@
     <div class="{{box_right_grid}}"></div>
 </div>
 
-{{!standard_row('Memory', "{} MB".format(host['memory|MB']))}}
+{{!standard_row('Memory', "{} MB".format(host.memoryMB))}}
 
 <div class = "row">
     <div class="{{box_datum_grid}}">Memory Usage</div>
@@ -76,7 +76,7 @@
     <div class="{{box_right_grid}}"></div>
 </div>
 
-% if host['temp']:
+% if host.temperature:
     <div class = "row">
         <div class="{{box_datum_grid}}">Temperature</div>
         <div class="{{box_value_grid}}">

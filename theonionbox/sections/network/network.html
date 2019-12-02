@@ -122,11 +122,13 @@ fp = get('family_fp', None)
                 <div class='col-6' id="location_data">
                     {{!location_row('Country', geoip.country(ip, oo_details('country')))}}
                     {{!location_row('Country Name', geoip.country_name(ip, oo_details('country_name')))}}
-                    % if geoip.region_name(ip, oo_details('region_name')) is not None:
-                            {{!location_row('Region Name', geoip.region_name(ip, oo_details('region_name')))}}
+                    % rn = geoip.region_name(ip, oo_details('region_name'))
+                    % if rn is not None:
+                        {{!location_row('Region Name', rn)}}
                     % end
-                    % if geoip.city_name(ip, oo_details('city_name')) is not None:
-                        {{!location_row('City Name', geoip.city_name(ip, oo_details('city_name')))}}
+                    % cn = geoip.city_name(ip, oo_details('city_name'))
+                    % if cn is not None:
+                        {{!location_row('City Name', cn)}}
                     % end
                     % geoip_lat = geoip.latitude(ip, oo_details('latitude'))
                     % geoip_long = geoip.longitude(ip, oo_details('longitude'))
@@ -138,8 +140,8 @@ fp = get('family_fp', None)
 
                 % if geoip_lat and geoip_long:
 
-                    <link rel="stylesheet" href="https://openlayers.org/en/v3.15.1/css/ol.css" type="text/css">
-                    <script src="https://openlayers.org/en/v3.15.1/build/ol.js" type="text/javascript"></script>
+                    <link rel="stylesheet" href="https://cdn.rawgit.com/openlayers/openlayers.github.io/master/en/v5.3.0/css/ol.css" type="text/css">
+                    <script src="https://cdn.rawgit.com/openlayers/openlayers.github.io/master/en/v5.3.0/build/ol.js" type="text/javascript"></script>
 
                 % end
 
@@ -224,47 +226,7 @@ fp = get('family_fp', None)
         {{!standard_row('Name', oo_details('as_name'))}}
         {{!standard_row('Number', oo_details('as_number'))}}
 
-<%
-        ef = oo_details('effective_family')
-        af = oo_details('alleged_family')
-        indf = oo_details('indirect_family')
-%>
-        % fmatrix = {}
-        % if ef or af or indf:
-            {{!group_row('Family Members')}}
-            % fmatrix = {'Effective': ef, 'Alleged': af, 'Indirect': indf}
-        % end
-        % for key, value in fmatrix.items():
-            % if value is not None:
-                <div class="row">
-                    <div class="{{box_datum_grid}}">
-                        {{'{} Family'.format(key)}}
-                    </div>
-                    <div class="{{box_value_grid}} box_value_margin">
-                    <%
-                        out = ''
-                        for fp in value:
-                            fam_det = oo_factory.details(fp)
-                            fam_nick = '' # 'Unknown'
-                            if fam_det is not None:
-                                fam_nick = fam_det('nickname') or '' # 'Unknown'
-                            end
-                            if len(out) > 0:
-                                out += '<br>'
-                            end
-                            out += sanitize_for_html(fp)
-                            if len(fam_nick) > 0:
-                                out += sanitize_for_html(' [{}]'.format(fam_nick))
-                            end
-                        end
-                    %>
-                        {{!out}}
-                    </div>
-                    <div class="{{box_right_grid}}"></div>
-                </div>
-            % end
-        % end
-    %end
+    % # 20190825: Family Members processing was removed here!
 
     % #TODO: Processing for a bridge
 

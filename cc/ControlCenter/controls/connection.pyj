@@ -1,0 +1,48 @@
+from controls.base import Base as ControlBase
+
+class Connection(ControlBase):
+
+    def __init__(self, id, tag='connection'):
+        ControlBase.__init__(self, id, tag)
+
+        html = """
+            <i class="cc-conn fas fa-home text-primary fa-lg" id="tobcc.{id}.{tag}.home"
+                style="display:None; opacity:0.35" data-toggle="tooltip" data-placement="bottom" title="Home"></i> 
+            <i class="cc-conn fas fa-lock fa-sm" id="tobcc.{id}.{tag}.password"
+                style="display:None;" data-toggle="tooltip" data-placement="bottom" title="Authenticated by Password"></i> 
+            <i class="cc-conn fas fa-shield-alt fa-sm" id="tobcc.{id}.{tag}.cookie"
+                style="display:None;" data-toggle="tooltip" data-placement="bottom" title="Connection authorized by Cookie"></i> 
+            <i class="cc-conn fas fa-project-diagram fa-sm" id="tobcc.{id}.{tag}.proxy"
+                style="display:None;" data-toggle="tooltip" data-placement="bottom" title="Proxied via the Tor network"></i> 
+        """
+
+        html = str.format(html, id=self.id, tag=self.tag)
+        $(self.make_id(self.tag)).html(html)
+
+        self.last = None
+
+    def update(self, data):
+
+        if data is None or data == self.last:
+            return
+
+        icons = {
+            'h': 'home',
+            'p': 'password',
+            'c': 'cookie',
+            'x': 'proxy'
+        }
+
+        for i in icons:
+            icon = $(self.make_id(self.tag + '.' + icons[i]))
+            if i in data:
+                if icon.is(':hidden'):
+                    icon.show(1000)
+                    icon.tooltip({'container': 'body',
+                                  'trigger': 'click hover'})
+            else:
+                if icon.is(':visible'):
+                    icon.hide(500)
+                    icon.tooltip('dispose')
+
+        self.last = data
