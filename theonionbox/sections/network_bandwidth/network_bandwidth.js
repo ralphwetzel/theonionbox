@@ -57,6 +57,7 @@ function create_history_glide() {
 
 }
 
+/*
 // ScrollMonitor to enable / disable repaint
 var history_monitor = scrollMonitor.create(document.getElementById("history_glide"), 100);
 history_monitor.enterViewport(function () {
@@ -72,7 +73,7 @@ history_monitor.exitViewport(function () {
     history_bandwidth[key].stop();
     history_bandwidth[key].mouseout();
 });
-
+*/
 
 
 
@@ -405,6 +406,22 @@ $(document).ready(function() {
     history_bandwidth['m6'].streamTo(canvas, 0);
 
     create_history_glide();
+
+    // ScrollMonitor to enable / disable repaint
+    var history_monitor = scrollMonitor.create(document.getElementById("history_glide"), 100);
+    history_monitor.enterViewport(function () {
+        if (history_glide_js != null && history_glide_js.length !== 0) {
+            var ci = history_glide_js.index;
+            var key = history_glide_js._c.Html.slides[ci].getAttribute('id').substr(-2);
+            history_bandwidth[key].start();
+        }
+    });
+    history_monitor.exitViewport(function () {
+        var ci = history_glide_js.index;
+        var key = history_glide_js._c.Html.slides[ci].getAttribute('id').substr(-2);
+        history_bandwidth[key].stop();
+        history_bandwidth[key].mouseout();
+    });
 
 });
 

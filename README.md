@@ -100,6 +100,7 @@ Above that, _The Onion Box_ is able to display Tor network status protocol data 
     - [... using init.d](#-using-initd)
     - [... using systemd](#-using-systemd)
 - [*The Onion Box* behind Apache's mod_proxy](#the-onion-box-behind-apaches-mod_proxy)
+- [*The Onion Box* Docker support](#the-onion-box-docker-support)
 - [Usage Monitoring](#usage-monitoring)
 - [Q&A](#qa)
     - [I receive a _Not supported proxy scheme socks5h_ warning. What shall I do?](#i-receive-a-not-supported-proxy-scheme-socks5h-warning-what-shall-i-do)
@@ -417,7 +418,7 @@ First finding: This file, `README.html`, was placed into the root of your virtua
 Second finding! There were three additional subdirectories created:
 * `config`, where to place a [configuration file](#configuration-by-file) - if you need one. You'll find there as well an example for such a configuration file.
 * `docs`, that holds the images used in this document.
-* `service`, to provide the launchers if you intend to run your box as a [system service / daemon](#the-onion-box-as-system-service-aka-daemon).
+* `service`, to provide the launchers if you intend to run your box as a [system service / daemon](#the-onion-box-as-system-service-aka-daemon) and the files to support the [Docker](#the-onion-box-docker-support) image setup.
 
 The Python packages - for the box and all it's dependencies - are located in `lib/python2.7/site-packages/`. Be aware, that the `python` path segment might be different (e.g. `lib/python3.6/site-packages/`) if your virtual environment operates with another version of Python!
 _The Box Launcher_ (named as well `theonionbox`) is located in `bin/`, next to the executables of the Python version used in your virtual environment.

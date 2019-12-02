@@ -10,6 +10,7 @@
 <%
     base_path = get('virtual_basepath', '') + '/'
 	session_id = get('session_id')
+	proceed_to = get('proceed_to', 'index.html')
 %>
 
 
