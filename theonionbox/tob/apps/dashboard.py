@@ -98,6 +98,8 @@ class Dashboard(BaseApp):
                        callback=self.get_logout,
                        **config)
 
+        config['valid_status'] = ['ok', 'auto', 'prepared']
+
         self.app.route('/<session>/index.html',
                        method='GET',
                        callback=self.get_index,
