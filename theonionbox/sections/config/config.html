@@ -86,12 +86,12 @@ end
                     if len(out):
                         out += ' '
                     end
-                    if hcp == 1 and cmd[:3] == '16:':
+                    if (hcp % 2 > 0) and cmd[:3] == '16:':
                         cmd = cmd[:12] + '...'  # no need to transmit this completely!
                         hcp += 1
                     end
-                    if cmd == "HashedControlPassword":
-                        hcp = 1
+                    if "HashedControlPassword" in cmd or "HashedControlSessionPassword" in cmd:
+                        hcp += 1
                     end
                     out += cmd
                 end
@@ -99,7 +99,7 @@ end
                 {{out}}
                 % if hcp > 1:
                     <div style="font-size: 70%; color: lightgray; display: block;">
-                        The HashedControlPassword was truncated for safety reasons.
+                        The HashedControl(Session)Password was truncated for safety reasons.
                     </div>
                 % end
             </div>

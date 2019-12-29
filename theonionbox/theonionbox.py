@@ -312,8 +312,8 @@ def proxy(ctx, control, host, port, socket, proxy):
     }}
 
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
     # main(box_debug)
-    main()
+#    main()
 
 # __all__ = ['main']

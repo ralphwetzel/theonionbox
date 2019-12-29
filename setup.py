@@ -5,9 +5,21 @@ import fnmatch
 import setuptools.command.build_ext
 import setuptools.command.sdist
 import setuptools.command.install
-import theonionbox.stamp as stamp
 
 from distutils.extension import Extension
+
+# This code replaces ...
+#   import theonionbox.stamp as stamp
+# used here up to TOB 19.2
+# but failing meanwhile with pip > 18 due to PEP#517 trouble
+# ref: https://github.com/pypa/pip/issues/6163
+# ref: https://packaging.python.org/guides/single-sourcing-package-version/:
+
+stamp = {}
+with open("theonionbox/stamp.py") as fp:
+    exec(fp.read(), stamp)
+
+# later on we use: stamp['__version__']
 
 # Custom command to compile the latest README.html
 # BTW: grip is quite cool!
@@ -72,7 +84,7 @@ def CompileREADME():
 
     if (old_md_hash != current_md_hash) or (old_html_hash != current_html_hash):
         from grip import export
-        export(path='README.md', out_filename='readme/README.html', title=f'{stamp.__title__} v{stamp.__version__}')
+        export(path='README.md', out_filename='readme/README.html', title=f"{stamp['__title__']} v{stamp['__version__']}")
         hash_changed = True
     else:
         print('Skiping generation of README.html; files unchanged!')
@@ -302,11 +314,11 @@ package_data = {
 
 package_data_exclude = {
     'theonionbox': ['sections/controlcenter/*',
-                    'sections/cc/*',
                     ]
 }
 
 data_files = [
+    # ('', ['pyproject.toml']),
     ('docs', ['docs/*.*']),
     ('', ['readme/README.html']),
     ('config', ['theonionbox/config/*.*']),
@@ -368,7 +380,7 @@ setup(
     cmdclass={'sdist': sdist,
               },
     name='theonionbox',
-    version=stamp.__version__,
+    version=stamp['__version__'],
     # py_modules=['theonionbox.py'],
     packages=packages,
     package_dir=package_dir,
@@ -381,7 +393,7 @@ setup(
     license='MIT',
     author='Ralph Wetzel',
     author_email='theonionbox@gmx.com',
-    description=f'{stamp.__title__}: {stamp.__description__}',
+    description=f"{stamp['__title__']}: {stamp['__description__']}",
     long_description=open('docs/description.rst', 'rb').read().decode('utf-8'),
     entry_points={
         'console_scripts': [
@@ -394,7 +406,7 @@ setup(
         'requests>=2.21',
         'PySocks>=1.6.7',
         'bottle>=0.12.16',
-        'stem>=1.7.0',
+        'stem4tob>=1.7.1.post3',
         'tzlocal>=1.5',
         # 'futures>=3.2; python_version<"3.0"',
         'urllib3>=1.22',
