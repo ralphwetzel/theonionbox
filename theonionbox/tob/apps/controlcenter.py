@@ -926,7 +926,7 @@ class ControlCenter(BaseApp):
             <hr>
             <div style='font-family: LatoLatinWebLight; font-size: 14px;'>
                 <a href="http://www.theonionbox.com/#readme" target="_blank">The Onion Box</a>
-                 | Copyright &copy; 2015 - 2019 Ralph Wetzel | License:
+                 | Copyright &copy; 2015 - 2020 Ralph Wetzel | License:
                 <a href="https://github.com/ralphwetzel/theonionbox/blob/master/LICENSE" target="_blank">MIT</a>
             </div>
             <div style='font-family: LatoLatinWebLight; font-size: 14px;'>

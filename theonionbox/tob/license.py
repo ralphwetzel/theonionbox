@@ -2,7 +2,7 @@ class License:
 
     license = {
         'header': 'The MIT License (MIT)'
-        , 'copyright': 'Copyright &copy; 2015 - 2019 Ralph Wetzel'
+        , 'copyright': 'Copyright &copy; 2015 - 2020 Ralph Wetzel'
         , '1': """Permission is hereby granted, free of charge, to any person obtaining a copy
             of this software and associated documentation files (the "Software"), to deal
             in the Software without restriction, including without limitation the rights
