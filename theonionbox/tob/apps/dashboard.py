@@ -147,6 +147,12 @@ class Dashboard(BaseApp):
         if session is None:
             raise HTTPError(404)
 
+        # This allows to login via a command line provided password (to address HashedControlPassword authmethod)
+        pwd = self.nodes['theonionbox'].config.password
+        if pwd is not None:
+            session['password'] = pwd
+            session['logout:show'] = False
+
         return self.connect_session_to_node(session, 'theonionbox', proceed_to_page=self.default_page)
 
     def connect_session_to_node(self, session: Session, node_id: str, proceed_to_page: Optional[str] = None):
@@ -537,9 +543,15 @@ class Dashboard(BaseApp):
             except:
                 at_location = 'Remote Location'
 
+        if session['logout:show'] is not None:
+            # 20200102: Currently only used if password for default node provided via command line.
+            show_logout = session['logout:show']
+        else:
+            show_logout = session['status'] != 'auto' or session['password'] is not None
+
         section_config = {}
         section_config['header'] = {
-            'logout': session['status'] != 'auto' or session['password'] is not None,
+            'logout': show_logout,
             'title': tor.nickname,
             'subtitle': f"Tor {tor.version_short} @ {at_location}<br>{fingerprint}",
             'powered': f"monitored by <b>The Onion Box</b> v{self.config.stamped_version}"

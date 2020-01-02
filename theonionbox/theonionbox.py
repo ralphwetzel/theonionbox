@@ -246,8 +246,10 @@ def box(ctx, host, port, message_level, base_path, session_ttl, ssl_key, ssl_cer
              help='Local ControlSocket of the Tor node.')
 @click.option('--auth_cookie', 'cookie', default=None, metavar='COOKIE', show_default=True,
              help='Cookie necessary to support HiddenServiceAuthorizeClient.')
+@click.option('--password', 'password', default=None, metavar='PASSWORD', show_default=True,
+              help='Password, necessary if this Tor node is guarded with a HashedControlPassword.')
 @click.pass_context
-def tor(ctx, control, host, port, socket, cookie):
+def tor(ctx, control, host, port, socket, cookie, password):
     """Settings to configure the connection to the Tor node to be monitored."""
 
     if control in ['port', 'proxy']:
@@ -272,6 +274,7 @@ def tor(ctx, control, host, port, socket, cookie):
         'port': port,
         'socket': socket,
         'cookie': cookie,
+        'password': password,
         'label': None,      # some additional properties, demanded by the cc
         'connect': True
     }}
