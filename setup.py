@@ -302,14 +302,18 @@ package_dir = {
 }
 
 package_data = {
-    'theonionbox': ['config/*',
-                    'css/*',
-                    'libs/*',
-                    'pages/*',
-                    'scripts/*',
-                    'sections/*',
-                    'tor/*'
-                    ]
+    'theonionbox': [
+        'config/*',
+        'css/*',
+        'libs/*',
+        'pages/*',
+        'scripts/*',
+        'sections/*',
+        'tor/*'
+    ],
+    'theonionbox.tob.system.windows': [
+        'uptime/*'
+    ]
 }
 
 package_data_exclude = {
@@ -326,13 +330,13 @@ data_files = [
     ('service/FreeBSD', ['FreeBSD/theonionbox.sh']),
     ('service/init.d', ['init.d/theonionbox.sh']),
     ('service/systemd', ['systemd/theonionbox.service']),
-    ('service/Docker', ['Docker/Dockerfile', 'Docker/theonionbox.cfg']),
-    ('support', []),
-    ('support/osxtemp', []),
-    ('support/osxtemp/libsmc', ['support/osxtemp/libsmc/LICENSE', 'support/osxtemp/libsmc/Makefile']),
-    ('support/osxtemp/libsmc/include', ['support/osxtemp/libsmc/include/smc.h']),
-    ('support/osxtemp/libsmc/src', ['support/osxtemp/libsmc/src/smc.c']),
-    ('theonionbox/tob/system/windows/uptime', ['theonionbox/tob/system/windows/uptime/*.*']),
+    ('service/Docker', ['Docker/Dockerfile', 'Docker/theonionbox.cfg'])
+    # , ('support', [])
+    # , ('support/osxtemp', [])
+    # , ('support/osxtemp/libsmc', ['support/osxtemp/libsmc/LICENSE', 'support/osxtemp/libsmc/Makefile'])
+    # , ('support/osxtemp/libsmc/include', ['support/osxtemp/libsmc/include/smc.h'])
+    # , ('support/osxtemp/libsmc/src', ['support/osxtemp/libsmc/src/smc.c'])
+    # , ('theonionbox/tob/system/windows/uptime', ['theonionbox/tob/system/windows/uptime/*.*']),
 ]
 # print(generate_data_files(data_files))
 
@@ -439,6 +443,6 @@ setup(
         'Topic :: System :: Networking :: Monitoring',
         'Topic :: Utilities',
     ],
-    platforms=['Linux', 'Windows', 'MacOS X', 'FreeBSD'],
+    platforms=['Linux', 'Windows', 'MacOSX', 'FreeBSD'],
     # ext_modules=extensions(),
 )
