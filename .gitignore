@@ -66,3 +66,6 @@ theonionbox/theonionbox.ltd
 # Glide Library comes with a 'dist' directory that we need!
 !theonionbox/libs/glide-*/dist/
 /node_modules/
+
+# Rapydscript
+*.pyj-cached
