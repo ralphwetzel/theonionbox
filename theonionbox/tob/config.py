@@ -1,5 +1,5 @@
-import typing
-from utils import AttributedDict
+
+from .utils import AttributedDict
 
 
 class NodeConfig(AttributedDict):

@@ -1,25 +1,24 @@
-# from configuration import BaseNodeConfig
 from typing import Optional, Union
-from stam.control import Controller, EventType
-# from .worker import Worker
-from persistor import Storage, BandwidthPersistor
-import stem.response
-import logging
-from tob.log import LoggingManager, ForwardHandler
-from tob.scheduler import Scheduler, SchedulerNotRunningError
-import livedata
-from time import time, strftime
-import functools
-from tob.proxy import Proxy as TorProxy
 
-from tob.onionoo import getOnionoo, OnionooData
-
-import tob.transportation
 import contextlib
-
-from tob.config import DefaultNodeConfig
-from tob.ccfile import CCNode
+import functools
+import logging
+from time import time, strftime
 import uuid
+
+import stem.response
+
+from ..ccfile import CCNode
+from ..config import DefaultNodeConfig
+from .. import livedata
+from ..log import LoggingManager, ForwardHandler
+from ..onionoo import getOnionoo, OnionooData
+from ..persistor import Storage, BandwidthPersistor
+from ..proxy import Proxy as TorProxy
+from ..scheduler import Scheduler, SchedulerNotRunningError
+from ..stam.control import Controller, EventType
+from .. import transportation
+
 
 #   Node
 #   - Config
@@ -64,9 +63,9 @@ class Node(object):
 
         # self.password = None
 
-        self.connections = tob.transportation.Connections()
-        self.circuits = tob.transportation.Circuits()
-        self.streams = tob.transportation.Streams()
+        self.connections = transportation.Connections()
+        self.circuits = transportation.Circuits()
+        self.streams = transportation.Streams()
 
         self._label = None
 

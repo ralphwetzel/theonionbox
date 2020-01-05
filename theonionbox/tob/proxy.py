@@ -1,8 +1,13 @@
 from typing import Optional
+
+from contextlib import closing
 import logging
+from socket import AF_INET, SOCK_STREAM
+from socks import socksocket
 from threading import RLock
-# from tob.configuration import BaseNodeConfig
-from tob.config import ProxyConfig
+
+from .config import ProxyConfig
+from .stam.control import Controller
 
 
 class Proxy:
@@ -19,9 +24,6 @@ class Proxy:
 
         #####
         # Proxy configuration
-        from contextlib import closing
-        from socks import socksocket
-        from socket import AF_INET, SOCK_STREAM
 
         try:
             if self.config.proxy == 'auto':
@@ -58,9 +60,6 @@ class Proxy:
 
 
     def assure_cookie(self, host: str, cookie: str) -> bool:
-
-        from stam.control import Controller
-        import threading
 
         if host is None or cookie is None:
             return True

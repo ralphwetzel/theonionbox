@@ -3,7 +3,12 @@
     # It is intended to be a bottlepy - style template
     # used for the scripting part of TheOnionBox!
 
-    from tob.license import License
+    try:
+       from tob.license import License
+    except ModuleNotFoundError:
+        from theonionbox.tob.license import License
+    end
+
     license = License()
 %>
 <div class="row">

@@ -1,8 +1,9 @@
-from typing import Optional
-from bottle import Bottle, static_file, HTTPError
-from plugin.session import SessionPlugin
-from tob.session import SessionManager
 import os.path
+
+from bottle import Bottle, static_file, HTTPError
+
+from ..plugin.session import SessionPlugin
+from ..session import SessionManager
 
 
 class LatoLatin(Bottle):

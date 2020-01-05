@@ -1,6 +1,9 @@
-from ctypes import CDLL, c_int, byref, c_double
-import sys, os, inspect
 from typing import Optional
+
+from ctypes import CDLL, c_int, byref, c_double
+import inspect
+import sys
+import os
 
 
 def get_script_dir(follow_symlinks: bool=True) -> str:

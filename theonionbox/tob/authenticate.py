@@ -1,11 +1,11 @@
-from typing import Optional
-from tob.session import Session
-from bottle import HTTPError
 from base64 import b64decode
 from hashlib import md5
-from stem.connection import IncorrectPassword
-from tob.nodes.node import Node
 from uuid import uuid1, uuid4
+
+from bottle import HTTPError
+
+from .nodes.node import Node
+from .session import Session
 
 
 def authenticate(session: Session, node: Node, header: str, method: str = "GET"):

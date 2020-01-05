@@ -3,7 +3,11 @@
 %# used for the scripting part of TheOnionBox!
 
 <%
-    from tob.template_tools import *
+    try:
+       from tob.template_tools import *
+    except ModuleNotFoundError:
+        from theonionbox.tob.template_tools import *
+    end
 
     #tor = get('tor', None)
     #accounting_on = tor.get_isAccountingEnabled() if tor else False

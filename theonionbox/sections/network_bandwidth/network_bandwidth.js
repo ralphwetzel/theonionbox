@@ -1,4 +1,11 @@
-% from tob.livedata import intervals
+<%
+    try:
+       from tob.livedata import intervals
+    except ModuleNotFoundError:
+        from theonionbox.tob.livedata import intervals
+    end
+%>
+
 var history_intervals = {{!intervals}};
 
 var history_keys = ['1s', '1m', '5m', '1h', '4h', 'Ch', 'm6', 'y1', 'y5'];

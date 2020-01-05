@@ -1,8 +1,6 @@
-import threading
-import signal
-
 import AppKit
 import PyObjCTools.MachSignals
+import signal
 
 from pystray._darwin import Icon as pystray_Icon, IconDelegate
 

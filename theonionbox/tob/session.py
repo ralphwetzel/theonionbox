@@ -1,8 +1,9 @@
-import uuid
-import time
-from bottle import BaseRequest
 from typing import Optional, Callable
+
+from bottle import BaseRequest
 import logging
+import time
+import uuid
 
 # This is the TTL (in seconds) of the Session on server side;
 # Accessing the session resets the counter!

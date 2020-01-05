@@ -1,7 +1,12 @@
 <!DOCTYPE html>
 
 <%
-    from tob.template_tools import *
+    try:
+       from tob.template_tools import *
+    except ModuleNotFoundError:
+        from theonionbox.tob.template_tools import *
+    end
+
     base_path = get('virtual_basepath', '') + '/'
 %>
 

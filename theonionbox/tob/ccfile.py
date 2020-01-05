@@ -1,11 +1,11 @@
 from typing import Optional, Union
+
 import contextlib
+import time
+import uuid
+
 from configupdater import ConfigUpdater, DuplicateSectionError
 from configupdater.configupdater import Section
-import uuid
-import time
-
-from tob.config import DefaultNodeConfig
 
 
 def validate(section: Section, file=''):

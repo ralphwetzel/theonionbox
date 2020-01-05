@@ -1,29 +1,31 @@
 #!/usr/bin/env python
-from __future__ import absolute_import
-import sys, os
+import os
+import pathlib
+import site
+import sys
 
 
 def main():
 
-    # the import executes the scripting part...
     if __name__ == '__main__':
-        # we can't use relative imports here!!
-        # get an absolute path to the directory that contains mypackage
-        this_dir = os.path.dirname(os.path.join(os.getcwd(), __file__))
-        sys.path.append(os.path.normpath(os.path.join(this_dir, '..')))
 
+        # Being __main__, we need to add the current dir to the site-dirs, to allow ABSOLUTE import
+        # We resolve this Path, as __file__ might be relative, if __name__ == __main__.
+        cp = pathlib.Path(__file__).resolve()
+        cp = cp.parent
+        assert cp.exists()
+
+        # Add the current dir to the site-dirs, to allow ABSOLUTE import
+        site.addsitedir(cp)
         from theonionbox import main as onion_main
-
     else:
+        # we're in a package => RELATIVE should work.
         from .theonionbox import main as onion_main
 
-    # ... and main() launches the server!
+    # The scripting part of theonionbox is being executed as we 'import'.
+    # Now we launch the server:
     onion_main()
 
 
 if __name__ == '__main__':
-
-    # args = sys.argv[1:]
     main()
-
-

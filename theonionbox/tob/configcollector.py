@@ -1,11 +1,11 @@
-from __future__ import absolute_import
+# from __future__ import absolute_import
 import logging
 import sys
 
-from manpage import ManPage
+from .manpage import ManPage
 
 # file based special message filtering
-from tob.log import getGlobalFilter
+from .log import getGlobalFilter
 # getGlobalFilter().set_level_for_file(__file__, 'TRACE')
 
 #####

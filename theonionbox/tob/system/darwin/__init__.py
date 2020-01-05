@@ -6,8 +6,9 @@ import re
 import subprocess
 import time
 
-
 from .. import BaseSystem
+
+from .osxtemp import Temperature, Sensors, Units
 from .systray import Icon
 
 
@@ -30,7 +31,6 @@ class Darwin(BaseSystem):
 
         if self.temp_function is None:
             try:
-                from .osxtemp import Temperature, Sensors, Units
                 self.temp_function = Temperature(Sensors.CPU_0_PROXIMITY, Units.CELSIUS)
             except OSError:
                 log = logging.getLogger('theonionbox')
@@ -186,6 +186,7 @@ class Darwin(BaseSystem):
 
         return self.__ntp
 
+    # This is Test code!
     def run_with_icon(self, launch, shutdown):
 
         from . import Icon

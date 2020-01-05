@@ -1,9 +1,7 @@
-import typing
-import stem.response.events
-import contextlib
-import threading
 import collections
+import contextlib
 
+import stem.response.events
 
 class Base:
 

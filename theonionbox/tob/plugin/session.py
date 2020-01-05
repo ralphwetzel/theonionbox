@@ -1,5 +1,6 @@
 from bottle import request, HTTPError, redirect
-from tob.session import SessionManager
+
+from ..session import SessionManager
 
 
 class SessionPlugin(object):

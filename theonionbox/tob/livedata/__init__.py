@@ -1,18 +1,15 @@
-from time import time
 from collections import deque
-# from math import floor
 import itertools
-# from tob_time import TimeManager
-from threading import RLock
-from tob.deviation import getTimer
 import logging
-from .recorder import Recorder
-from persistor import BandwidthPersistor
-
 from sqlite3 import Row, Connection
+from time import time
+from threading import RLock
 from typing import Optional, List, Dict
 
-import math
+from ..deviation import getTimer
+from ..persistor import BandwidthPersistor
+
+from .recorder import Recorder
 
 # class tob_list(list):
 #
