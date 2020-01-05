@@ -7,7 +7,7 @@ import sys
 
 def main():
 
-    if __name__ == '__main__':
+    if __name__ == '__main__' and __package__ in ['', None]:
 
         # Being __main__, we need to add the current dir to the site-dirs, to allow ABSOLUTE import
         # We resolve this Path, as __file__ might be relative, if __name__ == __main__.
