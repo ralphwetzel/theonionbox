@@ -139,7 +139,9 @@ body {
 <%
     from bottle import TemplateError
     import logging
+
     css_log = logging.getLogger('theonionbox')
+
     for section in sections:
 
         special = section[0]

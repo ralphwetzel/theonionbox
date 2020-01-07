@@ -1,8 +1,9 @@
 from typing import Optional, Dict
-from tob.deviation import getTimer
+
 from math import floor
 from time import time
 
+from ..deviation import getTimer
 
 class Recorder(object):
 

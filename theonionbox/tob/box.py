@@ -4,13 +4,25 @@
 import inspect
 inspect.getargspec = inspect.getfullargspec
 
+import logging
 import os
+from pathlib import Path
 import sys
 
-import stamp
-import utils
-
 import bottle
+
+# __package__ is either 'theonionbox.tob' or 'tob'
+# If there're more than one levels, we try to import RELATIVEly.
+# If it's only one level, we try ABSOLUTEly.
+p = __package__.split('.')
+if len(p) > 1:
+    from .. import stamp
+else:
+    import stamp
+
+from . import log
+from .system import get_system_manager
+from . import utils
 
 #####
 # Python version detection
@@ -23,25 +35,24 @@ stamped_version = '{} (stamp {})'.format(stamp.__version__, stamp.__stamp__)
 
 
 class Box:
-    def __init__(self, config):
+    def __init__(self, config: dict):
         self.config = utils.AttributedDict(config)
         self.config['stamped_version'] = stamped_version
 
         #####
         # Host System data
-        from tob.system import get_system_manager
+        # from ..system import get_system_manager
         self.system = get_system_manager()
 
         #####
         # Logging System: Part 1
-        import logging
-        import tob.log
+
         self.log = logging.getLogger('theonionbox')
 
         # We will Filter everything through the GlobalFilter
         # NOTSET + 1 just ensures that there IS a LEVEL set, even if we don't rely on it!
         self.log.setLevel(logging.NOTSET + 1)
-        boxLogGF = tob.log.getGlobalFilter()
+        boxLogGF = log.getGlobalFilter()
         boxLogGF.setLevel('NOTICE')
         self.log.addFilter(boxLogGF)
 
@@ -51,11 +62,11 @@ class Box:
         boxLogHandler = logging.StreamHandler(sys.stdout)
 
         if os.getenv('PYCHARM_RUNNING_TOB', None) == '1':
-            boxLogHandler.setFormatter(tob.log.PyCharmFormatter())
+            boxLogHandler.setFormatter(log.PyCharmFormatter())
         elif sys.stdout.isatty():
-            boxLogHandler.setFormatter(tob.log.ConsoleFormatter())
+            boxLogHandler.setFormatter(log.ConsoleFormatter())
         else:
-            boxLogHandler.setFormatter(tob.log.LogFormatter())
+            boxLogHandler.setFormatter(log.LogFormatter())
 
         self.log.addHandler(boxLogHandler)
 
@@ -66,7 +77,6 @@ class Box:
         if self.config.log is not None:
 
             from logging.handlers import TimedRotatingFileHandler
-            from tob.log import FileFormatter
 
             boxLogPath = self.config.log
 
@@ -77,7 +87,7 @@ class Box:
                 except Exception as exc:
                     warn.append(f'Failed to create LogFile handler: {exc}')
                 else:
-                    boxLogFileHandler.setFormatter(FileFormatter())
+                    boxLogFileHandler.setFormatter(log.FileFormatter())
                     self.log.addHandler(boxLogFileHandler)
             else:
                 warn.append(f"Failed to establish LogFile handler for directory '{self.config['log']}'.")
@@ -130,7 +140,7 @@ class Box:
             # Part 3 -> add_hook for PATH_INFO (around line 320)
 
             # stem: Forward DEBUG
-            stemFwrd = tob.log.ForwardHandler(level=logging_level(Runlevel.DEBUG), tag='stem')
+            stemFwrd = log.ForwardHandler(level=logging_level(Runlevel.DEBUG), tag='stem')
 
         elif self.config.debug:
             boxLogGF.setLevel('DEBUG')
@@ -139,13 +149,13 @@ class Box:
             bottle.debug(True)
 
             # stem: Forward NOTICE
-            stemFwrd = tob.log.ForwardHandler(level=logging_level(Runlevel.NOTICE), tag='stem')
+            stemFwrd = log.ForwardHandler(level=logging_level(Runlevel.NOTICE), tag='stem')
 
         else:
             bottle.debug(False)
 
             # stem: Forward WARNING
-            stemFwrd = tob.log.ForwardHandler(level=logging_level(Runlevel.WARN), tag='stem')
+            stemFwrd = log.ForwardHandler(level=logging_level(Runlevel.WARN), tag='stem')
 
         stemLog.addHandler(stemFwrd)
         stemFwrd.setTarget(self.log)
@@ -153,18 +163,18 @@ class Box:
         #####
         # Data persistance management
         # ... has to be setup here to prepare for self.nodes
-        from tob.persistor import Storage
+        from .persistor import Storage
         self.storage = Storage(self.config.box.persistance_dir, self.system.user)
 
         #####
         # SOCKS Proxy definition
-        from tob.proxy import Proxy
-        from tob.config import ProxyConfig
+        from .proxy import Proxy
+        from .config import ProxyConfig
         self.proxy = Proxy(ProxyConfig(self.config.proxy))
 
         #####
         # The Onionoo Interface
-        from tob.onionoo import getOnionoo
+        from .onionoo import getOnionoo
         # This creates __OnionooManager__
 
         OnionooManager = getOnionoo()
@@ -173,8 +183,8 @@ class Box:
 
         #####
         # Management of Nodes
-        from tob.nodes import Manager as NodesManager
-        from tob.config import DefaultNodeConfig
+        from .nodes import Manager as NodesManager
+        from .config import DefaultNodeConfig
         self.nodes = NodesManager(DefaultNodeConfig(self.config.tor), database=self.storage)
 
         # #####
@@ -188,17 +198,17 @@ class Box:
                 self.log.warning("Usage of a GeoIP2 City database demands availability of Python module 'geoip2'.")
             else:
                 if os.path.exists(self.config.box.geoip2_city):
-                    from tob.geoip import GeoIP2
+                    from .geoip import GeoIP2
                     self.geoip2 = GeoIP2(self.config.box.geoip2_city)
                     self.log.notice("Operating with GeoIP Database '{}'.".format(self.config.box.geoip2_city))
 
         if self.geoip2 is None:
-            from tob.geoip import GeoIPOO
+            from .geoip import GeoIPOO
             self.geoip2 = GeoIPOO()
 
         #####
         # Our cron
-        from tob.scheduler import Scheduler
+        from .scheduler import Scheduler
         self.cron = Scheduler()
 
         # Check proper setting of Timezone
@@ -216,7 +226,7 @@ class Box:
         #####
         # Time Management
         #
-        from tob.deviation import getTimer
+        from .deviation import getTimer
 
         self.time = getTimer(self.config.box.ntp_server or self.system.ntp)
 
@@ -238,7 +248,7 @@ class Box:
 
         #####
         # The Onion Box Version Service
-        from tob.version import VersionManager
+        from .version import VersionManager
         from datetime import datetime
 
         def check_version(checker, relaunch_job=False):
@@ -272,7 +282,7 @@ class Box:
         #####
         # SESSION Management
         # from tob.session import SessionFactory, make_short_id
-        from tob.session import SessionManager, make_short_id
+        from .session import SessionManager, make_short_id
 
         # This function is called when a session is deleted.
         # We use it to ensure that the nodes for this session are closed properly!
@@ -297,7 +307,7 @@ class Box:
         # Almost done; lets compose the app...
 
         # Single node dashboard = default application
-        from tob.apps import Dashboard
+        from .apps import Dashboard
         theonionbox = Dashboard(sessions=self.sessions,
                                 nodes=self.nodes,
                                 proxy=self.proxy,
@@ -310,7 +320,7 @@ class Box:
         # Controlcenter
         if self.config.cc is not None:
 
-            from tob.apps import ControlCenter
+            from .apps import ControlCenter
             try:
                 cc = ControlCenter(self.sessions,
                                    self.nodes,
@@ -337,42 +347,42 @@ class Box:
 
 
         # Static files - which are many meanwhile
-        from tob.static import SessionFileProvider
-        from pathlib import Path
-        boxLibsPath = 'libs'
+        from .static import SessionFileProvider
 
-        libs = SessionFileProvider(self.sessions, Path(boxLibsPath) / 'jquery-3.4.1' / 'jquery-3.4.1.min.js', '/jquery.js')
+        boxLibsPath = Path(self.config['cwd']) / 'libs'
 
-        libs.add(Path(boxLibsPath) / 'bootstrap-4.3.1' / 'js' / 'bootstrap.bundle.min.js', '/bootstrap.js')
-        libs.add(Path(boxLibsPath) / 'bootstrap-4.3.1' / 'css' / 'bootstrap.min.css', '/bootstrap.css')
+        libs = SessionFileProvider(self.sessions, boxLibsPath / 'jquery-3.4.1' / 'jquery-3.4.1.min.js', '/jquery.js')
 
-        libs.add(Path(boxLibsPath) / 'glide-3.4.1' / 'dist' / 'glide.js', '/glide.js')
-        libs.add(Path(boxLibsPath) / 'glide-3.4.1' / 'dist' / 'css' / 'glide.core.css', '/glide.core.css')
-        libs.add(Path(boxLibsPath) / 'glide-3.4.1' / 'dist' / 'css' / 'glide.theme.css', '/glide.theme.css')
+        libs.add(boxLibsPath / 'bootstrap-4.3.1' / 'js' / 'bootstrap.bundle.min.js', '/bootstrap.js')
+        libs.add(boxLibsPath / 'bootstrap-4.3.1' / 'css' / 'bootstrap.min.css', '/bootstrap.css')
 
-        libs.add(Path(boxLibsPath) / 'scrollMonitor-1.2.4' / 'scrollMonitor.js', '/scrollMonitor.js')
+        libs.add(boxLibsPath / 'glide-3.4.1' / 'dist' / 'glide.js', '/glide.js')
+        libs.add(boxLibsPath / 'glide-3.4.1' / 'dist' / 'css' / 'glide.core.css', '/glide.core.css')
+        libs.add(boxLibsPath / 'glide-3.4.1' / 'dist' / 'css' / 'glide.theme.css', '/glide.theme.css')
 
-        libs.add(Path(boxLibsPath) / 'smoothie-1.36' / 'smoothie.js', '/smoothie.js')
+        libs.add(boxLibsPath / 'scrollMonitor-1.2.4' / 'scrollMonitor.js', '/scrollMonitor.js')
 
-        # libs.add(Path(boxLibsPath) / 'underscore-1.9.1' / 'underscore-min.js', '/underscore.js')
+        libs.add(boxLibsPath / 'smoothie-1.36' / 'smoothie.js', '/smoothie.js')
 
-        libs.add(Path(boxLibsPath) / 'js-md5-0.7.3' / 'md5.js', '/md5.js')
+        # libs.add(boxLibsPath / 'underscore-1.9.1' / 'underscore-min.js', '/underscore.js')
 
-        libs.add(Path(boxLibsPath) / 'jquery.pep-0.6.10' / 'jquery.pep.js', '/pep.js')
+        libs.add(boxLibsPath / 'js-md5-0.7.3' / 'md5.js', '/md5.js')
 
-        # libs.add(Path(boxLibsPath) / 'toggle-3.5.0' / 'js' / 'bootstrap4-toggle.min.js', '/toggle.js')
-        # libs.add(Path(boxLibsPath) / 'toggle-3.5.0' / 'css' / 'bootstrap4-toggle.min.css', '/toggle.css')
+        libs.add(boxLibsPath / 'jquery.pep-0.6.10' / 'jquery.pep.js', '/pep.js')
 
-        # libs.add(Path(boxLibsPath) / 'HackTimer-20181012' / 'HackTimer.js', '/hacktimer.js')
+        # libs.add(boxLibsPath / 'toggle-3.5.0' / 'js' / 'bootstrap4-toggle.min.js', '/toggle.js')
+        # libs.add(boxLibsPath / 'toggle-3.5.0' / 'css' / 'bootstrap4-toggle.min.css', '/toggle.css')
+
+        # libs.add(boxLibsPath / 'HackTimer-20181012' / 'HackTimer.js', '/hacktimer.js')
 
         # This is not really a library ... but the scheme works here as well.
-        libs.add(Path('scripts') / 'chart.js', 'chart.js')
+        libs.add(Path(self.config['cwd']) / 'scripts' / 'chart.js', 'chart.js')
 
         theonionbox.merge(libs)
 
         # Those are static files as well - yet created by a template run & stored into the session object
 
-        from tob.static import TemplateFileProvider
+        from .static import TemplateFileProvider
 
         templt = TemplateFileProvider(self.sessions, 'box.js', '/box.js')
         templt.add('box.css', '/box.css')
@@ -383,13 +393,13 @@ class Box:
         theonionbox.merge(templt)
 
         # LatoLatin
-        from tob.libraries import LatoLatin
+        from .libraries import LatoLatin
         libLatoLatin = LatoLatin(self.sessions, os.path.join(boxLibsPath, 'LatoLatin'),
                                  valid_status=['ok', 'auto', 'error', 'login', 'frame'])
         theonionbox.merge(libLatoLatin)
 
         # Fontawesome
-        from tob.libraries import FontAwesome
+        from .libraries import FontAwesome
         libFontAwesome = FontAwesome(self.sessions, os.path.join(boxLibsPath, 'fontawesome-free-5.11.2-web'),
                                      valid_status='frame')
         theonionbox.merge(libFontAwesome)
@@ -430,7 +440,7 @@ class Box:
 
     def shutdown(self):
 
-        from tob.onionoo import getOnionoo
+        from .onionoo import getOnionoo
 
         self.log.propagate = False
 

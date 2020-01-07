@@ -1,8 +1,11 @@
+#!/usr/bin/env python
 import click
-import functools
 import configupdater
+import functools
 import os
+import pathlib
 import re
+import site
 import sys
 
 # theonionbox.py -d --config filepath box --host 0.0.0.0 --port 8080 ... tor --host 0.0.0.0 --port ... proxy --host: ...
@@ -89,42 +92,8 @@ def configfile(*param_decls, **attrs):
                       version=stamped_version, message='%(prog)s\nVersion %(version)s')
 @click.pass_context
 def main(ctx, debug, trace, config, cc, log):
-
-    # We do all the stuff here to prepare the environment to run a Box
-
-    #####
-    # Common imports
-    
-    import os
-    import sys
-
-    #####
-    # Script directory detection
-    import inspect
-
-    def get_script_dir(follow_symlinks=True):
-        if getattr(sys, 'frozen', False):  # py2exe, PyInstaller, cx_Freeze
-            path = os.path.abspath(sys.executable)
-        else:
-            path = inspect.getabsfile(get_script_dir)
-        if follow_symlinks:
-            path = os.path.realpath(path)
-        return os.path.dirname(path)
-
-    # to ensure that our directory structure works as expected!
-    os.chdir(get_script_dir())
-
-    #####
-    # TODO 20190812: Really necessary?
-
-    import site
-
-    for (dirpath, dirnames, filenames) in os.walk(get_script_dir()):
-        init_path = os.path.join(dirpath, '__init__.py')
-        if os.path.isfile(init_path):
-            site.addsitedir(dirpath)
-
     # The Box will be launched by launcher() ... after all the subcommands returned.
+    pass
 
 
 @main.resultcallback()
@@ -159,9 +128,25 @@ def launcher(results, debug, trace, config, cc, log):
     params['cc'] = cc
     params['log'] = log
 
-    from tob.box import Box
-    theonionbox = Box(params)
-    theonionbox.run()
+    # Next We do all the stuff to prepare the environment to run a Box
+
+    # Provide the demanded CurrentWorkingDirectory ... without truely changing to it via os.chdir !!
+    # We resolve this Path, as __file__ might be relative, if __name__ == __main__.
+    cwd = pathlib.Path(__file__).resolve()
+    cwd = cwd.parent
+    assert cwd.exists()
+    params['cwd'] = cwd
+
+    if __name__ == '__main__' or __package__ in [None, '']:
+        # Add the current dir to the site-dirs, to allow ABSOLUTE import
+        site.addsitedir(cwd)
+        from tob.box import Box
+    else:
+        # we're in a package => RELATIVE should work.
+        from .tob.box import Box
+
+    tob = Box(params)
+    tob.run()
 
 
 @main.command('box', short_help='Options to configure your Onion Box.')
@@ -246,8 +231,10 @@ def box(ctx, host, port, message_level, base_path, session_ttl, ssl_key, ssl_cer
              help='Local ControlSocket of the Tor node.')
 @click.option('--auth_cookie', 'cookie', default=None, metavar='COOKIE', show_default=True,
              help='Cookie necessary to support HiddenServiceAuthorizeClient.')
+@click.option('--password', 'password', default=None, metavar='PASSWORD', show_default=True,
+              help='Password, necessary if this Tor node is guarded with a HashedControlPassword.')
 @click.pass_context
-def tor(ctx, control, host, port, socket, cookie):
+def tor(ctx, control, host, port, socket, cookie, password):
     """Settings to configure the connection to the Tor node to be monitored."""
 
     if control in ['port', 'proxy']:
@@ -272,6 +259,7 @@ def tor(ctx, control, host, port, socket, cookie):
         'port': port,
         'socket': socket,
         'cookie': cookie,
+        'password': password,
         'label': None,      # some additional properties, demanded by the cc
         'connect': True
     }}
@@ -312,8 +300,5 @@ def proxy(ctx, control, host, port, socket, proxy):
     }}
 
 
-# if __name__ == '__main__':
-    # main(box_debug)
-#    main()
-
-# __all__ = ['main']
+if __name__ == '__main__':
+    main()

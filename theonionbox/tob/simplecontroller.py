@@ -1,6 +1,6 @@
+import socket
+import socks
 import threading
-# from socks import socksocket
-from socket import socket, AF_INET, SOCK_STREAM
 
 # "Thanks" to stem!
 try:
@@ -63,8 +63,7 @@ class SimpleController(object):
 class SimplePort(SimpleController):
 
     def __init__(self, host, port):
-
-        self._socket = socket(AF_INET, SOCK_STREAM)
+        self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._socket.settimeout(2)
 
         # This could raise an exception ...
@@ -77,8 +76,7 @@ class SimplePort(SimpleController):
 class SimpleSocket(SimpleController):
 
     def __init__(self, socket_path):
-        from socket import AF_UNIX
-        self._socket = socket(AF_UNIX, SOCK_STREAM)
+        self._socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self._socket.settimeout(2)
 
         # This could raise an exception ...
@@ -91,10 +89,7 @@ class SimpleSocket(SimpleController):
 class SimpleProxy(SimpleController):
 
     def __init__(self, host, port, proxy_host, proxy_port):
-
-        import socks
-
-        self._socket = socks.socksocket(AF_INET, SOCK_STREAM)
+        self._socket = socks.socksocket(socket.AF_INET, socket.SOCK_STREAM)
         self._socket.settimeout(15)
         self._socket.set_proxy(socks.SOCKS5, proxy_host, proxy_port, rdns=True)
 

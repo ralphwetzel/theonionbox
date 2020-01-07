@@ -1,15 +1,15 @@
-import logging
 import contextlib
+import logging
 from threading import RLock
 
 # from bottle import Bottle, HTTPError, redirect
 import bottle
 
-from tob.session import SessionManager, Session, make_short_id
-from tob.nodes import Manager as NodesManager
-from tob.proxy import Proxy
-from tob.utils import AttributedDict
-from tob.version import VersionManager
+from ..nodes import Manager as NodesManager
+from ..proxy import Proxy
+from ..session import SessionManager, Session, make_short_id
+from ..utils import AttributedDict
+from ..version import VersionManager
 
 
 class BaseApp:
@@ -62,7 +62,7 @@ class BaseApp:
         #####
         # Time Management
         #
-        from tob.deviation import getTimer
+        from ..deviation import getTimer
 
         self.time = getTimer()
 

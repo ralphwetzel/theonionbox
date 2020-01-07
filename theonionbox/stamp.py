@@ -1,4 +1,4 @@
 __title__ = 'The Onion Box'
 __description__ = 'Dashboard to monitor Tor node operations.'
-__version__ = '19.3'
-__stamp__ = '20191229|232641'
+__version__ = '20.1'
+__stamp__ = '20200105|230447'

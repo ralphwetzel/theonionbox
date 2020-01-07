@@ -5,12 +5,13 @@
 # used for the scripting part of TheOnionBox!
 
 import os
+import psutil
 
 
-from tob.configcollector import ConfigCollector
-cfgcoll = ConfigCollector(tor)
+# from tob.configcollector import ConfigCollector
+# cfgcoll = ConfigCollector(tor)
 
-configs_used = []
+configs_used = get('configs_used', [])
 configs_all = []
 
 try:
@@ -56,7 +57,6 @@ end
 {{!header_row('Tor', 'Configuration', 'config')}}
 
 <%
-    import psutil
     cmd_line = []
 
     if tor.is_localhost():
@@ -138,7 +138,7 @@ end
 </div>
 <%
 
-    configs_used = cfgcoll.collect_configs_used()
+    # configs_used = cfgcoll.collect_configs_used()
 
     manpg = get('manpage', None)
 

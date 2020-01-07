@@ -1,10 +1,12 @@
 from typing import Optional, List
-# from configuration import BaseNodeConfig, DefaultNodeConfig
-from .node import Node
-from persistor import Storage
+
 import time
-from tob.config import DefaultNodeConfig
-from ccfile import CCNode
+
+from ..ccfile import CCNode
+from ..config import DefaultNodeConfig
+from ..persistor import Storage
+
+from .node import Node
 
 class Manager(object):
 

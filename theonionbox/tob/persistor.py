@@ -1,10 +1,10 @@
 from typing import Optional, List
+
 import logging
+import os
 import sqlite3
 import tempfile
-import os
 from time import time
-from sqlite3 import Connection, Row
 
 
 class Storage(object):
@@ -112,7 +112,7 @@ class BandwidthPersistor(object):
 
         conn.close()
 
-    def open_connection(self, path: Optional[str] = None) -> Optional[Connection]:
+    def open_connection(self, path: Optional[str] = None) -> Optional[sqlite3.Connection]:
 
         if path is None:
             path = self.path
@@ -130,7 +130,7 @@ class BandwidthPersistor(object):
 
     # This does not commit!
     def persist(self, interval: str, timestamp: float,
-                read: Optional[int] = 0, write: Optional[int] = 0, connection: Optional[Connection] = None) -> bool:
+                read: Optional[int] = 0, write: Optional[int] = 0, connection: Optional[sqlite3.Connection] = None) -> bool:
 
         if self.fpid is None:
             return False
@@ -152,7 +152,7 @@ class BandwidthPersistor(object):
 
     # get the data back from the table
     def get(self, interval: str, js_timestamp: Optional[int] = int(time()*1000), limit: Optional[int] = -1,
-            offset: Optional[int] = 0, connection: Optional[Connection] = None) -> Optional[List[Row]]:
+            offset: Optional[int] = 0, connection: Optional[sqlite3.Connection] = None) -> Optional[List[sqlite3.Row]]:
         if connection is None:
             connection = self.open_connection()
             if connection is None:

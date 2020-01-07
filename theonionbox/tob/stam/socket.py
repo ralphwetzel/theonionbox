@@ -1,5 +1,8 @@
 from typing import Optional
+
 import socket
+import socks
+
 import stem.socket
 
 
@@ -56,7 +59,6 @@ class ControlProxy(stem.socket.ControlPort):
 
     def _make_socket(self):
 
-        import socks
         control_socket = None
 
         try:

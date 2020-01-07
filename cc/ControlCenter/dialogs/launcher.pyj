@@ -27,7 +27,7 @@ class Launcher(DialogBase):
                         </div>
                         <div class="modal-footer">
                             <div style='font-family: LatoLatinWeb; font-size: 14px;'>
-                                Copyright &copy; 2015 - 2019 Ralph Wetzel
+                                Copyright &copy; 2015 - 2020 Ralph Wetzel
                             </div>
                         </div>
                     </div>

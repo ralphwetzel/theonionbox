@@ -1,11 +1,12 @@
 from typing import Optional, Union, List
+
 from pathlib import Path, PurePath
 from re import escape
 
 from bottle import Bottle, static_file, HTTPError, HTTPResponse
 
-from tob.plugin.session import SessionPlugin
-from tob.session import SessionManager
+from .plugin.session import SessionPlugin
+from .session import SessionManager
 
 
 class Base(Bottle):

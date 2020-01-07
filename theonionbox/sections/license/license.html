@@ -3,7 +3,12 @@
     # It is intended to be a bottlepy - style template
     # used for the scripting part of TheOnionBox!
 
-    from tob.license import License
+    try:
+       from tob.license import License
+    except ModuleNotFoundError:
+        from theonionbox.tob.license import License
+    end
+
     license = License()
 %>
 <div class="row">
@@ -12,7 +17,7 @@
     <div class="{{box_value_grid}}">
         <div style="color: grey; font-size: 10px; font-weight: 300">
             <a href="http://www.theonionbox.com/#readme" target="_blank">The Onion Box</a> |
-            Version v{{box_stamp}} | Copyright &copy; 2015 - 2019 Ralph Wetzel | License:
+            Version v{{box_stamp}} | Copyright &copy; 2015 - 2020 Ralph Wetzel | License:
             <a role="button" data-toggle="collapse" href="#MIT"
                aria-expanded="false" aria-controls="MIT">MIT</a>
         </div>
@@ -60,7 +65,12 @@
     <hr>
 
     {{!header_row('', license.get('header'))}}
-    {{!standard_row('', license.get('copyright'))}}
+    <div class='row'>
+        <div class='{{box_datum_grid}}'></div>
+        <div class='{{box_value_grid}} box_value_margin'>
+            {{!license.get('copyright')}}
+        </div>
+    </div>
     <div class="row">
         <div class="{{box_datum_grid}}">
         </div>

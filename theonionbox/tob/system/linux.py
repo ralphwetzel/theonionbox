@@ -6,7 +6,6 @@ import re
 import subprocess
 import time
 
-
 from . import BaseSystem
 
 

@@ -1,21 +1,29 @@
 import contextlib
 import json
 import logging
+import pathlib
 import time
 import uuid
 
 import bottle
 
-from tob.apps import BaseApp
-from tob.ccfile import CCFile
-from tob.nodes import Manager as NodesManager, AlreadyRegisteredError, Node, NotConnectedError
-from tob.plugin.session import SessionPlugin
-from tob.proxy import Proxy as TorProxy
-from tob.session import SessionManager, Session
-from tob.utils import AttributedDict
-from tob.version import VersionManager
-import stamp
+from ..apps import BaseApp
+from ..ccfile import CCFile
+from ..nodes import Manager as NodesManager, AlreadyRegisteredError, Node, NotConnectedError
+from ..plugin.session import SessionPlugin
+from ..proxy import Proxy as TorProxy
+from ..session import SessionManager, Session
+from ..utils import AttributedDict
+from ..version import VersionManager
 
+# __package__ is either 'theonionbox.tob.apps' or 'tob.apps'
+# If there're more than two levels, we try to import RELATIVEly.
+# If it's only two level, we try ABSOLUTEly.
+p = __package__.split('.')
+if len(p) > 2:
+    from ... import stamp
+else:
+    import stamp
 
 class CCError(bottle.HTTPError):
 
@@ -46,6 +54,7 @@ class ControlCenter(BaseApp):
         self.cc = CCFile(self.config.cc)
         self.fingerprints = {}
         self.show_logout = None
+        self.cwd = pathlib.Path(self.config['cwd'])
 
         config = {
             'no_session_redirect': self.redirect.path('/'),
@@ -231,10 +240,11 @@ class ControlCenter(BaseApp):
             'icon': self.icon,
             'stamp': stamp,
             'launcher': 1 if 'cards' not in session else 0
+            , 'template_lookup': [str(self.cwd)]
         }
 
-        session['cc.js'] = bottle.template("scripts/cc.js", **params)
-        session['cc.css'] = bottle.template("css/cc.css", **params)
+        session['cc.js'] = bottle.template('scripts/cc.js', **params)
+        session['cc.css'] = bottle.template('css/cc.css', **params)
 
         return bottle.template('pages/cc.html', **params)
 
@@ -288,16 +298,16 @@ class ControlCenter(BaseApp):
         try:
 
             if connect == 'port':
-                from tob.simplecontroller import SimplePort
+                from ..simplecontroller import SimplePort
                 p = verify_port(port)
                 sc = SimplePort(host, p)
 
             elif connect == 'socket':
-                from tob.simplecontroller import SimpleSocket
+                from ..simplecontroller import SimpleSocket
                 sc = SimpleSocket(host)
 
             elif connect == 'proxy':
-                from tob.simplecontroller import SimpleProxy
+                from ..simplecontroller import SimpleProxy
                 p = verify_port(port)
                 if cookie and len(cookie) > 0:
                     self.proxy.assure_cookie(host, cookie)
@@ -448,8 +458,6 @@ class ControlCenter(BaseApp):
         return bottle.HTTPError(500)
 
     def post_cc_ping(self, session):
-
-        import traceback
 
         headers = {
             'Last-Modified': time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime(self.cc.last_modified))
@@ -744,8 +752,7 @@ class ControlCenter(BaseApp):
 
     def post_cc_login(self, session):
 
-        from tob.authenticate import authenticate
-        import traceback
+        from ..authenticate import authenticate
 
         # print("post_cc_login")
 
@@ -825,7 +832,7 @@ class ControlCenter(BaseApp):
         # When the operator changes the position of a card via D & D,
         # it sends the session id of the card located before itself in the DOM tree.
 
-        from tob.ccfile import CCNode
+        from ..ccfile import CCNode
 
         before = bottle.request.forms.get('position', None)
         if before is None:
@@ -867,7 +874,7 @@ class ControlCenter(BaseApp):
 
     def post_cc_license(self, session):
 
-        from tob.license import License
+        from ..license import License
 
         l = License()
 
@@ -926,7 +933,7 @@ class ControlCenter(BaseApp):
             <hr>
             <div style='font-family: LatoLatinWebLight; font-size: 14px;'>
                 <a href="http://www.theonionbox.com/#readme" target="_blank">The Onion Box</a>
-                 | Copyright &copy; 2015 - 2019 Ralph Wetzel | License:
+                 | Copyright &copy; 2015 - 2020 Ralph Wetzel | License:
                 <a href="https://github.com/ralphwetzel/theonionbox/blob/master/LICENSE" target="_blank">MIT</a>
             </div>
             <div style='font-family: LatoLatinWebLight; font-size: 14px;'>

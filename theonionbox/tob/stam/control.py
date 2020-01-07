@@ -1,16 +1,22 @@
 from typing import Callable, Optional, Union, List
-import stem.control
-import stem.util
-from stam.socket import ControlPort, ControlSocketFile, ControlProxy
-#from configuration.node import BaseNodeConfig
-import logging
+
+from platform import system
+import pytz
+
 from stem import SocketError, UNDEFINED
-from stem.response.protocolinfo import ProtocolInfoResponse
 from stem.connection import IncorrectPassword, IncorrectSocketType, AuthenticationFailure, AuthMethod, MissingPassword
-from stem.control import EventType
-from tob.proxy import Proxy as TorProxy
-from tob.config import DefaultNodeConfig
-from tob.ccfile import CCNode
+import stem.control
+from stem.control import EventType      # used by node.py
+from stem.response.protocolinfo import ProtocolInfoResponse
+import stem.util
+
+# Check below!
+# from ..proxy import Proxy as TorProxy
+
+from ..config import DefaultNodeConfig
+from ..ccfile import CCNode
+
+from .socket import ControlPort, ControlSocketFile, ControlProxy
 
 #####
 # Extensive monkey patching of stem.control.BaseController
@@ -61,7 +67,7 @@ class Controller(stem.control.Controller):
     def from_port(address: Optional[str] = '127.0.0.1', port: Optional[Union[int, str]] = 'auto',
                   timeout: Optional[int] = None) -> 'Controller':
 
-        import stem.connection
+        # import stem.connection
 
         # timeout management
         if timeout and timeout < 0:
@@ -101,7 +107,11 @@ class Controller(stem.control.Controller):
     @staticmethod
     def from_config(config: Union[DefaultNodeConfig, CCNode],
                     timeout: Optional[int] = None,
-                    proxy: Optional[TorProxy] = None) -> 'Controller':
+                    # The next line used to be
+                    # proxy: Optional[TorProxy] = None) -> 'Controller':
+                    # ... but this create a cyclic import. Yes, this is definitely a bad design!
+                    # ToDo: Fix this orderly!
+                    proxy = None) -> 'Controller':
 
         if config.control == 'socket':
             try:
@@ -230,7 +240,6 @@ class Controller(stem.control.Controller):
     @property
     def user(self) -> str:
 
-        from platform import system
 
         # As stem's & Tor's implementations will return no valuable results on Windows
         # we diverge appropriately:
@@ -308,8 +317,6 @@ class Controller(stem.control.Controller):
 
     @stem.control.with_default()
     def get_accounting_stats(self, default=UNDEFINED):
-
-        import pytz
 
         accs = super(Controller, self).get_accounting_stats()
 

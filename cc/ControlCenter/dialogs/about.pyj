@@ -53,7 +53,7 @@ class About(DialogBase):
 
         $.post({
             'url': self.base_path + "/" + self.session_id + "/cc/" + "about"
-            , 'timeout': 2000
+            , 'timeout': 5000
         })
         .done(def(data):
             $('#about').removeClass('text-center').addClass('text-left')

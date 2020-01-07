@@ -7,7 +7,12 @@
 <%
     base_path = get('virtual_basepath', '') + '/'
     sections = get('sections', [])
-    from tob.template_tools import *
+
+    try:
+       from tob.template_tools import *
+    except ModuleNotFoundError:
+        from theonionbox.tob.template_tools import *
+    end
 
     login = get('box.js_login', False)
     token = get('token', 'ThisIsAnError')

@@ -1,7 +1,11 @@
 <!DOCTYPE html>
 
 <%
-    from tob.template_tools import *
+    try:
+       from tob.template_tools import *
+    except ModuleNotFoundError:
+        from theonionbox.tob.template_tools import *
+    end
 
     base_path = get('virtual_basepath', '') + '/'
     session = get('session')
@@ -42,6 +46,7 @@
         import logging
         bL = logging.getLogger('theonionbox')
         div_open = False
+
         for section in sections:
 
             if section == '-':
@@ -69,16 +74,12 @@
 
             file = 'sections/{0}/{0}.html'.format(section)
 
-            if os.path.exists(file):
-                try:
-                    include(file)
-                except Exception as exc:
-                    import sys, traceback
-                    exc_type, exc_val, exc_tb = sys.exc_info()
-                    bL.warning("While including '{}' into 'index_page.html':\n{}".format(file, traceback.format_exc()))
-                end
-            else:
-                bL.debug("While including '{0}' into 'index_page.html': '{0}' does not exist!".format(file))
+            try:
+                include(file)
+            except Exception as exc:
+                import logging
+                bL = logging.getLogger('theonionbox')
+                bL.debug("While including '{}' into 'index_page.html': {}".format(file, exc))
             end
         end
         out = ('<' + '/div>') if div_open else ''

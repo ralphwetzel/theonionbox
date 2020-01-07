@@ -1,9 +1,6 @@
-# from __future__ import absolute_import
-
-from socket import AF_INET, SOCK_DGRAM
+import socket
 import struct
 from time import time
-import socket
 
 
 # class TimeManager(object):
@@ -107,7 +104,7 @@ class Timer:
 
         try:
             # connect to server
-            client = socket.socket(AF_INET, SOCK_DGRAM)
+            client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         except:
             return False
 

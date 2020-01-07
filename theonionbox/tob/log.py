@@ -1,17 +1,18 @@
 from typing import Dict
-# from __future__ import absolute_import
-from time import time, strftime, mktime, localtime
+
 from collections import deque
-import uuid
+import functools
 import logging
 from logging.handlers import MemoryHandler
-import functools
+from logging import Filter, _checkLevel
+import os.path
 import sys
-from threading import RLock
+from time import time, strftime, mktime, localtime
+import uuid
+
 from stem import ProtocolError
 
-from tob.deviation import getTimer
-import os.path
+from .deviation import getTimer
 
 normalize_level = {'DEBUG': 'DEBUG',
                    'INFO': 'INFO',
@@ -722,7 +723,7 @@ class ConsoleFormatter(logging.Formatter):
 
         # add propper line breaks for nice output:
         try:
-            from terminalsize import get_terminal_size
+            from .terminalsize import get_terminal_size
 
             # Try to get the size of the terminal
             sx, sy = get_terminal_size()
@@ -824,10 +825,6 @@ def sanitize_for_html(string):
         out += ' '
 
     return out
-
-
-from logging import Filter, _checkLevel
-
 
 class FileBasedFilter(logging.Filter):
 

@@ -1,10 +1,10 @@
-# coding=UTF-8
-
+from apscheduler.schedulers import SchedulerNotRunningError     # used by node.py
+from datetime import timedelta
+import logging
 from pytz.tzinfo import NonExistentTimeError, AmbiguousTimeError
-from apscheduler.schedulers import SchedulerNotRunningError
+from tzlocal import get_localzone
 
 # to compensate for 'No handlers could be found for logger "apscheduler.scheduler"' message
-import logging
 log = logging.getLogger('apscheduler.scheduler')
 log.addHandler(logging.NullHandler())
 
@@ -59,7 +59,6 @@ class Scheduler(object):
                 # Could happen at the beginning of DST period or at the end:
                 # Add one hour to jump ot of the slushy zone
                 if trigger is 'date':
-                    from datetime import timedelta
                     trigger_args['run_date'] += timedelta(hours=1)
                     s = self.schedulr.add_job(func, trigger, id=id,
                                               replace_existing=True, args=args, kwargs=kwargs, **trigger_args)
@@ -79,7 +78,6 @@ class Scheduler(object):
                 except (NonExistentTimeError, AmbiguousTimeError):
                     # Could happen at the beginning of DST period or at the end:
                     # Add one hour to jump ot of the slushy zone
-                    from datetime import timedelta
                     run_date += timedelta(hours=1)
                     s = self.schedulr.add_date_job(func, run_date, name=id, # replace_existing=True,
                                                   args=args, kwargs=kwargs)
@@ -133,7 +131,6 @@ class Scheduler(object):
 
     # https://github.com/ralphwetzel/theonionbox/issues/19#issuecomment-263110953
     def check_tz(self):
-        from tzlocal import get_localzone
 
         try:
             # APScheduler 3.x

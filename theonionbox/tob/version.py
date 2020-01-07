@@ -1,6 +1,6 @@
-import uuid
 import requests
-import typing
+import uuid
+
 import bottle
 
 

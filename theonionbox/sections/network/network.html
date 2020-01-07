@@ -2,9 +2,15 @@
 %# It is intended to be a bottlepy - style template
 %# used for the scripting part of TheOnionBox!
 
-% from tob.log import sanitize_for_html
-
 <%
+
+    try:
+       from tob.log import sanitize_for_html
+    except ModuleNotFoundError:
+        from theonionbox.tob.log import sanitize_for_html
+    end
+
+
 tor = get('tor') if tor is None else tor
 oo_details = get('oo_details') if oo_details is None else oo_details
 oo_bw = get('oo_bw')

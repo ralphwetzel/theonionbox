@@ -1,22 +1,22 @@
 import contextlib
-import uuid
 import json
-
+import pathlib
 from threading import Timer
 from typing import Optional
+import uuid
 
 from bottle import Bottle, HTTPError, request, template, static_file
 
-from tob.apps import BaseApp
-from tob.geoip import GeoIPOO
-from tob.nodes import Manager as NodesManager, Node
-from tob.onionoo import getOnionoo
-from tob.plugin import SessionPlugin
-from tob.proxy import Proxy
-from tob.session import SessionManager, Session, make_short_id
-from tob.system import BaseSystem
-from tob.utils import AttributedDict
-from tob.version import VersionManager
+from ..apps import BaseApp
+from ..geoip import GeoIPOO
+from ..nodes import Manager as NodesManager, Node
+from ..onionoo import getOnionoo
+from ..plugin import SessionPlugin
+from ..proxy import Proxy
+from ..session import SessionManager, Session, make_short_id
+from ..system import BaseSystem
+from ..utils import AttributedDict
+from ..version import VersionManager
 # from tob.scheduler import Scheduler
 
 class Dashboard(BaseApp):
@@ -34,6 +34,7 @@ class Dashboard(BaseApp):
                          config=config)
 
         self.system = system
+        self.cwd = pathlib.Path(self.config['cwd'])
 
         # #####
         # # GeoIP2 interface
@@ -44,8 +45,8 @@ class Dashboard(BaseApp):
 
         #####
         # TOR manpage Index Information
-        from tob.manpage import ManPage
-        self.manpage = ManPage('tor/tor.1.ndx')
+        from ..manpage import ManPage
+        self.manpage = ManPage(str(self.cwd / 'tor' / 'tor.1.ndx'))
 
         #####
         # Page Construction
@@ -147,6 +148,12 @@ class Dashboard(BaseApp):
         if session is None:
             raise HTTPError(404)
 
+        # This allows to login via a command line provided password (to address HashedControlPassword authmethod)
+        pwd = self.nodes['theonionbox'].config.password
+        if pwd is not None:
+            session['password'] = pwd
+            session['logout:show'] = False
+
         return self.connect_session_to_node(session, 'theonionbox', proceed_to_page=self.default_page)
 
     def connect_session_to_node(self, session: Session, node_id: str, proceed_to_page: Optional[str] = None):
@@ -199,6 +206,8 @@ class Dashboard(BaseApp):
             , 'section_config': section_config
             , 'error_msg': display_error
             , 'box.js_login': True  # flag to manipulate the creation process of 'box.js'
+            , 'template_lookup': [str(self.cwd)]      # search path for the template engine...
+            # , 'tools': template_tools.__name__
         }
 
         # prepare the includes
@@ -207,7 +216,7 @@ class Dashboard(BaseApp):
         # session['fonts.css'] = template('css/latolatinfonts.css', **params)
 
         # deliver the error page
-        return template("pages/index.html", **params)
+        return template('pages/index.html', **params)
 
     def create_login_page(self, session: Session, node: Node, proceed_to_page: str):
 
@@ -244,6 +253,7 @@ class Dashboard(BaseApp):
             , 'section_config': section_config
             , 'proceed_to': proceed_to_page
             , 'box.js_login': True  # flag to manipulate the creation process of 'box.js'
+            , 'template_lookup': [str(self.cwd)]
         }
 
         # prepare the includes
@@ -255,16 +265,20 @@ class Dashboard(BaseApp):
                 session['auth.js'] = template('scripts/authrequest_basic.js'
                                               , virtual_basepath=self.config.box.base_path
                                               , proceed_to = proceed_to_page
-                                              , session_id=session.id)
+                                              , session_id=session.id
+                                              , template_lookup=[str(self.cwd)]
+                                              )
             else:  # e.g. if login['auth'] == 'digest'
                 session['auth.js'] = template('scripts/authrequest_digest.js'
                                               , virtual_basepath=self.config.box.base_path
                                               , proceed_to = proceed_to_page
-                                              , session_id=session.id)
+                                              , session_id=session.id
+                                              , template_lookup=[str(self.cwd)]
+                                              )
                 session['scripts'].append('md5.js')
 
         # deliver the login page
-        return template("pages/index.html", **params)
+        return template('pages/index.html', **params)
 
     def get_restart(self, session_id):
 
@@ -311,7 +325,7 @@ class Dashboard(BaseApp):
 
     def perform_login(self, login_id):
 
-        from tob.authenticate import authenticate
+        from ..authenticate import authenticate
 
         self.log.debug(f'Login Request: {make_short_id(login_id)}@{request.remote_addr} / {request.remote_route}')
 
@@ -428,7 +442,7 @@ class Dashboard(BaseApp):
         # node.torLogMgr.add_client(session.id)
 
         # prepare the preserved events for hardcoded transfer
-        from tob.log import sanitize_for_html
+        from ..log import sanitize_for_html
         # p_ev = node.torLogMgr.get_events(session.id, encode=sanitize_for_html)
         p_ev = []
 
@@ -537,9 +551,15 @@ class Dashboard(BaseApp):
             except:
                 at_location = 'Remote Location'
 
+        if session['logout:show'] is not None:
+            # 20200102: Currently only used if password for default node provided via command line.
+            show_logout = session['logout:show']
+        else:
+            show_logout = session['status'] != 'auto' or session['password'] is not None
+
         section_config = {}
         section_config['header'] = {
-            'logout': session['status'] != 'auto' or session['password'] is not None,
+            'logout': show_logout,
             'title': tor.nickname,
             'subtitle': f"Tor {tor.version_short} @ {at_location}<br>{fingerprint}",
             'powered': f"monitored by <b>The Onion Box</b> v{self.config.stamped_version}"
@@ -564,6 +584,12 @@ class Dashboard(BaseApp):
                       "KTNAxqFIiRR6RonEAhQMQUmRMSiO90U2csSBAhSfdLbf8/25yjk/OWxOSXRiEKPBmlyK2mhqxE3kN1BrZkYSQXARragN1mdB" \
                       "7S62k1ELjuc7HcXKuzrkRG+aq1iT5Py+04sporrvvCPg8gRtSRxBY9qBgJcjqEviCBrTjn8Zfz6qPw4XX/o4HUH8jr5kANX2" \
                       "pkGbPBkHgK6fBmCantjx+5EL5oVDnqsHL/DYhRMxwWIAAAAASUVORK5CYII="
+
+        # Preparation for the Configuration display
+        # 20200104: This used to be part of config.html - yet moved here due to (relative) import issues
+        from ..configcollector import ConfigCollector
+        cfgcoll = ConfigCollector(tor)
+        configs_used = cfgcoll.collect_configs_used()
 
         # params initialized before for onionoo data
         params.update({
@@ -596,7 +622,9 @@ class Dashboard(BaseApp):
             # , 'controlled_nodes': box_cc
             , 'transport_status': transport
             , 'token': session['token']
-
+            , 'cwd': str(self.cwd)
+            , 'configs_used': configs_used
+            , 'template_lookup': [str(self.cwd)]
         })
 
         # Test
@@ -614,7 +642,7 @@ class Dashboard(BaseApp):
         # session['fonts.css'] = template('css/latolatinfonts.css', **params)
 
         # create the dashboard
-        index = template("pages/index.html", **params)
+        index = template('pages/index.html', **params)
 
         # re-ping the session - to prevent accidential timeout
         self.sessions.get_session(session.id, request)
@@ -718,7 +746,7 @@ class Dashboard(BaseApp):
                                       'level': key,
                                       'status': False}).start()
 
-            from tob.log import sanitize_for_html
+            from ..log import sanitize_for_html
             log_list = node.logs.get_events(session_id, encode=sanitize_for_html)
 
             if log_list and len(log_list) > 0:
@@ -736,7 +764,7 @@ class Dashboard(BaseApp):
         # operations monitoring
         if 'monitor' in box_sections:
 
-            from tob.livedata import intervals
+            from ..livedata import intervals
 
             return_data_dict['mon'] = {}
             last_ts = None
@@ -921,4 +949,4 @@ class Dashboard(BaseApp):
         self.redirect('/')
 
     def get_manpage(self, session):
-        return static_file('tor.1.html', root='tor', mimetype='text/html')
+        return static_file('tor.1.html', root=str(self.cwd / 'tor'), mimetype='text/html')

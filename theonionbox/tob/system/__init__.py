@@ -3,13 +3,12 @@ from typing import Optional
 import os
 import platform
 
-from threading import RLock
 from collections import deque
-
 import itertools
 from psutil import virtual_memory, cpu_percent # to readout the cpu load
+from threading import RLock
 
-from tob.deviation import getTimer
+from ..deviation import getTimer
 
 
 class BaseSystem(object):
@@ -140,6 +139,7 @@ class BaseSystem(object):
 
     def run(self, launch, stop):
         return launch()
+
 
 def get_system_manager(system: str = platform.system()) -> BaseSystem:
 

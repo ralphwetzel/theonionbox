@@ -1,6 +1,6 @@
 import math
 import sys
-from tob.log import sanitize_for_html
+from .log import sanitize_for_html
 
 #####
 # Python version detection
