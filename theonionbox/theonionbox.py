@@ -106,10 +106,34 @@ def launcher(results, debug, trace, config, cc, log):
     for res in results:
         params.update(res)
 
+    # Verify the parameters defined in the configuration file:
     for cmd in ['box', 'tor', 'proxy']:
+
+        # If there was a config file, it's values have been loaded into the default_map
+        dm = ctx.default_map.get(cmd, {})
+
+        # This is a command
+        func = globals()[cmd]
+
+        # Get the interface = names of all valid parameters of our command
+        func_params_name = [p.name for p in func.params]
+
+        # Check if a parameter found in the config file...
+        for d in dm:
+            # ... is part of the interface:
+            if d not in func_params_name:
+                # If not, raise an error!
+                ref = {
+                    'box': 'TheOnionBox',
+                    'tor': 'Tor',
+                    'proxy': 'Proxy'
+                }
+                raise click.NoSuchOption(d, f'Invalid option in configuration file: [{ref[cmd]}] {d}')
+
+        # After this validation,
+        # we use the values found in the default_map to feed the commands that are not called via the command line
         if cmd not in params:
-            dm = ctx.default_map.get(cmd, {})
-            func = globals()[cmd]
+            # call the command with the values from the config file
             params.update(ctx.invoke(func, **dm))
 
     if params['proxy']['control'] == 'tor':
