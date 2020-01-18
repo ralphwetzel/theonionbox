@@ -72,6 +72,7 @@ class ControlCenter():
                 return format_bytes(data) + '/s'
             , 'yMinFormatter': def(data, precision = 2):
                 return format_bytes(Math.abs(data)) + '/s'
+            , 'limitFPS': 2
         }
 
         self.chart = Smoothie(self.chart_options_1)
