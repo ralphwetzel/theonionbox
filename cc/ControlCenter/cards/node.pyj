@@ -58,7 +58,7 @@ class Node:
                 return format_bytes(data) + '/s'
             , 'yMinFormatter': def(data, precision = 2):
                 return format_bytes(Math.abs(data)) + '/s'
-            , 'limitFPS': 10
+            , 'limitFPS': 2
         }
 
         self.chart = None

@@ -20,7 +20,6 @@ except ModuleNotFoundError:
 
 stamped_version = '{} (stamp {})'.format(stamp.__version__, stamp.__stamp__)
 
-
 def configfile(*param_decls, **attrs):
 
     def _callback(callback, ctx, param, value):
@@ -106,10 +105,34 @@ def launcher(results, debug, trace, config, cc, log):
     for res in results:
         params.update(res)
 
+    # Verify the parameters defined in the configuration file:
     for cmd in ['box', 'tor', 'proxy']:
+
+        # If there was a config file, it's values have been loaded into the default_map
+        dm = ctx.default_map.get(cmd, {})
+
+        # This is a command
+        func = globals()[cmd]
+
+        # Get the interface = names of all valid parameters of our command
+        func_params_name = [p.name for p in func.params]
+
+        # Check if a parameter found in the config file...
+        for d in dm:
+            # ... is part of the interface:
+            if d not in func_params_name:
+                # If not, raise an error!
+                ref = {
+                    'box': 'TheOnionBox',
+                    'tor': 'Tor',
+                    'proxy': 'Proxy'
+                }
+                raise click.NoSuchOption(d, f'Invalid option in configuration file: [{ref[cmd]}] {d}')
+
+        # After this validation,
+        # we use the values found in the default_map to feed the commands that are not called via the command line
         if cmd not in params:
-            dm = ctx.default_map.get(cmd, {})
-            func = globals()[cmd]
+            # call the command with the values from the config file
             params.update(ctx.invoke(func, **dm))
 
     if params['proxy']['control'] == 'tor':
@@ -168,17 +191,19 @@ def launcher(results, debug, trace, config, cc, log):
 @click.option('--ssl_certificate', default=None, show_default=True,
               type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, allow_dash=False),
               help='Path to certificate file for SSL operations.')
-@click.option('--ntp_server', 'ntp', default=None, metavar='ADDRESS', show_default=True,
+@click.option('--ntp_server', default=None, metavar='ADDRESS', show_default=True,
              help='ADDRESS of a NTP server.')
-@click.option('--geoip2_city', 'geoip', default=None,
-              type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, allow_dash=False),
+@click.option('--geoip2_city', default=None,
+              type=click.Path(exists=True, file_okay=True, dir_okay=False,
+                              readable=True, resolve_path=True, allow_dash=False),
               help='Path to supplemental GeoIP2 city database.')
-@click.option('--persistance_dir', 'pers_dir', default=None, show_default=True,
+@click.option('--persistance_dir', default=None, show_default=True,
               type=click.Path(exists=True, file_okay=False, dir_okay=True,
-                              readable=True, writable=True, allow_dash=False),
+                              readable=True, writable=True, resolve_path=True, allow_dash=False),
               help='Path to store the database file for monitoring data persistance.')
 @click.pass_context
-def box(ctx, host, port, message_level, base_path, session_ttl, ssl_key, ssl_certificate, ntp, geoip, pers_dir):
+def box(ctx, host, port, message_level, base_path, session_ttl, ssl_key, ssl_certificate, ntp_server, geoip2_city,
+        persistance_dir):
     """Options to configure your Onion Box."""
 
     if ssl_key is not None or ssl_certificate is not None:
@@ -195,7 +220,7 @@ def box(ctx, host, port, message_level, base_path, session_ttl, ssl_key, ssl_cer
         raise click.BadOptionUsage(option_name='ssl_certificate',
                                    message="ssl_certificate FILE provided, but ssl_key FILE is missing.")
 
-    if geoip is not None:
+    if geoip2_city is not None:
         try:
             import geoip2
         except ImportError:
@@ -214,9 +239,9 @@ def box(ctx, host, port, message_level, base_path, session_ttl, ssl_key, ssl_cer
         'session_ttl': session_ttl,
         'ssl_key': ssl_key,
         'ssl_certificate': ssl_certificate,
-        'ntp_server': ntp,
-        'geoip2_city': geoip,
-        'persistance_dir': pers_dir
+        'ntp_server': ntp_server,
+        'geoip2_city': geoip2_city,
+        'persistance_dir': persistance_dir
     }}
 
 @main.command('tor', short_help='Configure the connection to the Tor node to be monitored.')
@@ -229,26 +254,26 @@ def box(ctx, host, port, message_level, base_path, session_ttl, ssl_key, ssl_cer
              help='ControlPort of this Tor node.')
 @click.option('--socket', default=None, metavar='SOCKET', show_default=True,
              help='Local ControlSocket of the Tor node.')
-@click.option('--auth_cookie', 'cookie', default=None, metavar='COOKIE', show_default=True,
+@click.option('--auth_cookie', default=None, metavar='COOKIE', show_default=True,
              help='Cookie necessary to support HiddenServiceAuthorizeClient.')
-@click.option('--password', 'password', default=None, metavar='PASSWORD', show_default=True,
+@click.option('--password', default=None, metavar='PASSWORD', show_default=True,
               help='Password, necessary if this Tor node is guarded with a HashedControlPassword.')
 @click.pass_context
-def tor(ctx, control, host, port, socket, cookie, password):
+def tor(ctx, control, host, port, socket, auth_cookie, password):
     """Settings to configure the connection to the Tor node to be monitored."""
 
     if control in ['port', 'proxy']:
         if host is None or port is None:
             raise click.BadOptionUsage(
                 option_name='control',
-                message="--control mode '{}' requires --host and --port to be defined as well.".format(control))
+                message=f"--control mode '{control}' requires --host and --port to be defined as well.")
     elif control == 'socket':
         if socket is None:
             raise click.BadOptionUsage(option_name='control',
                                        message="--control mode 'socket' requires --socket to be defined as well.")
 
-    if cookie is not None:
-        check = re.match('^[a-zA-Z0-9+/]{22}$', cookie) # see Tor(1), HidServAuth
+    if auth_cookie is not None:
+        check = re.match('^[a-zA-Z0-9+/]{22}$', auth_cookie) # see Tor(1), HidServAuth
         if check is None:
             raise click.BadParameter(param_hint='--auth_cookie',
                                      message="Parameter provided is not a Tor Authorization Cookie.")
@@ -258,7 +283,7 @@ def tor(ctx, control, host, port, socket, cookie, password):
         'host': host,
         'port': port,
         'socket': socket,
-        'cookie': cookie,
+        'cookie': auth_cookie,
         'password': password,
         'label': None,      # some additional properties, demanded by the cc
         'connect': True
@@ -285,7 +310,7 @@ def proxy(ctx, control, host, port, socket, proxy):
         if host is None or port is None:
             raise click.BadOptionUsage(
                 option_name='control',
-                message="--control mode '{}' requires --host and --port to be defined as well.".format(control))
+                message=f"--control mode '{control}' requires --host and --port to be defined as well.")
     elif control == 'socket':
         if socket is None:
             raise click.BadOptionUsage(option_name='control',

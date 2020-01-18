@@ -1,0 +1,28 @@
+name: Create sdist & upload to PyPi
+
+on:
+  release:
+    types: [published]
+  
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@master
+
+    - uses: actions/setup-python@v1
+      with:
+        python-version: '3.x' # Version range or exact version of a Python version to use, using SemVer's version range syntax
+        architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
+
+    - name: Run setup.py to create sdist
+      run: python setup.py sdist
+
+    - name: Publish TheOnionBox distribution to PyPI
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        user: __token__
+        password: ${{ secrets.pypi_theonionbox }}
+
