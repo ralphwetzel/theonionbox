@@ -325,10 +325,4 @@ def proxy(ctx, control, host, port, socket, proxy):
 
 
 if __name__ == '__main__':
-
-
-
-    # main(box_debug)
     main()
-
-# __all__ = ['main']
