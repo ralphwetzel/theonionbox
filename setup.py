@@ -6,6 +6,8 @@ import setuptools.command.build_ext
 import setuptools.command.sdist
 import setuptools.command.install
 
+import pathlib
+
 from distutils.extension import Extension
 
 # This code replaces ...
@@ -60,6 +62,9 @@ def CompileREADME():
     current_md_hash = 'doit'
     current_html_hash = 'doit'
     current_rst_hash = 'doit'
+
+    # ensure that 'readme' directory exists
+    pathlib.Path('readme/').mkdir(exist_ok=True)
 
     try:
         with open('readme/README.hash', 'r') as f:
