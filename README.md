@@ -143,7 +143,7 @@ If the host provides several CPU cores, you may click on the _CPU Usage_ chart t
 
 ---
 
-### Configuration
+### Configuration{#section-configuration}
 The section _Tor | Configuration_ displays the configuration parameters of the Tor node monitored:
 
 ![image](docs/images/configuration.png)
