@@ -15,7 +15,7 @@ from .proxy import Proxy
 py = sys.version_info
 py30 = py >= (3, 0, 0)
 
-__supported_protocol__ = ['6.2', '7.0']
+__supported_protocol__ = ['6.2', '7.0', '8.0']
 
 
 class Mode(object):
@@ -631,6 +631,8 @@ class OnionooManager():
         except Exception as exc:
             self.log.debug(f"OoM|{fingerprint[:6]}/{document.value}: Failed to un-json network data -> {exc}.")
             return
+
+        print(data)
 
         update.update(data)
 
