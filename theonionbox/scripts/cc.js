@@ -6350,6 +6350,7 @@ return this.__repr__();
         Flags.prototype.__init__ = function __init__(id, tag) {
             var self = this;
             ControlBase.prototype.__init__.call(self, id, tag);
+            // console.log("Flags created for " + id)
             self.flags = ρσ_list_decorate([]);
             self.known_flags = (function(){
                 var ρσ_d = {};
@@ -6369,6 +6370,7 @@ return this.__repr__();
                 ρσ_d["soft"] = "<i class=\"far fa-pause-circle fa-2x\"></i>";
                 ρσ_d["hard"] = "<i class=\"fas fa-pause-circle fa-2x\"></i>";
                 ρσ_d["mode"] = "<i class=\"fas fa-circle-notch fa-spin fa-2x\"></i>";
+                ρσ_d["Unmeasured"] = "<i class=\"fas fa-tachometer-alt fa-2x\" style=\"color:Black\"></i><i class=\"fas fa-exclamation fa-2x\" style=\"color:Tomato\"></i>";
                 return ρσ_d;
             }).call(this);
         };
@@ -6380,6 +6382,29 @@ return this.__repr__();
         Flags.prototype.create_flag_icon_html = function create_flag_icon_html(flag, tor_mode) {
             var self = this;
             var html, tooltips, tooltip;
+            // if flag in ['C', 'B', 'R']:
+            //
+            //     cbr = {
+            //         'C': 'Client',
+            //         'B': 'Bridge',
+            //         'R': 'Relay'
+            //     }
+            //
+            //     flag_html = """
+            //         <span class="fa-stack ">
+            //             <i class="far fa-square fa-stack-2x"></i>
+            //             <i class="fa-stack-1x" style="font-size:14px;
+            //                                           font-family:'LatoLatinWebBlack';
+            //                                           font-style:normal;">
+            //                 {mode}
+            //             </i>
+            //         </span>
+            //     """
+            //     flag_html = str.format(flag_html, mode=flag)
+            //
+            //     tooltip = cbr[flag] + ' Mode'
+            //
+            //     return str.format(html, id=self.id, flag=flag.toLowerCase(), tooltip=tooltip, html=flag_html)
             if (ρσ_in(flag, self.known_flags)) {
                 html = "\n                <div class=\"col cc-flag align-middle\" id=\"tobcc.{id}.flags.{flag}\"\n                    data-toggle=\"tooltip\" data-placement=\"bottom\" title=\"{tooltip}\">\n                    {html}\n                </div>\n            ";
                 tooltips = (function(){

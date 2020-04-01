@@ -53,6 +53,8 @@ class Flags(ControlBase):
             , 'soft': '<i class="far fa-pause-circle fa-2x"></i>'
             , 'hard': '<i class="fas fa-pause-circle fa-2x"></i>'
             , 'mode': '<i class="fas fa-circle-notch fa-spin fa-2x"></i>'
+            , 'Unmeasured': '<i class="fas fa-tachometer-alt fa-2x" style="color:Black"></i>'
+                            '<i class="fas fa-exclamation fa-2x" style="color:Tomato"></i>'
         }
 
     def create_flag_icon_html(self, flag, tor_mode):

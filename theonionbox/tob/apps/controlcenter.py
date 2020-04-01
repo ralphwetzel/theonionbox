@@ -643,11 +643,11 @@ class ControlCenter(BaseApp):
             # the first flag is always the placeholder for the nodes mode data
             # ret['flags'] = ['mode']
             ret['flags'] = []
+            oo = node.onionoo
 
             if node_mode == 'Bridge':
                 # node.controller.flags fails for a bridge!
                 try:
-                    oo = node.onionoo
                     d = oo.details('flags')
                     ret['flags'].extend(d)
                 except:
@@ -656,6 +656,14 @@ class ControlCenter(BaseApp):
                 f = node.controller.flags
                 if f is not None and len(f) > 0 and f[0] != 'unknown':
                     ret['flags'].extend(f)
+
+            # Check for the 'Unmeasured' indicator
+            try:
+                d = oo.details('measured')
+                if d is False:
+                    ret['flags'].append('Unmeasured')
+            except:
+                pass
 
             # We add an icon in case of Hibernation!
             try:
@@ -686,7 +694,8 @@ class ControlCenter(BaseApp):
                 'V3Dir',
                 'soft',
                 'hard',
-                'unknown'
+                'unknown',
+                'Unmeasured'
             ]
 
         ret['details'] = True

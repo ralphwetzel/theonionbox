@@ -20,23 +20,32 @@
                    "Fast": "blue",      "Guard": "blue",     "HSDir": "deepskyblue",       "Named": "blue",
                    "Stable": "blue",      "Running": "green",  "Unnamed": "red",     "Valid": "green",
                    "V2Dir": "black",       "V3Dir": "black", "Tor Communication Error": "red", 'none': 'cyan',
-                    "unknown": "black"}
+                    "unknown": "black", "Unmeasured": "red"}
 
     def flags(is_bridge = False):
         flags = ['unknown']
+        oo_details = get('oo_details', None)
         try:
             if is_bridge is True:
-                oo_details = get('oo_details', None)
                 if oo_details is not None:
                     # get_flags() only works for relays, not for bridges
-                    flags = oo_details('flags') or ['unknown']
+                    flags = list(oo_details('flags')) or ['unknown']
                 end
             else:
-                flags = tor.flags or ['unknown']
+                flags = list(tor.flags) or ['unknown']
             end
         except Exception as exc:
             pass
         end
+
+    #   'Unmeasured' is not a local flag!
+    #    try:
+    #        if oo_details('measured') == False:
+    #            flags.append('Unmeasured')
+    #        end
+    #    except:
+    #        pass
+    #    end
 
         fs = ''
         for flag in flags:
