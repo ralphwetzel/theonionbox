@@ -87,7 +87,10 @@ fp = get('family_fp', None)
         % if oo_details('flags'):
             {{!standard_row('Flags', ' | '.join(oo_details('flags')))}}
         % end
-
+        % if oo_details('measured') == False:
+        %   f = ['Unmeasured']
+            {{!standard_row('Special Flags', ' | '.join(f))}}
+        % end
 <%
         def location_row(datum='', value=''):
 
