@@ -1,0 +1,46 @@
+<%
+    # Note that this file is not a valid *.html file!
+    # It is intended to be a bottlepy - style template
+    # used for the scripting part of TheOnionBox!
+
+    consensus = get('consensus')
+
+    c = None
+    try:
+        fp = tor.fingerprint
+        c = consensus.consensus(fp)
+    except:
+        pass
+    end
+%>
+
+% if c is not None:
+
+    {{!header_row('Tor', 'Consensus', 'stats')}}
+
+    % for key, cons in c.items():
+
+        <div class = "row">
+            <div class="{{box_datum_grid}}">
+                {{key}}
+            </div>
+            <div class="{{box_value_grid}} box_value_margin">
+                % for flag in cons:
+                    % if flag[0] == '!':
+                        <span><span style="color:gray; text-decoration: line-through">{{flag[1:]}}</span> </span>
+                    % elif flag[0] == '*':
+                        <span><span style="color:red;">{{flag[1:]}}</span> </span>
+                    % elif flag[0] == '$':
+                        <span><span style="color:blue;">{{flag[1:]}}</span> </span>
+                    % else:
+                        <span><span>{{flag}}</span> </span>
+                    % end
+                % end
+
+            </div>
+            <div class="{{box_right_grid}}"></div>
+        </div>
+    %end
+
+    <hr>
+% end

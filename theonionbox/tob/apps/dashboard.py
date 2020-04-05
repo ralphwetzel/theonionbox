@@ -8,6 +8,7 @@ import uuid
 from bottle import Bottle, HTTPError, request, template, static_file
 
 from ..apps import BaseApp
+from ..consensus import Consensus
 from ..geoip import GeoIPOO
 from ..nodes import Manager as NodesManager, Node
 from ..onionoo import getOnionoo
@@ -18,6 +19,7 @@ from ..system import BaseSystem
 from ..utils import AttributedDict
 from ..version import VersionManager
 # from tob.scheduler import Scheduler
+
 
 class Dashboard(BaseApp):
 
@@ -47,6 +49,10 @@ class Dashboard(BaseApp):
         # TOR manpage Index Information
         from ..manpage import ManPage
         self.manpage = ManPage(str(self.cwd / 'tor' / 'tor.1.ndx'))
+
+        #####
+        # Consensus
+        self.consensus = Consensus()
 
         #####
         # Page Construction
@@ -492,6 +498,7 @@ class Dashboard(BaseApp):
             sections += ['hiddenservice']
 
         sections += ['local']
+        sections += ['consensus']
 
         params = {}
 
@@ -625,6 +632,7 @@ class Dashboard(BaseApp):
             , 'cwd': str(self.cwd)
             , 'configs_used': configs_used
             , 'template_lookup': [str(self.cwd)]
+            , 'consensus': self.consensus
         })
 
         # Test
