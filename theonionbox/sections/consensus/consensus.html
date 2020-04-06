@@ -9,10 +9,9 @@
     try:
         fp = tor.fingerprint
         c = consensus.consensus(fp)
-    except Exception as e:
-        print(e)
+    except:
+        pass
     end
-
 %>
 
 % if c is not None:
@@ -28,7 +27,7 @@
             <div class="{{box_value_grid}} box_value_margin">
                 % for flag in cons:
 
-                    % flag = ' ' if not flag or len(flag) < 1 else flag
+                    % if not flag or len(flag) < 1: else flag
 
                     % if flag[0] == '!':
                         <span><span style="color:gray; text-decoration: line-through">{{flag[1:]}}</span> </span>

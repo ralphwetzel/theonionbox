@@ -76,12 +76,10 @@ class Consensus:
             html = pq(td).html()
             # html: 'Fast <br/>Running <br/><span class="oict">!</span><span class="oic">Unmeasured</span> <br/>Valid <br/>bw=1040'
 
-            print(html)
-
             flags = []
 
             # html is None for empty columns
-            if html:
+            if len(html) > 0:
 
                 # split html
                 s = html.split(' <br/>')
