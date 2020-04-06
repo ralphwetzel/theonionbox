@@ -27,7 +27,9 @@
             <div class="{{box_value_grid}} box_value_margin">
                 % for flag in cons:
 
-                    % if not flag or len(flag) < 1: else flag
+                    % if not flag or len(flag) < 1:
+                    %   flag = ' '
+                    % end
 
                     % if flag[0] == '!':
                         <span><span style="color:gray; text-decoration: line-through">{{flag[1:]}}</span> </span>
