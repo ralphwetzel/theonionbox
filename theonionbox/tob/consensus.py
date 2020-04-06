@@ -79,7 +79,7 @@ class Consensus:
             flags = []
 
             # html is None for empty columns
-            if len(html) > 0:
+            if html:
 
                 # split html
                 s = html.split(' <br/>')
