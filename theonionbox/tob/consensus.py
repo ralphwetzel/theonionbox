@@ -76,27 +76,34 @@ class Consensus:
             html = pq(td).html()
             # html: 'Fast <br/>Running <br/><span class="oict">!</span><span class="oic">Unmeasured</span> <br/>Valid <br/>bw=1040'
 
-            # split html
-            s = html.split(' <br/>')
+            print(html)
+
             flags = []
 
-            for flag in s:
-                if flag[0] == '<':
-                    # pq adds a surrounding '<span>'
-                    f = pq(flag).children()
-                    for span in f:
-                        span = pq(span)
-                        cls = span.attr('class')
-                        if cls == 'oict':   # Only-In-Consensus: marker (??)
-                            continue
-                        if cls == 'oic':    # Only-In-Consensus: line-through
-                            flag = f'!{span.text()}'
-                            break
-                        if cls == 'oiv':    # Only-In-Vote: red
-                            flag = f'*{span.text()}'
-                            break
+            # html is None for empty columns
+            if html:
 
-                flags.append(f'{prefix}{flag}')
+                # split html
+                s = html.split(' <br/>')
+
+                for flag in s:
+                    # len(flag) == 0 for empty cells
+                    if len(flag) > 0 and flag[0] == '<':
+                        # pq adds a surrounding '<span>'
+                        f = pq(flag).children()
+                        for span in f:
+                            span = pq(span)
+                            cls = span.attr('class')
+                            if cls == 'oict':   # Only-In-Consensus: marker (??)
+                                continue
+                            if cls == 'oic':    # Only-In-Consensus: line-through
+                                flag = f'!{span.text()}'
+                                break
+                            if cls == 'oiv':    # Only-In-Vote: red
+                                flag = f'*{span.text()}'
+                                break
+
+                    flags.append(f'{prefix}{flag}')
 
             c[h] = flags
 

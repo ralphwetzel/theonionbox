@@ -285,7 +285,7 @@ packages = [
     'theonionbox.tob.stam',
     'theonionbox.tob.system',
     'theonionbox.tob.system.darwin',
-    'theonionbox.tob.system.darwin.oxtemp',
+    'theonionbox.tob.system.darwin.osxtemp',
     'theonionbox.tob.system.windows',
     'theonionbox.tob.utils'
 ]
@@ -301,7 +301,7 @@ package_dir = {
     'theonionbox.tob.stam': 'theonionbox/tob/stam',
     'theonionbox.tob.system': 'theonionbox/tob/system',
     'theonionbox.tob.system.darwin': 'theonionbox/tob/system/darwin',
-    'theonionbox.tob.system.darwin.oxtemp': 'theonionbox/tob/system/darwin/osxtemp',
+    'theonionbox.tob.system.darwin.osxtemp': 'theonionbox/tob/system/darwin/osxtemp',
     'theonionbox.tob.system.windows': 'theonionbox/tob/system/windows',
     'theonionbox.tob.utils': 'theonionbox/tob/utils'
 }
@@ -318,6 +318,9 @@ package_data = {
     ],
     'theonionbox.tob.system.windows': [
         'uptime/*'
+    ],
+    'theonionbox.tob.system.darwin.osxtemp': [
+        'libsmc.dylib'
     ]
 }
 
@@ -328,14 +331,15 @@ package_data_exclude = {
 
 data_files = [
     # ('', ['pyproject.toml']),
-    ('docs', ['docs/*.*']),
-    ('', ['readme/README.html']),
-    ('config', ['theonionbox/config/*.*']),
-    ('service', []),
-    ('service/FreeBSD', ['FreeBSD/theonionbox.sh']),
-    ('service/init.d', ['init.d/theonionbox.sh']),
-    ('service/systemd', ['systemd/theonionbox.service']),
-    ('service/Docker', ['Docker/Dockerfile', 'Docker/theonionbox.cfg'])
+    ('theonionbox', []),
+    ('theonionbox', ['readme/README.html']),
+    ('theonionbox/docs', []),
+    ('theonionbox/docs/images', ['docs/images/*']),
+    ('theonionbox/config', ['support/config/*']),
+    ('theonionbox/Docker', ['support/Docker/*']),
+    ('theonionbox/FreeBSD', ['support/FreeBSD/*']),
+    ('theonionbox/init.d', ['support/init.d/*']),
+    ('theonionbox/systemd', ['support/systemd/*'])
     # , ('support', [])
     # , ('support/osxtemp', [])
     # , ('support/osxtemp/libsmc', ['support/osxtemp/libsmc/LICENSE', 'support/osxtemp/libsmc/Makefile'])
@@ -384,6 +388,13 @@ data_files = [
 #
 #     return ext
 
+description=f"{stamp['__title__']}: {stamp['__description__']}"
+
+try:
+    # We're not going to include 'description.rst' into the sdist!
+    long_description = open('docs/description.rst', 'rb').read().decode('utf-8')
+except FileNotFoundError:
+    long_description = description
 
 setup(
     cmdclass={'sdist': sdist,
@@ -402,8 +413,8 @@ setup(
     license='MIT',
     author='Ralph Wetzel',
     author_email='theonionbox@gmx.com',
-    description=f"{stamp['__title__']}: {stamp['__description__']}",
-    long_description=open('docs/description.rst', 'rb').read().decode('utf-8'),
+    description=description,
+    long_description=long_description,
     entry_points={
         'console_scripts': [
             'theonionbox = theonionbox.__main__:main']
@@ -446,6 +457,7 @@ setup(
         'Programming Language :: Python :: 3 :: Only',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Topic :: System :: Networking :: Monitoring',
         'Topic :: Utilities',
     ],
