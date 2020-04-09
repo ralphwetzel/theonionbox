@@ -87,9 +87,16 @@ fp = get('family_fp', None)
         % if oo_details('flags'):
             {{!standard_row('Flags', ' | '.join(oo_details('flags')))}}
         % end
-        % if oo_details('measured') == False:
+        % consensus = get('consensus')
+        % if consensus and fp:
+        %   add_flags = consensus.additional_flags(fp)
+        %   if add_flags:
+                {{!standard_row('Additional Flags', ' | '.join(add_flags))}}
+        %   end
+        % elif oo_details('measured') == False:
+        %   # Alternative way to at least show 'Unmeasured'
         %   f = ['Unmeasured']
-            {{!standard_row('Special Flags', ' | '.join(f))}}
+            {{!standard_row('Additional Flags', ' | '.join(f))}}
         % end
 <%
         def location_row(datum='', value=''):

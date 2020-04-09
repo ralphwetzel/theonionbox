@@ -108,4 +108,17 @@ class Consensus:
         # print(c)
         return c
 
+    def additional_flags(self, fp: str) -> Optional[list]:
+
+        c = self.consensus(fp)
+
+        if 'Consensus' not in c:
+            return None
+
+        flags = c['Consensus']
+        check_for = ['NoEdConsensus', 'StaleDesc', 'ReachableIPv6', 'NoIPv6Consensus',
+                     'FallbackDir', 'Unmeasured', 'DescriptorMismatch']
+
+        r = [f for f in check_for if f in flags]
+        return r
 
