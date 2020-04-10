@@ -2,15 +2,17 @@ import os.path
 
 from bottle import Bottle, static_file, HTTPError
 
-from ..plugin.session import SessionPlugin
-from ..session import SessionManager
-
 
 class LatoLatin(Bottle):
 
-    def __init__(self, session_factory: SessionManager, lib_path: str, valid_status=None):
+    def __init__(self, lib_path: str, valid_status=None, session_plugin=None):
 
         super(LatoLatin, self).__init__()
+
+        if session_plugin is not None:
+            # This is intended to raise!
+            from ..plugin.session import SessionPlugin
+            assert(isinstance(session_plugin, SessionPlugin))
 
         # self.base_path = base_path
         self.lib_path = lib_path
@@ -25,19 +27,19 @@ class LatoLatin(Bottle):
                 'valid_status': valid_status
             }
 
-        self.route('/<session>/latolatin/latolatinfonts.css',
+        self.route(f'{"/<session>" if session_plugin is not None else ""}/latolatin/latolatinfonts.css',
                    method='GET',
                    callback=self.get_css,
-                   apply=SessionPlugin(session_factory),
+                   apply=session_plugin,
                    **config)
 
-        self.route('/<session>/latolatin/fonts/<filename:'
+        self.route(f'{"/<session>" if session_plugin is not None else ""}/latolatin/fonts/<filename:'
                    're:LatoLatin-'
                    '(?:Black|Bold|Hairline|Heavy|Italic|Light|Medium|Regular|Semibold|Thin)(?:Italic)?'
                    '\\.(?:eot|ttf|woff|woff2)>',
                    method='GET',
                    callback=self.get_font,
-                   apply=SessionPlugin(session_factory),
+                   apply=session_plugin,
                    **config)
 
     def get_css(self, session):
