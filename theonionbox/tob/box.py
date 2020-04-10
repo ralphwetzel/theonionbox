@@ -392,16 +392,19 @@ class Box:
 
         theonionbox.merge(templt)
 
+        from .plugin import SessionPlugin
+
         # LatoLatin
         from .libraries import LatoLatin
-        libLatoLatin = LatoLatin(self.sessions, os.path.join(boxLibsPath, 'LatoLatin'),
-                                 valid_status=['ok', 'auto', 'error', 'login', 'frame'])
+        libLatoLatin = LatoLatin(os.path.join(boxLibsPath, 'LatoLatin'),
+                                 valid_status=['ok', 'auto', 'error', 'login', 'frame'],
+                                 session_plugin=SessionPlugin(self.sessions))
         theonionbox.merge(libLatoLatin)
 
         # Fontawesome
         from .libraries import FontAwesome
-        libFontAwesome = FontAwesome(self.sessions, os.path.join(boxLibsPath, 'fontawesome-free-5.11.2-web'),
-                                     valid_status='frame')
+        libFontAwesome = FontAwesome(os.path.join(boxLibsPath, 'fontawesome-free-5.11.2-web'),
+                                     valid_status='frame', session_plugin=SessionPlugin(self.sessions))
         theonionbox.merge(libFontAwesome)
 
         self.box = theonionbox.app
