@@ -148,7 +148,7 @@ history_handler.prototype.process = function(data, timedelta) {
 
         var translated_key = translate_onionoo_to_history[hkey];
 
-        if (data.read[hkey] && data.read[hkey].length > 0) {
+        if (data.read.hasOwnProperty(hkey) && data.read[hkey] && data.read[hkey].length > 0) {
 
             DOM_changed = connect_history_canvas(translated_key) || DOM_changed;
             var result = [];
@@ -171,7 +171,7 @@ history_handler.prototype.process = function(data, timedelta) {
 
         }
 
-        if (data.write[hkey] && data.write[hkey].length > 0) {
+        if (data.write.hasOwnProperty(hkey) && data.write[hkey] && data.write[hkey].length > 0) {
 
             DOM_changed = connect_history_canvas(translated_key) || DOM_changed;
             result = [];

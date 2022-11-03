@@ -116,8 +116,7 @@ cw_handler.prototype.process = function(data, timedelta) {
             var key = weights_chart_keys[i];
             var insert_button = false;
 
-            if (data.cw[key] && data.cw[key].length > 0) {
-
+            if (data.cw.hasOwnProperty(key) && data.cw[key] && data.cw[key].length > 0) {
                 var result = [];
 
                 if (last_key_cw !== '') {
@@ -140,7 +139,7 @@ cw_handler.prototype.process = function(data, timedelta) {
                 insert_button = true;
             }
 
-            if (data.cwf[key] && data.cwf[key].length > 0) {
+            if (data.cwf.hasOwnProperty(key) && data.cwf[key] && data.cwf[key].length > 0) {
                 //console.log("cwf: " + data.cwf[key].length)
 
                 var result = [];
@@ -164,7 +163,7 @@ cw_handler.prototype.process = function(data, timedelta) {
                 insert_button = true;
             }
 
-            if (data.ep[key] && data.ep[key].length > 0) {
+            if (data.ep.hasOwnProperty(key) && data.ep[key] && data.ep[key].length > 0) {
 
                 var result = [];
 
@@ -186,7 +185,7 @@ cw_handler.prototype.process = function(data, timedelta) {
                 insert_button = true;
             }
 
-            if (data.mp[key] && data.mp[key].length > 0) {
+            if (data.mp.hasOwnProperty(key) && data.mp[key] && data.mp[key].length > 0) {
 
                 var result = [];
 
@@ -209,7 +208,7 @@ cw_handler.prototype.process = function(data, timedelta) {
                 insert_button = true;
             }
 
-            if (data.gp[key] && data.gp[key].length > 0) {
+            if (data.gp.hasOwnProperty(key) && data.gp[key] && data.gp[key].length > 0) {
 
                 var result = [];
 
