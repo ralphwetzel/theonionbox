@@ -435,7 +435,6 @@ function connect_history_canvas(tag) {
 
     var glide = $("#history_glide_" + tag);
     if (glide.length > 0) {
-        console.log('Glide exists for ' + tag);
         return false;
     }
 
