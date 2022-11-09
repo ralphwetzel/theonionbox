@@ -148,7 +148,7 @@ history_handler.prototype.process = function(data, timedelta) {
 
         var translated_key = translate_onionoo_to_history[hkey];
 
-        if (data.read[hkey] && data.read[hkey].length > 0) {
+        if (data.read.hasOwnProperty(hkey) && data.read[hkey] && data.read[hkey].length > 0) {
 
             DOM_changed = connect_history_canvas(translated_key) || DOM_changed;
             var result = [];
@@ -168,11 +168,9 @@ history_handler.prototype.process = function(data, timedelta) {
             history_read_data[translated_key].data = result.concat(data.read[hkey]);
             history_read_data[translated_key].resetBounds();
             last_key_read = hkey;
-
         }
 
-        if (data.write[hkey] && data.write[hkey].length > 0) {
-
+        if (data.write.hasOwnProperty(hkey) && data.write[hkey] && data.write[hkey].length > 0) {
             DOM_changed = connect_history_canvas(translated_key) || DOM_changed;
             result = [];
 
@@ -191,7 +189,6 @@ history_handler.prototype.process = function(data, timedelta) {
             history_written_data[translated_key].data = result.concat(data.write[hkey]);
             history_written_data[translated_key].resetBounds();
             last_key_write = hkey;
-
         }
     }
 
@@ -449,9 +446,19 @@ function connect_history_canvas(tag) {
             "</canvas>";
 
     var pos = $.inArray(tag, history_keys);
+    var insert_pos = 'after';
     while (glide.length === 0 && pos > 0) {
         pos -= 1;
         glide = $("#history_glide_" + history_keys[pos]);
+    }
+    if (glide.length === 0) {
+        // That didn't work, lets try looking the other direction
+        pos = $.inArray(tag, history_keys);
+        insert_pos = 'before';
+        while (glide.length === 0 && pos < history_keys.length - 1) {
+            pos += 1;
+            glide = $("#history_glide_" + history_keys[pos]);
+        }
     }
     if (glide.length !== 0) {
 
@@ -482,7 +489,11 @@ function connect_history_canvas(tag) {
 
         // and now insert the slide
         // console.log(glide, jli);
-        jli.insertAfter(glide);
+        if (insert_pos === 'after') {
+            jli.insertAfter(glide);
+        } else {
+            jli.insertBefore(glide);
+        }
 
     } else {
         return false;
@@ -527,17 +538,28 @@ function history_add_button(tag) {
     var inpt = "<input type='radio' autocomplete='off'>" + history_buttons[tag];
 
     var pos = $.inArray(tag, history_keys);
+    var insert_pos = 'after';
     while (button.length === 0 && pos > 0) {
         pos -= 1;
         button = $("#history_button_" + history_keys[pos]);
     }
+    if (button.length === 0) {
+        // That didn't work, lets try looking the other direction
+        pos = $.inArray(tag, history_keys);
+        insert_pos = 'before';
+        while (button.length === 0 && pos < history_keys.length - 1) {
+            pos += 1;
+            button = $("#history_button_" + history_keys[pos]);
+        }
+    }
     if (button.length !== 0) {
-
         var btn = $(lbl);
         btn.append(inpt);
-
-        btn.insertAfter(button);
-
+        if (insert_pos === 'after') {
+            btn.insertAfter(button);
+        } else {
+            btn.insertBefore(button);
+        }
     } else {
         return false;
     }
