@@ -95,7 +95,7 @@ def main(ctx, debug, trace, config, cc, log):
     pass
 
 
-@main.resultcallback()
+@main.result_callback()
 def launcher(results, debug, trace, config, cc, log):
 
     # This raises (by intension) if no context.
